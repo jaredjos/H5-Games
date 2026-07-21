@@ -1,0 +1,37 @@
+{
+  "name": "impossible-snake-publishing",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "dev:poki": "vite --host 127.0.0.1 --mode poki",
+    "dev:crazygames": "vite --host 127.0.0.1 --mode crazygames",
+    "build": "vite build --mode poki",
+    "build:standalone": "vite build --mode standalone",
+    "build:poki": "vite build --mode poki",
+    "build:crazygames": "vite build --mode crazygames",
+    "package:standalone": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-build.ps1 standalone",
+    "package:poki": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-build.ps1 poki",
+    "package:crazygames": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-build.ps1 crazygames",
+    "preview:standalone": "vite preview --host 127.0.0.1 --outDir dist/standalone",
+    "preview:poki": "vite preview --host 127.0.0.1 --outDir dist/poki",
+    "preview:crazygames": "vite preview --host 127.0.0.1 --outDir dist/crazygames"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.1.1",
+    "@fontsource/space-grotesk": "^5.1.1",
+    "@react-three/drei": "^9.117.3",
+    "@react-three/fiber": "^8.17.10",
+    "@react-three/postprocessing": "^2.16.3",
+    "lucide-react": "^0.468.0",
+    "postprocessing": "^6.36.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.3",
+    "vite": "^5.4.10"
+  }
+}
