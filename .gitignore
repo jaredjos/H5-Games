@@ -1,8 +1,16 @@
 node_modules/
 dist/
 releases/
+coverage/
+.vite/
+.pnpm-store/
+playwright-report/
+test-results/
 
 *.log
+*.zip
+*.exe
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
@@ -11,4 +19,3 @@ releases/
 Thumbs.db
 .idea/
 .vscode/
-

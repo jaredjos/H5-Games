@@ -44,9 +44,14 @@ export class NighttraceAudio {
   private destroyed = false
   private bossMode = false
   private lastBossAttackAt = -10
+  private resumeAfterLifecyclePause = false
+  private lifecycleSuspend?: Promise<void>
 
   constructor(settings: GameSettings) {
     this.settings = settings
+    document.addEventListener('visibilitychange', this.handleVisibilityChange)
+    window.addEventListener('pagehide', this.suspendForLifecycle)
+    window.addEventListener('pageshow', this.resumeFromLifecycle)
   }
 
   updateSettings(settings: GameSettings) {
@@ -76,6 +81,10 @@ export class NighttraceAudio {
       const sfx = context.createGain()
       const compressor = context.createDynamicsCompressor()
 
+      master.gain.value = this.settings.masterVolume
+      music.gain.value = this.settings.musicVolume * 0.16
+      sfx.gain.value = this.settings.sfxVolume
+
       compressor.threshold.value = -18
       compressor.knee.value = 16
       compressor.ratio.value = 5
@@ -96,7 +105,9 @@ export class NighttraceAudio {
     }
 
     if (this.context.state === 'suspended') {
-      await this.context.resume()
+      await this.context.resume().catch(() => {
+        // iOS can require another explicit gesture after restoring an installed app.
+      })
     }
   }
 
@@ -343,8 +354,46 @@ export class NighttraceAudio {
     }
   }
 
+  private suspendForLifecycle = () => {
+    const context = this.context
+    if (!context || context.state !== 'running' || this.destroyed) return
+    this.resumeAfterLifecyclePause = true
+    this.lifecycleSuspend = context.suspend().catch(() => undefined)
+  }
+
+  private resumeFromLifecycle = () => {
+    const context = this.context
+    if (
+      !context ||
+      !this.resumeAfterLifecyclePause ||
+      this.destroyed ||
+      document.hidden
+    ) {
+      return
+    }
+    this.resumeAfterLifecyclePause = false
+    const pendingSuspend = this.lifecycleSuspend
+    void (async () => {
+      await pendingSuspend
+      if (this.destroyed || this.context !== context || document.hidden) return
+      if (context.state === 'suspended') {
+        await context.resume().catch(() => {
+          // Some mobile browsers require a fresh gesture after restoring a page.
+        })
+      }
+    })()
+  }
+
+  private handleVisibilityChange = () => {
+    if (document.hidden) this.suspendForLifecycle()
+    else this.resumeFromLifecycle()
+  }
+
   destroy() {
     this.destroyed = true
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange)
+    window.removeEventListener('pagehide', this.suspendForLifecycle)
+    window.removeEventListener('pageshow', this.resumeFromLifecycle)
     for (const oscillator of this.droneOscillators) {
       try {
         oscillator.stop()
@@ -359,5 +408,7 @@ export class NighttraceAudio {
     this.music = undefined
     this.sfx = undefined
     this.musicFilter = undefined
+    this.resumeAfterLifecyclePause = false
+    this.lifecycleSuspend = undefined
   }
 }

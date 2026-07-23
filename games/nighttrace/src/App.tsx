@@ -1,7 +1,15 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { RotateCw } from 'lucide-react'
 import type { GameCanvasHandle } from './game/GameCanvas'
 import { LEVELS, MODULES, TRACE_MODS, WEAPONS, formatTime, getLevel } from './game/content'
-import { applyPersistentReward, getMasteryTargets, loadSave, resetSave, saveSave } from './game/save'
+import {
+  SAVE_KEY,
+  applyPersistentReward,
+  getMasteryTargets,
+  loadSave,
+  resetSave,
+  saveSave,
+} from './game/save'
 import type {
   GameSettings,
   GameSnapshot,
@@ -87,6 +95,18 @@ export default function App() {
   const persist = useCallback((next: SaveData) => {
     setSave(next)
     saveSave(next)
+  }, [])
+
+  useEffect(() => {
+    const refreshSaveFromAnotherWindow = (event: StorageEvent) => {
+      if (event.storageArea !== window.localStorage || event.key !== SAVE_KEY) return
+      const next = safeLoadSave()
+      setSave(next)
+      setSelectedLevelId((levelId) => Math.max(1, Math.min(levelId, next.unlockedLevel)))
+    }
+
+    window.addEventListener('storage', refreshSaveFromAnotherWindow)
+    return () => window.removeEventListener('storage', refreshSaveFromAnotherWindow)
   }, [])
 
   const announce = useCallback((message: string) => {
@@ -382,6 +402,10 @@ export default function App() {
         ) : (
           <GameLoading levelName={currentLevel.name} />
         )}
+        <div className="orientation-hint" role="status" aria-live="polite">
+          <RotateCw size={16} aria-hidden="true" />
+          <span>Rotate for a wider battlefield</span>
+        </div>
       </main>
     )
   } else if (screen === 'results' && result && resultLevel) {
@@ -412,6 +436,7 @@ export default function App() {
         reducedMotion ? 'reduce-motion' : '',
         save.settings.reducedFlash ? 'reduce-flash' : '',
         isShellScreen(screen) ? 'is-shell' : '',
+        screen === 'game' ? 'is-game' : '',
       ].join(' ')}
     >
       {content}

@@ -16,6 +16,7 @@ import {
   Texture,
   type Ticker,
 } from 'pixi.js'
+import { appAssetUrl } from '../assetUrl'
 import type {
   GameSettings,
   GameSnapshot,
@@ -76,11 +77,13 @@ const ENEMY_IDS: EnemyId[] = [
   'cinder-guard',
 ]
 const GRID_SIZE = 112
-const HERO_ART_ROOT_X = 300 / 768
-const HERO_ART_ROOT_Y = 690 / 768
+const HERO_RUNTIME_FRAME_SIZE = 512
+const HERO_RUNTIME_SCALE = HERO_RUNTIME_FRAME_SIZE / 768
+const HERO_ART_ROOT_X = (300 * HERO_RUNTIME_SCALE) / HERO_RUNTIME_FRAME_SIZE
+const HERO_ART_ROOT_Y = (690 * HERO_RUNTIME_SCALE) / HERO_RUNTIME_FRAME_SIZE
 // Keep the authored hero inside the normal-horde silhouette range.
 // Sovereign bosses retain their separate 210x245+ presentation scale.
-const HERO_ART_SCALE = 66 / 550
+const HERO_ART_SCALE = 66 / (550 * HERO_RUNTIME_SCALE)
 
 export interface GameCanvasHandle {
   selectUpgrade(optionId: string): void
@@ -253,9 +256,9 @@ const canvasHostStyle: CSSProperties = {
 }
 
 const backgroundForLevel = (levelId: number) => {
-  if ([2, 5, 7].includes(levelId)) return '/assets/glassreed-mire-arena.png'
-  if ([6, 8, 10].includes(levelId)) return '/assets/cinder-foundry-arena.png'
-  return '/assets/first-beacon-arena.png'
+  if ([2, 5, 7].includes(levelId)) return appAssetUrl('assets/glassreed-mire-arena.webp')
+  if ([6, 8, 10].includes(levelId)) return appAssetUrl('assets/cinder-foundry-arena.webp')
+  return appAssetUrl('assets/first-beacon-arena.webp')
 }
 
 class NighttraceRuntime {
@@ -446,12 +449,12 @@ class NighttraceRuntime {
       })
     const assetLoad = Promise.all([
       Assets.load<Texture>(backgroundForLevel(this.level.id)),
-      Assets.load<Texture>('/assets/hero-animations/hero-walk-spritesheet.png'),
-      Assets.load<Texture>('/assets/hero-animations/hero-fire-spritesheet.png'),
-      Assets.load<Texture>('/assets/hero-animations/hero-charge-spritesheet.png'),
-      Assets.load<Texture>('/assets/nighttrace-enemy-atlas.png'),
-      Assets.load<Texture>('/assets/nighttrace-boss-atlas.png'),
-      Assets.load<Texture>('/assets/nighttrace-pickup-atlas.png'),
+      Assets.load<Texture>(appAssetUrl('assets/hero-animations/hero-walk-runtime.webp')),
+      Assets.load<Texture>(appAssetUrl('assets/hero-animations/hero-fire-runtime.webp')),
+      Assets.load<Texture>(appAssetUrl('assets/hero-animations/hero-charge-runtime.webp')),
+      Assets.load<Texture>(appAssetUrl('assets/nighttrace-enemy-atlas.webp')),
+      Assets.load<Texture>(appAssetUrl('assets/nighttrace-boss-atlas.webp')),
+      Assets.load<Texture>(appAssetUrl('assets/nighttrace-pickup-atlas.webp')),
     ])
     try {
       const [

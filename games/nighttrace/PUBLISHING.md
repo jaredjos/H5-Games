@@ -4,7 +4,8 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current desktop release tag: `nighttrace-v1.0.0`
+- Current release tag: `nighttrace-v1.1.0`
+- Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
 
 ## Validation gate
@@ -16,12 +17,14 @@ pnpm install --frozen-lockfile
 pnpm test
 pnpm lint
 pnpm build
+pnpm verify:build
 ```
 
 The release is acceptable only when all four test files and all 37 unit tests
-pass, lint exits cleanly, and Vite produces `dist/index.html`.
+pass, lint exits cleanly, the subpath verifier passes, no production source
+maps are emitted, and Vite produces `dist/index.html`.
 
-## Standalone archive
+## Release archives
 
 The Windows archive contains:
 
@@ -29,16 +32,20 @@ The Windows archive contains:
 NIGHTTRACE Launcher.exe
 PLAY NIGHTTRACE.cmd
 README.md
+LICENSE.txt
+THIRD_PARTY_NOTICES.txt
 dist/
 ```
 
-Keep the launcher beside `dist/`. The launcher serves the static build on
-loopback and opens the default browser. Mobile distribution uses an HTTPS host
-instead of the Windows launcher.
+The web/mobile archive contains the deployable contents of `dist/` at its root
+plus `LICENSE.txt`, `THIRD_PARTY_NOTICES.txt`, and a short deployment readme.
+Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
+`dist/`; it serves the same build only on the desktop loopback address.
 
 ## Versioning
 
-- `nighttrace-v1.0.0`: frozen desktop-first build.
-- `nighttrace-v1.1.0-mobile`: mobile/PWA hardening release.
+- `nighttrace-v1.0.0`: frozen desktop/browser release.
+- `nighttrace-v1.1.0`: mobile/PWA hardening release.
 
-Release archives are generated artifacts and are excluded from source control.
+Release archives and executable launchers are generated artifacts and are
+excluded from source control.

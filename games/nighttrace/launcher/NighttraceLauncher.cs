@@ -165,12 +165,7 @@ internal static class NighttraceLauncher
                 }
 
                 FileInfo info = new FileInfo(filePath);
-                string cacheControl = Path.GetFileName(filePath).Equals(
-                    "index.html",
-                    StringComparison.OrdinalIgnoreCase
-                )
-                    ? "no-cache"
-                    : "public, max-age=31536000, immutable";
+                string cacheControl = GetCacheControl(filePath);
 
                 string responseHeaders =
                     "HTTP/1.1 200 OK\r\n" +
@@ -269,6 +264,33 @@ internal static class NighttraceLauncher
         }
     }
 
+    private static string GetCacheControl(string path)
+    {
+        string fileName = Path.GetFileName(path);
+        string extension = Path.GetExtension(path);
+        bool isMutableAppEntry =
+            fileName.Equals("index.html", StringComparison.OrdinalIgnoreCase) ||
+            fileName.Equals("sw.js", StringComparison.OrdinalIgnoreCase) ||
+            fileName.Equals("manifest.webmanifest", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(
+                Path.Combine(".vite", "manifest.json"),
+                StringComparison.OrdinalIgnoreCase
+            );
+        if (isMutableAppEntry)
+        {
+            return "no-cache";
+        }
+
+        bool isFingerprintedBuildAsset =
+            (extension.Equals(".js", StringComparison.OrdinalIgnoreCase) ||
+             extension.Equals(".css", StringComparison.OrdinalIgnoreCase)) &&
+            fileName.Contains("-");
+
+        return isFingerprintedBuildAsset
+            ? "public, max-age=31536000, immutable"
+            : "public, max-age=3600, must-revalidate";
+    }
+
     private static string GetMimeType(string path)
     {
         switch (Path.GetExtension(path).ToLowerInvariant())
@@ -279,6 +301,7 @@ internal static class NighttraceLauncher
             case ".css": return "text/css; charset=utf-8";
             case ".json":
             case ".map": return "application/json; charset=utf-8";
+            case ".webmanifest": return "application/manifest+json; charset=utf-8";
             case ".png": return "image/png";
             case ".jpg":
             case ".jpeg": return "image/jpeg";

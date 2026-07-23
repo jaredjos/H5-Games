@@ -4,16 +4,50 @@
 
 NIGHTTRACE is an original browser horde-survival game built with React, TypeScript, Vite, and PixiJS. Auto-attacking weapons keep the controls approachable; every step paints a luminous trace, and closing a loop turns movement itself into a weapon.
 
+## Release lineage
+
+- `v1.0.0` — original desktop/browser release
+- `v1.1.0` — mobile-ready release with installable offline play, safe-area-aware touch UI, responsive portrait/landscape layouts, deployment-relative hosting, lifecycle-safe audio, and substantially lighter runtime art
+
 ## One-click Windows release
 
-Download and extract the standalone Windows archive from the matching GitHub
-release, then double-click **`NIGHTTRACE Launcher.exe`**. It starts the prebuilt
-game, opens it in your default browser, and does not require Node, pnpm, an
-install step, or a terminal command.
+Download and extract the Windows archive from the matching
+[GitHub Release](../../releases), then double-click
+**`NIGHTTRACE Launcher.exe`**. It starts the prebuilt game, opens it in your
+default browser, and does not require Node, pnpm, an install step, or a terminal
+command.
 
 Keep the small NIGHTTRACE launcher window open while playing. Close that
 window or press `Ctrl+C` to stop the local game server. `PLAY NIGHTTRACE.cmd`
-is included in the archive as an equivalent double-click shortcut.
+is included in the release archive as an equivalent double-click shortcut.
+
+## Mobile install and offline play
+
+Deploy the `dist` folder over HTTPS at either a domain root or a nested path
+such as `/H5-Games/nighttrace/`, open it in a mobile browser, and use the
+browser's **Add to Home Screen** or **Install app** action. The installed game
+requests a landscape, fullscreen-capable presentation and includes standard,
+maskable, and Apple touch icons. Build output uses deployment-relative asset,
+manifest, and service-worker URLs, so no path rewriting is required.
+
+The versioned service worker caches the app shell, generated Vite chunks, and
+the complete optimized gameplay-art set during installation. After the first
+online load finishes, all ten sectors can start and render offline rather than
+only revisiting screens that happened to be opened before disconnecting. A
+newly downloaded worker waits for existing game tabs to close before taking
+over, avoiding a mid-run reload.
+
+The Windows launcher is intentionally bound to this PC's loopback address; it
+is a desktop quick start, not a phone-accessible LAN server.
+
+### Mobile submission notes
+
+The web package is release-ready for HTTPS static hosts and can also be wrapped
+for Android or iOS with a standards-based webview shell. Before store
+submission, replace the generic wrapper identity with the final publisher,
+bundle ID, signing credentials, store artwork, privacy declarations, and
+device-specific screenshots. The game itself does not collect account data,
+show ads, or make network calls after its assets have been cached.
 
 ## Developer start
 
@@ -90,16 +124,11 @@ The Settings screen includes independent master, music, and effects volume contr
 
 ```powershell
 pnpm build
+pnpm verify:build
 pnpm test
 pnpm lint
 pnpm preview
 ```
-
-## Release lineage
-
-- `nighttrace-v1.0.0` preserves the original desktop-first release.
-- Later tags may add mobile/PWA hardening without rewriting the ten-sector
-  campaign or its saved progression format.
 
 ### Development-only QA mode
 

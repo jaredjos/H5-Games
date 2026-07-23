@@ -7,7 +7,7 @@ A collection of polished HTML5 browser games, organized as independent projects 
 | Game | Description | Stack | Status |
 | --- | --- | --- | --- |
 | [The Impossible Snake](games/the-impossible-snake) | A cinematic 3D snake survival game with ten levels, hunters, obstacles, lives, boosters, adaptive audio, and desktop/mobile controls. | React, Three.js, React Three Fiber, Vite | Publishing candidate |
-| [NIGHTTRACE](games/nighttrace) | A cinematic horde-survival action game with ten sectors, animated characters and bosses, auto-attacking weapons, Trace circuits, awakenings, and persistent progression. | React, TypeScript, PixiJS, Vite | Released |
+| [NIGHTTRACE](games/nighttrace) | A cinematic horde-survival action game with ten sectors, animated characters and bosses, auto-attacking weapons, Trace circuits, awakenings, and persistent progression. | React, TypeScript, PixiJS, Vite | v1.1 mobile/PWA |
 
 ## Repository Layout
 

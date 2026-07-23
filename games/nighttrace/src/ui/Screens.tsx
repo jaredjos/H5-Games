@@ -17,6 +17,7 @@ import {
   Waves,
   Zap,
 } from 'lucide-react'
+import { appAssetUrl } from '../assetUrl'
 import type {
   GameSettings,
   LevelDefinition,
@@ -91,7 +92,7 @@ export function TitleScreen({
           A world without dawn
         </div>
         <div className="title-lockup" aria-label="NIGHTTRACE">
-          <img src="/assets/nighttrace-wordmark.png" alt="" />
+          <img src={appAssetUrl('assets/nighttrace-wordmark.png')} alt="" />
           <h1 className="sr-only">NIGHTTRACE</h1>
         </div>
         <p className="title-tagline">Draw the path. Burn the horde.</p>

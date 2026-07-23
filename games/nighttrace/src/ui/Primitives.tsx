@@ -13,6 +13,7 @@ import {
   Zap,
 } from 'lucide-react'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { appAssetUrl } from '../assetUrl'
 import type { ModuleId, ScreenId, WeaponId } from '../shared/types'
 
 type ShellScreenId = Exclude<ScreenId, 'title' | 'game' | 'results'>
@@ -102,7 +103,7 @@ export function AppHeader({
   return (
     <header className="app-header">
       <button className="wordmark" onClick={() => onNavigate('campaign')} aria-label="NIGHTTRACE campaign">
-        <img src="/assets/nighttrace-wordmark.png" alt="" />
+        <img src={appAssetUrl('assets/nighttrace-wordmark.png')} alt="" />
         <span className="sr-only">NIGHTTRACE</span>
       </button>
       <nav className="primary-nav" aria-label="Main navigation">
@@ -210,6 +211,11 @@ export function AtlasSprite({
   rows: number
   className?: string
 }) {
+  const atlasPaths = {
+    hero: 'assets/nighttrace-hero-sheet.png',
+    enemy: 'assets/nighttrace-enemy-atlas.webp',
+    boss: 'assets/nighttrace-boss-atlas.webp',
+  } as const
   const column = frame % columns
   const row = Math.floor(frame / columns) % rows
   const x = columns === 1 ? 0 : (column / (columns - 1)) * 100
@@ -218,7 +224,7 @@ export function AtlasSprite({
     <span
       className={`atlas-sprite atlas-sprite--${atlas} ${className}`}
       style={{
-        backgroundImage: `url(/assets/nighttrace-${atlas}-${atlas === 'hero' ? 'sheet' : 'atlas'}.png)`,
+        backgroundImage: `url("${appAssetUrl(atlasPaths[atlas])}")`,
         backgroundSize: `${columns * 100}% ${rows * 100}%`,
         backgroundPosition: `${x}% ${y}%`,
       }}
