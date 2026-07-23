@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.1.1`
+- Current web release: `v1.3.1`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -21,7 +21,7 @@ pnpm build
 pnpm verify:build
 ```
 
-The release is acceptable only when all four test files and all 37 unit tests
+The release is acceptable only when all six test files and all 59 unit tests
 pass, lint exits cleanly, the subpath verifier passes, no production source
 maps are emitted, and Vite produces `dist/index.html`.
 
@@ -47,7 +47,10 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 
 - `nighttrace-v1.0.0`: frozen desktop/browser release.
 - `nighttrace-v1.1.0`: mobile/PWA hardening release.
-- `v1.1.1`: hosted web balance and touch-HUD update; no new archive tag.
+- `v1.1.1`: hosted web balance and touch-HUD update.
+- `v1.2.0`: landscape draft, audio, support-relic, and ten-pattern boss update.
+- `v1.3.0`: minute-based horde curve and adaptive boss-durability update.
+- `v1.3.1`: runtime documentation and enemy/boss motion-readability update.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

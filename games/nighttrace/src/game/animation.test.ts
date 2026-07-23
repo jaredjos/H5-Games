@@ -10,7 +10,89 @@ import {
   sampleBossMotion,
   sampleEnemyMotion,
   sampleHeroMotion,
+  type AttackMotionStyle,
+  type MotionPose,
 } from './animation'
+import type { EnemyId } from '../shared/types'
+
+const ENEMY_IDS: EnemyId[] = [
+  'maskling',
+  'shardwing',
+  'cantor',
+  'railjaw',
+  'chronowisp',
+  'cinder-guard',
+]
+
+const ENEMY_ATTACK_CASES: Array<{
+  id: EnemyId
+  style: AttackMotionStyle
+  progress: number
+}> = [
+  { id: 'maskling', style: 'melee', progress: 0.5 },
+  { id: 'shardwing', style: 'melee', progress: 0.5 },
+  { id: 'cantor', style: 'cast', progress: 0.56 },
+  { id: 'railjaw', style: 'charge', progress: 0.62 },
+  { id: 'chronowisp', style: 'blink', progress: 0.45 },
+  { id: 'cinder-guard', style: 'slam', progress: 0.72 },
+]
+
+const BOSS_ATTACK_CASES: Array<{
+  style: AttackMotionStyle
+  progress: number
+}> = [
+  { style: 'boss-line', progress: 0.62 },
+  { style: 'boss-orbit', progress: 0.5 },
+  { style: 'boss-cross', progress: 0.5 },
+  { style: 'boss-mirror', progress: 0.5 },
+  { style: 'boss-cluster', progress: 0.72 },
+  { style: 'boss-phase', progress: 0.5 },
+  { style: 'boss-intro', progress: 0.18 },
+]
+
+const BOSS_FRAMES_BY_LEVEL = [0, 1, 2, 3, 1, 4, 4, 2, 3, 5] as const
+
+const visualPoseDistance = (left: MotionPose, right: MotionPose) =>
+  Math.hypot(left.offsetX - right.offsetX, left.offsetY - right.offsetY) +
+  Math.abs(left.rotation - right.rotation) * 40 +
+  Math.abs(left.scaleX - right.scaleX) * 32 +
+  Math.abs(left.scaleY - right.scaleY) * 32 +
+  Math.abs(left.alpha - right.alpha) * 28 +
+  Math.abs(left.glow - right.glow) * 14
+
+const expectFinitePose = (pose: MotionPose) => {
+  for (const value of Object.values(pose)) expect(Number.isFinite(value)).toBe(true)
+}
+
+const expectHordePoseBounds = (pose: MotionPose) => {
+  expectFinitePose(pose)
+  expect(Math.abs(pose.offsetX)).toBeLessThanOrEqual(46)
+  expect(Math.abs(pose.offsetY)).toBeLessThanOrEqual(46)
+  expect(Math.abs(pose.rotation)).toBeLessThanOrEqual(0.36)
+  expect(pose.scaleX).toBeGreaterThanOrEqual(0.45)
+  expect(pose.scaleX).toBeLessThanOrEqual(1.35)
+  expect(pose.scaleY).toBeGreaterThanOrEqual(0.72)
+  expect(pose.scaleY).toBeLessThanOrEqual(1.35)
+  expect(pose.alpha).toBeGreaterThanOrEqual(0.15)
+  expect(pose.alpha).toBeLessThanOrEqual(1)
+  expect(pose.glow).toBeGreaterThanOrEqual(0)
+  expect(pose.glow).toBeLessThanOrEqual(1)
+}
+
+const expectBossPoseBounds = (pose: MotionPose) => {
+  expectFinitePose(pose)
+  expect(Math.abs(pose.offsetX)).toBeLessThanOrEqual(52)
+  expect(Math.abs(pose.offsetY)).toBeLessThanOrEqual(52)
+  expect(Math.abs(pose.rotation)).toBeLessThanOrEqual(0.36)
+  expect(pose.scaleX).toBeGreaterThanOrEqual(0.6)
+  expect(pose.scaleX).toBeLessThanOrEqual(1.62)
+  expect(pose.scaleY).toBeGreaterThanOrEqual(0.6)
+  expect(pose.scaleY).toBeLessThanOrEqual(1.62)
+  expect(pose.alpha).toBeGreaterThanOrEqual(0.12)
+  expect(pose.alpha).toBeLessThanOrEqual(1)
+  expect(pose.glow).toBeGreaterThanOrEqual(0)
+  expect(pose.glow).toBeLessThanOrEqual(1)
+}
 
 describe('motionProgress', () => {
   it('returns an inactive sentinel when no action is running', () => {
@@ -116,6 +198,106 @@ describe('character motion samplers', () => {
     expect(caster.glow).toBeGreaterThan(0.9)
   })
 
+  it('gives every horde species a visible, deterministic locomotion cycle', () => {
+    for (const [index, id] of ENEMY_IDS.entries()) {
+      const early = sampleEnemyMotion({
+        id,
+        uid: index + 11,
+        time: 0.17,
+        moving: 1,
+        attackProgress: -1,
+        attackAngle: 0,
+        attackStyle: 'none',
+        reducedMotion: false,
+      })
+      const late = sampleEnemyMotion({
+        id,
+        uid: index + 11,
+        time: 0.61,
+        moving: 1,
+        attackProgress: -1,
+        attackAngle: 0,
+        attackStyle: 'none',
+        reducedMotion: false,
+      })
+
+      expectHordePoseBounds(early)
+      expectHordePoseBounds(late)
+      expect(visualPoseDistance(early, late), `${id} locomotion`).toBeGreaterThan(1.5)
+      expect(
+        sampleEnemyMotion({
+          id,
+          uid: index + 11,
+          time: 0.61,
+          moving: 1,
+          attackProgress: -1,
+          attackAngle: 0,
+          attackStyle: 'none',
+          reducedMotion: false,
+        }),
+      ).toEqual(late)
+    }
+  })
+
+  it('gives each horde combat role a distinct anticipation or release pose', () => {
+    for (const [index, motion] of ENEMY_ATTACK_CASES.entries()) {
+      const locomotion = sampleEnemyMotion({
+        id: motion.id,
+        uid: index + 21,
+        time: 1.13,
+        moving: 1,
+        attackProgress: -1,
+        attackAngle: Math.PI / 5,
+        attackStyle: 'none',
+        reducedMotion: false,
+      })
+      const attacking = sampleEnemyMotion({
+        id: motion.id,
+        uid: index + 21,
+        time: 1.13,
+        moving: 1,
+        attackProgress: motion.progress,
+        attackAngle: Math.PI / 5,
+        attackStyle: motion.style,
+        reducedMotion: false,
+      })
+
+      expectHordePoseBounds(attacking)
+      expect(
+        visualPoseDistance(locomotion, attacking),
+        `${motion.id} ${motion.style}`,
+      ).toBeGreaterThan(10)
+      expect(attacking.glow).toBeGreaterThan(0.35)
+    }
+  })
+
+  it('keeps every horde locomotion and attack sample finite and visually bounded', () => {
+    const styles: AttackMotionStyle[] = ['none', 'melee', 'cast', 'charge', 'blink', 'slam']
+    const progressSamples = [-1, 0, 0.18, 0.38, 0.55, 0.76, 1]
+    const angleSamples = [-Math.PI, -Math.PI / 2, 0, Math.PI / 2, Math.PI]
+
+    for (const [index, id] of ENEMY_IDS.entries()) {
+      for (const style of styles) {
+        for (const progress of progressSamples) {
+          for (const angle of angleSamples) {
+            expectHordePoseBounds(
+              sampleEnemyMotion({
+                id,
+                uid: index + 1,
+                time: 2.37,
+                moving: 1.6,
+                attackProgress: style === 'none' ? -1 : progress,
+                attackAngle: angle,
+                attackStyle: style,
+                reducedMotion: false,
+              }),
+            )
+          }
+        }
+      }
+    }
+  })
+
   it('gives different boss patterns distinct silhouettes', () => {
     const line = sampleBossMotion({
       bossFrame: 0,
@@ -145,6 +327,104 @@ describe('character motion samplers', () => {
     expect(Math.abs(orbit.rotation - line.rotation)).toBeGreaterThan(0.01)
   })
 
+  it('gives all ten bosses a visible locomotion profile', () => {
+    for (const [index, bossFrame] of BOSS_FRAMES_BY_LEVEL.entries()) {
+      const levelId = index + 1
+      const samples = [0.17, 0.53, 0.89, 1.25].map((time) =>
+        sampleBossMotion({
+          bossFrame,
+          levelId,
+          phase: 2,
+          time,
+          moving: 1,
+          attackProgress: -1,
+          attackAngle: 0,
+          attackStyle: 'none',
+          reducedMotion: false,
+        }),
+      )
+
+      for (const sample of samples) expectBossPoseBounds(sample)
+      expect(
+        Math.max(
+          ...samples
+            .slice(1)
+            .map((sample) => visualPoseDistance(samples[0], sample)),
+        ),
+        `level ${levelId} boss locomotion`,
+      ).toBeGreaterThan(1.5)
+    }
+  })
+
+  it('keeps every boss signature, phase shift, and intro finite, bounded, and readable', () => {
+    for (const [index, motion] of BOSS_ATTACK_CASES.entries()) {
+      const baseInput = {
+        bossFrame: index % 6,
+        levelId: index + 1,
+        phase: 3,
+        time: 1.37,
+        moving: 1,
+        attackAngle: -Math.PI / 4,
+        reducedMotion: false,
+      }
+      const locomotion = sampleBossMotion({
+        ...baseInput,
+        attackProgress: -1,
+        attackStyle: 'none',
+      })
+      const attacking = sampleBossMotion({
+        ...baseInput,
+        attackProgress: motion.progress,
+        attackStyle: motion.style,
+      })
+
+      expectBossPoseBounds(attacking)
+      expect(
+        visualPoseDistance(locomotion, attacking),
+        motion.style,
+      ).toBeGreaterThan(12)
+      expect(attacking.glow).toBeGreaterThan(0.45)
+    }
+  })
+
+  it('keeps boss poses bounded across all frames, phases, angles, and action windows', () => {
+    const styles: AttackMotionStyle[] = [
+      'boss-line',
+      'boss-orbit',
+      'boss-cross',
+      'boss-mirror',
+      'boss-cluster',
+      'boss-phase',
+      'boss-intro',
+    ]
+    const progressSamples = [0, 0.18, 0.4, 0.58, 0.78, 1]
+    const angleSamples = [-Math.PI, -Math.PI / 2, 0, Math.PI / 2, Math.PI]
+
+    for (let bossFrame = 0; bossFrame < 6; bossFrame += 1) {
+      for (let phase = 1; phase <= 4; phase += 1) {
+        for (const style of styles) {
+          for (const progress of progressSamples) {
+            for (const angle of angleSamples) {
+              expectBossPoseBounds(
+                sampleBossMotion({
+                  bossFrame,
+                  levelId: bossFrame + 1,
+                  phase,
+                  time: 2.37,
+                  moving: 1.6,
+                  attackProgress: progress,
+                  attackAngle: angle,
+                  attackStyle: style,
+                  reducedMotion: false,
+                }),
+              )
+            }
+          }
+        }
+      }
+    }
+  })
+
   it('honours reduced motion without removing the telegraph', () => {
     const full = sampleEnemyMotion({
       id: 'railjaw',
@@ -168,6 +448,6 @@ describe('character motion samplers', () => {
     })
 
     expect(Math.abs(reduced.offsetX)).toBeLessThan(Math.abs(full.offsetX))
-    expect(reduced.glow).toBeGreaterThan(0)
+    expect(reduced.glow).toBeCloseTo(full.glow)
   })
 })

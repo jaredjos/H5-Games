@@ -10,6 +10,7 @@ import {
   resetSave,
   saveSave,
 } from './game/save'
+import { currentLocalWeaponShowcase } from './game/showcase'
 import type {
   GameSettings,
   GameSnapshot,
@@ -95,9 +96,11 @@ function useNarrowPortrait() {
 }
 
 export default function App() {
+  const showcase = useMemo(() => currentLocalWeaponShowcase(), [])
   const [save, setSave] = useState<SaveData>(safeLoadSave)
-  const [screen, setScreen] = useState<ScreenId>('title')
-  const [selectedLevelId, setSelectedLevelId] = useState(() => Math.max(1, Math.min(LEVELS.length, save.unlockedLevel)))
+  const [screen, setScreen] = useState<ScreenId>(showcase ? 'game' : 'title')
+  const [selectedLevelId, setSelectedLevelId] = useState(() =>
+    showcase ? 1 : Math.max(1, Math.min(LEVELS.length, save.unlockedLevel)))
   const [snapshot, setSnapshot] = useState<GameSnapshot>()
   const [result, setResult] = useState<RunResult>()
   const [resultRewards, setResultRewards] = useState<{

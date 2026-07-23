@@ -49,6 +49,7 @@ import {
   sampleEnemyMotion,
   sampleHeroMotion,
   type AttackMotionStyle,
+  type MotionPose,
 } from './animation'
 import { GameInput } from './input'
 import {
@@ -75,6 +76,11 @@ import {
   polygonArea,
   segmentIntersection,
 } from './math'
+import {
+  currentLocalWeaponShowcase,
+  showcaseLabel,
+  showcaseLoadout,
+} from './showcase'
 
 const WORLD_WIDTH = 1672
 const WORLD_HEIGHT = 941
@@ -251,6 +257,8 @@ interface LoopEffect {
   life: number
   total: number
   color: number
+  closed?: boolean
+  width?: number
 }
 
 interface MotionEchoEntity {
@@ -356,8 +364,14 @@ class NighttraceRuntime {
   private kills = 0
   private closedLoops = 0
   private largestChain = 0
-  private weapons: OwnedWeapon[] = [{ id: 'helio-lance', rank: 1 }]
-  private modules: OwnedModule[] = []
+  private readonly showcase = currentLocalWeaponShowcase()
+  private showcaseFrozen = false
+  private weapons: OwnedWeapon[] = this.showcase
+    ? showcaseLoadout(this.showcase).weapons
+    : [{ id: 'helio-lance', rank: 1 }]
+  private modules: OwnedModule[] = this.showcase
+    ? showcaseLoadout(this.showcase).modules
+    : []
   private traceMods: TraceModId[] = []
   private readonly weaponDamage = new Map<WeaponId, number>()
   private readonly random: DeterministicRandom
@@ -433,6 +447,8 @@ class NighttraceRuntime {
     this.random = new DeterministicRandom((level.id * 0x85ebca6b + 0x27d4eb2d) >>> 0)
     this.nextSupportPickupAt = this.qaMode
       ? 18
+      : this.showcase
+        ? Number.POSITIVE_INFINITY
       : supportPickupFirstDropSeconds(level.difficulty)
 
     const vitality = persistentUpgrades.vitality ?? 0
@@ -458,7 +474,9 @@ class NighttraceRuntime {
     }
 
     for (const id of ALL_WEAPON_IDS) this.weaponDamage.set(id, 0)
-    for (const id of ALL_WEAPON_IDS) this.weaponCooldowns.set(id, this.random.range(0.08, 0.32))
+    for (const id of ALL_WEAPON_IDS) {
+      this.weaponCooldowns.set(id, this.showcase ? 0.75 : this.random.range(0.08, 0.32))
+    }
     this.trace.push({ x: this.player.x, y: this.player.y })
   }
 
@@ -567,7 +585,8 @@ class NighttraceRuntime {
       this.app.ticker.add(this.tick)
       this.layout()
       this.initialized = true
-      for (let index = 0; index < 4; index += 1) this.spawnEnemy()
+      if (this.showcase) this.spawnShowcaseTargets()
+      else for (let index = 0; index < 4; index += 1) this.spawnEnemy()
       this.emitSnapshot(true)
     } catch (error) {
       try {
@@ -776,6 +795,7 @@ class NighttraceRuntime {
   }
 
   private step(delta: number) {
+    if (this.showcaseFrozen) return
     this.advanceMotion(delta)
     if (this.completed) {
       this.updateVisualEffects(delta)
@@ -823,6 +843,38 @@ class NighttraceRuntime {
     this.shieldDelay = Math.max(0, this.shieldDelay - delta)
     if (this.shieldDelay <= 0 && this.player.shield < this.player.maxShield) {
       this.player.shield = Math.min(this.player.maxShield, this.player.shield + delta * 2.6)
+    }
+
+    if (this.showcase) {
+      this.updateEnemies(delta)
+      this.rebuildEnemyGrid()
+      this.updateWeapons(delta)
+      this.updateProjectiles(delta)
+      this.updateTelegraphs(delta)
+      this.updateVisualEffects(delta)
+      const activeProjectiles = this.projectiles.filter((projectile) => projectile.active)
+      this.host.dataset.showcaseProjectiles = String(activeProjectiles.length)
+      this.host.dataset.showcaseProjectileSpread = String(
+        Math.round(
+          activeProjectiles.reduce(
+            (farthest, projectile) =>
+              Math.max(
+                farthest,
+                Math.hypot(projectile.x - this.player.x, projectile.y - this.player.y),
+              ),
+            0,
+          ),
+        ),
+      )
+      if (this.elapsed >= 0.95) {
+        this.showcaseFrozen = true
+        this.host.dataset.showcaseReady = 'true'
+      }
+      if (this.snapshotClock >= 0.1) {
+        this.snapshotClock = 0
+        this.emitSnapshot()
+      }
+      return
     }
 
     if (this.qaMode && !this.qaUpgradeGranted && this.elapsed >= 8) {
@@ -965,6 +1017,14 @@ class NighttraceRuntime {
             id: enemy.id,
             uid: enemy.uid,
           })
+      this.drawEnemyMotionAccent(
+        enemy,
+        renderX,
+        renderY,
+        pose,
+        moveRatio,
+        attackProgress,
+      )
       enemy.sprite.position.set(renderX + pose.offsetX, renderY + pose.offsetY)
       enemy.sprite.rotation = pose.rotation
       enemy.sprite.scale.set(
@@ -1233,6 +1293,40 @@ class NighttraceRuntime {
     enemy.sprite.tint = 0xffffff
     enemy.sprite.visible = true
     enemy.sprite.position.set(x, y)
+  }
+
+  private spawnShowcaseTargets() {
+    const offsets = [
+      [330, 0],
+      [260, 154],
+      [74, 220],
+      [-190, 196],
+      [-320, 68],
+      [-272, -146],
+      [-72, -220],
+      [212, -184],
+    ] as const
+
+    for (const [offsetX, offsetY] of offsets) {
+      this.spawnEnemy()
+      const enemy = [...this.enemies].reverse().find((candidate) => candidate.active)
+      if (!enemy) continue
+      enemy.x = this.player.x + offsetX
+      enemy.y = this.player.y + offsetY
+      enemy.previousX = enemy.x
+      enemy.previousY = enemy.y
+      enemy.speed = 0
+      enemy.damage = 0
+      enemy.hp = 1_000_000
+      enemy.maxHp = 1_000_000
+      enemy.xp = 0
+      enemy.attackTimer = Number.POSITIVE_INFINITY
+      enemy.contactCooldown = Number.POSITIVE_INFINITY
+    }
+
+    this.host.dataset.showcaseReady = 'false'
+    this.host.dataset.showcaseWeapon = this.showcase?.weaponId ?? ''
+    this.host.dataset.showcaseState = this.showcase?.state ?? ''
   }
 
   private spawnBoss() {
@@ -1566,6 +1660,27 @@ class NighttraceRuntime {
           definition.color,
           1.25 + moduleRank * 0.12,
         )
+        if (owned.awakened) {
+          for (const offset of [-0.28, 0.28]) {
+            this.rings.push({
+              x: this.player.x + Math.cos(angle + offset) * 72,
+              y: this.player.y + Math.sin(angle + offset) * 72,
+              radius: 8,
+              maxRadius: 76,
+              life: 0.5,
+              total: 0.5,
+              color: 0xeaffd4,
+              width: 4,
+            })
+          }
+          this.spawnBurst(
+            this.player.x + Math.cos(angle) * 58,
+            this.player.y + Math.sin(angle) * 58,
+            0xcfffc0,
+            12,
+            150,
+          )
+        }
         break
       case 'comet-swarm': {
         const count = Math.min(7, 1 + Math.ceil(rank / 2) + (owned.awakened ? 2 : 0))
@@ -1582,11 +1697,12 @@ class NighttraceRuntime {
         }
         break
       }
-      case 'ash-halo':
+      case 'ash-halo': {
+        const radius = 126 + rank * 16 + moduleRank * 18
         this.areaDamage(
           this.player.x,
           this.player.y,
-          126 + rank * 16 + moduleRank * 18,
+          radius,
           damage * (1 + moduleRank * 0.1),
           owned.id,
         )
@@ -1594,13 +1710,27 @@ class NighttraceRuntime {
           x: this.player.x,
           y: this.player.y,
           radius: 72,
-          maxRadius: 136 + rank * 16,
+          maxRadius: radius,
           life: 0.32,
           total: 0.32,
           color: definition.color,
           width: 7,
         })
+        if (owned.awakened) {
+          this.rings.push({
+            x: this.player.x,
+            y: this.player.y,
+            radius: 42,
+            maxRadius: radius + 34,
+            life: 0.56,
+            total: 0.56,
+            color: 0xffe09b,
+            width: 4,
+          })
+          this.spawnBurst(this.player.x, this.player.y, 0xffb05e, 16, 210)
+        }
         break
+      }
       case 'mirror-bow':
         this.spawnProjectile(
           owned.id,
@@ -1612,12 +1742,33 @@ class NighttraceRuntime {
           definition.color,
         )
         this.spawnProjectile(owned.id, angle + Math.PI, 620, damage * 0.75, 2, 0, 0xdaf6ff)
+        if (owned.awakened) {
+          const echoDistance = 260
+          for (const offset of [-0.2, 0.2]) {
+            this.loopEffects.push({
+              points: [
+                { x: this.player.x, y: this.player.y },
+                {
+                  x: this.player.x + Math.cos(angle + offset) * echoDistance,
+                  y: this.player.y + Math.sin(angle + offset) * echoDistance,
+                },
+              ],
+              life: 0.28,
+              total: 0.28,
+              color: 0xf5fbff,
+              closed: false,
+              width: 4,
+            })
+          }
+          this.spawnBurst(this.player.x, this.player.y, 0xe9f8ff, 10, 130)
+        }
         break
-      case 'null-bell':
+      case 'null-bell': {
+        const radius = 220 + rank * 22 + moduleRank * 14
         this.areaDamage(
           this.player.x,
           this.player.y,
-          220 + rank * 22 + moduleRank * 14,
+          radius,
           damage * (1 + moduleRank * 0.13),
           owned.id,
         )
@@ -1625,13 +1776,39 @@ class NighttraceRuntime {
           x: this.player.x,
           y: this.player.y,
           radius: 24,
-          maxRadius: 230 + rank * 22,
+          maxRadius: radius,
           life: 0.8,
           total: 0.8,
           color: definition.color,
           width: 10,
         })
+        if (owned.awakened) {
+          this.rings.push(
+            {
+              x: this.player.x,
+              y: this.player.y,
+              radius: 18,
+              maxRadius: radius * 0.7,
+              life: 0.72,
+              total: 0.72,
+              color: 0xdde5ff,
+              width: 5,
+            },
+            {
+              x: this.player.x,
+              y: this.player.y,
+              radius: 34,
+              maxRadius: radius * 1.12,
+              life: 0.96,
+              total: 0.96,
+              color: 0xffdfa3,
+              width: 4,
+            },
+          )
+          this.spawnBurst(this.player.x, this.player.y, 0xb9c7ff, 18, 180)
+        }
         break
+      }
     }
 
     if (this.traceMods.includes('crossfire') && this.attackVolley % 4 === 0) {
@@ -2440,9 +2617,11 @@ class NighttraceRuntime {
 
   private chainLightning(first: EnemyEntity, damage: number, jumps: number, weaponId: WeaponId) {
     const hit: number[] = []
+    const points: Vec2[] = [{ x: this.player.x, y: this.player.y }]
     let current: EnemyEntity | undefined = first
     for (let jump = 0; jump < jumps && current; jump += 1) {
       hit.push(current.uid)
+      points.push({ x: current.x, y: current.y })
       this.damageEnemy(current, damage * Math.max(0.48, 1 - jump * 0.09), weaponId)
       this.rings.push({
         x: current.x,
@@ -2456,6 +2635,16 @@ class NighttraceRuntime {
       })
       current = this.nearestEnemy(current.x, current.y, hit)
       if (current && distanceSquared(current, { x: first.x, y: first.y }) > 320 ** 2) break
+    }
+    if (points.length > 1) {
+      this.loopEffects.push({
+        points,
+        life: 0.26,
+        total: 0.26,
+        color: WEAPONS['arc-choir'].color,
+        closed: false,
+        width: 5,
+      })
     }
   }
 
@@ -2958,8 +3147,20 @@ class NighttraceRuntime {
       }
       const alpha = clamp(effect.life / effect.total, 0, 1)
       const flattened = effect.points.flatMap((point) => [point.x, point.y])
-      this.loopGraphics.poly(flattened, true).fill({ color: effect.color, alpha: alpha * 0.12 })
-      this.loopGraphics.stroke({ color: 0xffdf87, width: 5, alpha: alpha * 0.8 })
+      if (effect.closed !== false) {
+        this.loopGraphics.poly(flattened, true).fill({ color: effect.color, alpha: alpha * 0.12 })
+        this.loopGraphics.stroke({ color: 0xffdf87, width: effect.width ?? 5, alpha: alpha * 0.8 })
+      } else if (effect.points.length > 1) {
+        this.loopGraphics.moveTo(effect.points[0].x, effect.points[0].y)
+        for (let pointIndex = 1; pointIndex < effect.points.length; pointIndex += 1) {
+          this.loopGraphics.lineTo(effect.points[pointIndex].x, effect.points[pointIndex].y)
+        }
+        this.loopGraphics.stroke({
+          color: effect.color,
+          width: effect.width ?? 5,
+          alpha: alpha * 0.9,
+        })
+      }
     }
 
     this.telegraphGraphics.clear()
@@ -3258,6 +3459,145 @@ class NighttraceRuntime {
     }[enemy.id]
   }
 
+  private drawEnemyMotionAccent(
+    enemy: EnemyEntity,
+    x: number,
+    y: number,
+    pose: MotionPose,
+    moving: number,
+    attackProgress: number,
+  ) {
+    const accent = this.actorAccentColor(enemy)
+    const aerial =
+      enemy.id === 'shardwing' ||
+      enemy.id === 'cantor' ||
+      enemy.id === 'chronowisp'
+    const lift = clamp(
+      Math.max(0, -pose.offsetY) / (enemy.isBoss ? 54 : 24),
+      0,
+      0.58,
+    )
+    const shadowWidth =
+      enemy.radius * (enemy.isBoss ? 1.18 : aerial ? 0.72 : 0.92) * (1 - lift * 0.34)
+    const shadowHeight =
+      enemy.radius * (enemy.isBoss ? 0.3 : aerial ? 0.17 : 0.23) * (1 - lift * 0.24)
+
+    this.motionGraphics
+      .ellipse(x, y + enemy.radius * (enemy.isBoss ? 0.58 : 0.52), shadowWidth, shadowHeight)
+      .fill({
+        color: 0x010307,
+        alpha: enemy.isBoss ? 0.32 : aerial ? 0.16 : 0.22,
+      })
+
+    if (
+      !this.settings.reducedShake &&
+      attackProgress < 0 &&
+      moving > 0.38
+    ) {
+      const gaitSpeed = aerial ? 11.6 : enemy.id === 'railjaw' ? 6.1 : 7.8
+      const stride = Math.sin(this.motionClock * gaitSpeed + enemy.uid * 1.173)
+      const footfall = clamp((Math.abs(stride) - 0.72) / 0.28, 0, 1)
+      if (footfall > 0.02) {
+        const travelAngle = Math.atan2(enemy.vy, enemy.vx)
+        const backX = -Math.cos(travelAngle)
+        const backY = -Math.sin(travelAngle)
+        const sideX = -Math.sin(travelAngle)
+        const sideY = Math.cos(travelAngle)
+        const trailX = x + backX * enemy.radius * 0.58
+        const trailY = y + backY * enemy.radius * 0.58 + enemy.radius * 0.36
+        const side = (stride >= 0 ? 1 : -1) * enemy.radius * 0.24
+
+        if (aerial) {
+          this.motionGraphics
+            .moveTo(trailX + sideX * side, trailY + sideY * side)
+            .lineTo(
+              trailX + backX * enemy.radius * 0.72 + sideX * side,
+              trailY + backY * enemy.radius * 0.72 + sideY * side,
+            )
+            .stroke({
+              color: accent,
+              width: enemy.isBoss ? 3.5 : 1.8,
+              alpha: footfall * (enemy.isBoss ? 0.3 : 0.2),
+            })
+        } else {
+          this.motionGraphics
+            .ellipse(
+              trailX + sideX * side,
+              trailY + sideY * side,
+              enemy.radius * 0.22,
+              enemy.radius * 0.08,
+            )
+            .stroke({
+              color: accent,
+              width: enemy.isBoss ? 3 : 1.5,
+              alpha: footfall * (enemy.isBoss ? 0.34 : 0.2),
+            })
+        }
+      }
+    }
+
+    if (attackProgress < 0) return
+
+    const progress = clamp(attackProgress, 0, 1)
+    const pulse = Math.sin(progress * Math.PI)
+    const angle = enemy.attackMotionAngle
+    const forwardX = Math.cos(angle)
+    const forwardY = Math.sin(angle)
+    const sideX = -forwardY
+    const sideY = forwardX
+    const directional =
+      enemy.attackMotionStyle === 'melee' ||
+      enemy.attackMotionStyle === 'charge' ||
+      enemy.attackMotionStyle === 'boss-line'
+
+    if (directional) {
+      const reach = enemy.radius * (0.9 + progress * (enemy.isBoss ? 1.3 : 0.95))
+      const halfWidth = enemy.radius * (0.34 + pulse * 0.18)
+      const centerX = x + forwardX * reach
+      const centerY = y + forwardY * reach
+      this.motionGraphics
+        .moveTo(centerX - sideX * halfWidth, centerY - sideY * halfWidth)
+        .lineTo(
+          centerX + forwardX * enemy.radius * 0.42 + sideX * halfWidth,
+          centerY + forwardY * enemy.radius * 0.42 + sideY * halfWidth,
+        )
+        .stroke({
+          color: accent,
+          width: enemy.isBoss ? 6 : 2.6,
+          alpha: (0.16 + pulse * 0.48) * (this.settings.reducedFlash ? 0.58 : 1),
+        })
+      return
+    }
+
+    const ringRadius = enemy.radius * (0.74 + progress * 0.5 + pulse * 0.16)
+    this.motionGraphics
+      .circle(x, y + enemy.radius * 0.12, ringRadius)
+      .stroke({
+        color: accent,
+        width: enemy.isBoss ? 5 : 2.4,
+        alpha: (0.12 + pulse * (enemy.isBoss ? 0.5 : 0.36)) *
+          (this.settings.reducedFlash ? 0.58 : 1),
+      })
+
+    if (
+      enemy.attackMotionStyle === 'boss-cross' ||
+      enemy.attackMotionStyle === 'boss-phase' ||
+      enemy.attackMotionStyle === 'slam'
+    ) {
+      const spoke = ringRadius * (0.72 + pulse * 0.28)
+      this.motionGraphics
+        .moveTo(x - spoke, y)
+        .lineTo(x + spoke, y)
+        .moveTo(x, y - spoke)
+        .lineTo(x, y + spoke)
+        .stroke({
+          color: accent,
+          width: enemy.isBoss ? 4 : 2,
+          alpha: pulse * (enemy.isBoss ? 0.38 : 0.26),
+        })
+    }
+  }
+
   private projectileDimensions(weaponId: WeaponId): [number, number] {
     return {
       'helio-lance': [42, 16],
@@ -3450,7 +3790,9 @@ class NighttraceRuntime {
       traceMods: [...this.traceMods],
       upgradeOptions: this.upgradeOptions?.map((option) => ({ ...option })),
       tutorial:
-        this.elapsed < 10
+        this.showcase
+          ? showcaseLabel(this.showcase)
+          : this.elapsed < 10
           ? 'MOVE TO DRAW A TRACE · CLOSE THE LINE TO DETONATE · SPACE FIRES THE DAWN PULSE'
           : undefined,
       paused: this.isPaused(),

@@ -23,7 +23,7 @@ export const WEAPONS = {
     id: 'helio-lance',
     name: 'Helio Lance',
     shortName: 'Lance',
-    description: 'A solar needle that spears the nearest marked target.',
+    description: 'A solar needle that spears the nearest target.',
     moduleId: 'prism-lens',
     awakening: 'Crowned Spear',
     color: 0xffcf63,
@@ -113,42 +113,42 @@ export const MODULES = {
   'prism-lens': {
     id: 'prism-lens',
     name: 'Prism Lens',
-    description: 'Extends projectile reach and concentrates damage on marked targets.',
+    description: 'Extends lance reach, increases flight speed, and amplifies impact damage.',
   },
   'gyro-crown': {
     id: 'gyro-crown',
     name: 'Gyro Crown',
-    description: 'Adds orbital stability, rotation speed, and an extra interception arc.',
+    description: 'Adds one moonblade per rank and accelerates Crescent Array cadence.',
   },
   'resonance-coil': {
     id: 'resonance-coil',
     name: 'Resonance Coil',
-    description: 'Improves chain reach and amplifies every consecutive jump.',
+    description: 'Adds another chained strike per rank and amplifies the full lightning volley.',
   },
   'grav-anchor': {
     id: 'grav-anchor',
     name: 'Grav Anchor',
-    description: 'Widens field effects and holds light enemies near their center.',
+    description: 'Lengthens Rift Seed life, boosts impact damage, and widens pickup attraction.',
   },
   'guidance-filament': {
     id: 'guidance-filament',
     name: 'Guidance Filament',
-    description: 'Sharpens homing, flight speed, and priority-target acquisition.',
+    description: 'Sharpens comet homing while increasing flight speed and impact damage.',
   },
   'thermal-mantle': {
     id: 'thermal-mantle',
     name: 'Thermal Mantle',
-    description: 'Increases burn duration and turns close pressure into stored heat.',
+    description: 'Expands Ash Halo radius and increases every cinder pulse.',
   },
   'flux-mirror': {
     id: 'flux-mirror',
     name: 'Flux Mirror',
-    description: 'Creates returning echoes and strengthens damage after a reflection.',
+    description: 'Adds forward-bolt piercing and amplifies Mirror Bow impact damage.',
   },
   'deep-capacitor': {
     id: 'deep-capacitor',
     name: 'Deep Capacitor',
-    description: 'Stores excess charge, reducing long cooldowns after heavy hits.',
+    description: 'Widens Null Bell range, amplifies its toll, and accelerates its cadence.',
   },
 } satisfies Record<ModuleId, ModuleDefinition>
 
@@ -607,7 +607,7 @@ function utilityCandidates(context: UpgradeDraftContext): UpgradeCandidate[] {
         type: 'heal',
         title: 'Pulse Prime',
         category: 'Overdrive',
-        description: 'Charge the Dawn Pulse and gain a brief invulnerable beat.',
+        description: 'Immediately charge the Dawn Pulse to 100%.',
         icon: '◉',
         rarity: 'standard',
       },

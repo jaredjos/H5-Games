@@ -13,6 +13,14 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.1.1` — streamlined touch HUD with direct arena steering and a global 10% hostile-pressure increase across all sectors
 - `v1.2.0` — landscape-first combat, a simultaneous three-card mobile draft, a 50% default music setting mixed at roughly twice the former loudness, ten sector-specific boss patterns, and timed support pickups
 - `v1.3.0` — re-authored encounter pacing with a readable one-minute warmup, accelerating mid/late hordes, progression-gated specialists, steeper late upgrade costs, and build-aware sovereign durability
+- `v1.3.1` — runtime-captured upgrade documentation plus stronger, species-specific horde locomotion, attack anticipation/release poses, sovereign motion profiles, responsive shadows, footfalls, hover trails, and compact attack accents
+
+## Runtime guide and visual evidence
+
+- [Combat Systems Codex (PDF)](https://jaredjos.github.io/H5-Games/nighttrace/docs/NIGHTTRACE_Combat_Systems_Codex.pdf) — 23 pages covering every weapon state, modules, Trace Mods, Astrarium, support relics, all ten boss signatures, adaptive boss HP, and the current minute-based difficulty curve
+- [Upgrade states: Helio Lance through Rift Seeds](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-01.png)
+- [Upgrade states: Comet Swarm through Null Bell](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-02.png)
+- [Capture manifest](https://jaredjos.github.io/H5-Games/nighttrace/docs/capture-manifest.json) — deterministic loadouts, local-only routes, viewport, file hashes, and capture method for all 32 real gameplay frames
 
 ## One-click Windows start
 
@@ -87,10 +95,15 @@ a six-pose Dawncaster discharge with cooldown-synchronised anticipation and
 recoil, and a six-pose solar-ready sequence for radial casts and Trace Pulse.
 The pose controller locks every drawing to one foot baseline, mirrors around the
 body root, and freezes with the fixed-step simulation whenever play is paused.
-Every Nightborn species and all ten sovereign bosses retain their dedicated
-procedural motion profiles for locomotion, attacks, impacts, entrances, phase
-changes, and defeats. Reduced-motion mode keeps gameplay telegraphs while
-softening nonessential sway, recoil, and afterimages.
+Every Nightborn species and all ten sovereign bosses use dedicated procedural
+motion profiles for locomotion, anticipation, attack release, impacts,
+entrances, phase changes, and defeats. Grounded creatures step and squash;
+fliers flutter or drift; chargers recoil before committing; casters gather
+before release; and bosses preserve a distinct silhouette for each signature.
+Responsive shadows, footfalls, hover trails, and compact actor-bound attack
+accents make these poses readable without changing collision radii or balance.
+Reduced-motion mode keeps gameplay telegraphs while softening nonessential
+sway, recoil, and afterimages.
 
 Each weapon now has a distinct luminous projectile silhouette and pooled trail
 language. Boss arrivals shift the ambient score into a heavier combat state,
