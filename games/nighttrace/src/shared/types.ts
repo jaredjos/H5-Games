@@ -161,7 +161,7 @@ export interface RunResult {
 }
 
 export interface SaveData {
-  version: 1
+  version: 2
   unlockedLevel: number
   completedLevels: number[]
   mastery: Record<number, Array<'clear' | 'trace' | 'aegis'>>

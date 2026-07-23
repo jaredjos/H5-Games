@@ -70,6 +70,30 @@ function safeLoadSave() {
   }
 }
 
+function isNarrowPortrait() {
+  if (typeof window === 'undefined') return false
+  return window.innerWidth <= 900 && window.matchMedia('(orientation: portrait)').matches
+}
+
+function useNarrowPortrait() {
+  const [isPortrait, setIsPortrait] = useState(isNarrowPortrait)
+
+  useEffect(() => {
+    const orientation = window.matchMedia('(orientation: portrait)')
+    const update = () => setIsPortrait(isNarrowPortrait())
+    orientation.addEventListener('change', update)
+    window.addEventListener('resize', update)
+    window.visualViewport?.addEventListener('resize', update)
+    return () => {
+      orientation.removeEventListener('change', update)
+      window.removeEventListener('resize', update)
+      window.visualViewport?.removeEventListener('resize', update)
+    }
+  }, [])
+
+  return isPortrait
+}
+
 export default function App() {
   const [save, setSave] = useState<SaveData>(safeLoadSave)
   const [screen, setScreen] = useState<ScreenId>('title')
@@ -86,6 +110,7 @@ export default function App() {
   const gameRef = useRef<GameCanvasHandle>(null)
   const completionTokenRef = useRef('')
   const lastAudibleVolume = useRef(save.settings.masterVolume || 0.8)
+  const isTouchDevicePortrait = useNarrowPortrait()
 
   const currentLevel = useMemo(() => getLevel(selectedLevelId), [selectedLevelId])
   const reducedMotion = save.settings.reducedShake
@@ -138,7 +163,37 @@ export default function App() {
     setScreen(destination)
   }, [])
 
+  const requestLandscapeMode = useCallback(async () => {
+    if (
+      !(
+        window.matchMedia('(pointer: coarse)').matches ||
+        navigator.maxTouchPoints > 0
+      )
+    ) {
+      return
+    }
+
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen({ navigationUI: 'hide' })
+      }
+    } catch {
+      // iOS Safari and embedded browsers can reject fullscreen; the rotate gate
+      // remains available as the manual, standards-safe fallback.
+    }
+
+    try {
+      const orientation = window.screen.orientation as ScreenOrientation & {
+        lock?: (orientation: 'landscape') => Promise<void>
+      }
+      await orientation.lock?.('landscape')
+    } catch {
+      // Orientation locking is only permitted by some browsers/fullscreen modes.
+    }
+  }, [])
+
   const startLevel = useCallback((levelId: number) => {
+    void requestLandscapeMode()
     const safeLevelId = Math.max(1, Math.min(save.unlockedLevel, levelId))
     setSelectedLevelId(safeLevelId)
     setSnapshot(undefined)
@@ -148,7 +203,7 @@ export default function App() {
     completionTokenRef.current = ''
     setRunKey((value) => value + 1)
     setScreen('game')
-  }, [rerollUnlocked, save.unlockedLevel])
+  }, [requestLandscapeMode, rerollUnlocked, save.unlockedLevel])
 
   const leaveGame = useCallback(() => {
     setSnapshot(undefined)
@@ -349,6 +404,7 @@ export default function App() {
             settings={save.settings}
             unlockedWeapons={save.unlockedWeapons}
             persistentUpgrades={save.upgrades}
+            orientationPaused={isTouchDevicePortrait}
             onSnapshot={setSnapshot}
             onComplete={completeRun}
             onExit={leaveGame}
@@ -389,7 +445,7 @@ export default function App() {
                 onReroll={rerollUpgrade}
               />
             ) : null}
-            {snapshot.paused && !snapshot.upgradeOptions?.length ? (
+            {snapshot.paused && !isTouchDevicePortrait && !snapshot.upgradeOptions?.length ? (
               <PauseOverlay
                 muted={muted}
                 onResume={togglePause}
@@ -402,10 +458,6 @@ export default function App() {
         ) : (
           <GameLoading levelName={currentLevel.name} />
         )}
-        <div className="orientation-hint" role="status" aria-live="polite">
-          <RotateCw size={16} aria-hidden="true" />
-          <span>Rotate for a wider battlefield</span>
-        </div>
       </main>
     )
   } else if (screen === 'results' && result && resultLevel) {
@@ -440,6 +492,32 @@ export default function App() {
       ].join(' ')}
     >
       {content}
+      {screen === 'game' && isTouchDevicePortrait ? (
+        <section
+          className="landscape-gate"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="landscape-gate-title"
+          aria-describedby="landscape-gate-copy"
+        >
+          <div className="landscape-gate__glow" aria-hidden="true" />
+          <div className="landscape-gate__phone" aria-hidden="true">
+            <span />
+          </div>
+          <RotateCw size={28} aria-hidden="true" />
+          <small>Battlefield orientation</small>
+          <h1 id="landscape-gate-title">Rotate into the trace</h1>
+          <p id="landscape-gate-copy">
+            Turn your phone sideways. Combat is paused and will resume exactly where you left it.
+          </p>
+          <button onClick={() => void requestLandscapeMode()}>
+            Enter landscape
+          </button>
+          <span className="landscape-gate__fallback">
+            If your browser cannot rotate automatically, turn the device manually.
+          </span>
+        </section>
+      ) : null}
       <div className={`toast-region${toast ? ' is-visible' : ''}`} role="status" aria-live="polite">
         <span>{toast}</span>
       </div>

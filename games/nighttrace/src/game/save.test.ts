@@ -93,7 +93,7 @@ describe('versioned saves', () => {
       audio: { masterVolume: 4, musicVolume: -2, sfxVolume: 0.4 },
     })
 
-    expect(migrated.version).toBe(1)
+    expect(migrated.version).toBe(2)
     expect(migrated.unlockedLevel).toBe(2)
     expect(migrated.completedLevels).toEqual([1])
     expect(migrated.dawnShards).toBe(12)
@@ -105,6 +105,14 @@ describe('versioned saves', () => {
     expect(migrated.settings.masterVolume).toBe(1)
     expect(migrated.settings.musicVolume).toBe(0)
     expect(migrated.settings.sfxVolume).toBe(0.4)
+  })
+
+  it('starts music at 50% and migrates only the former v1 default', () => {
+    expect(createDefaultSave().settings.musicVolume).toBe(0.5)
+    expect(migrateSave({ version: 1, settings: { musicVolume: 0.62 } }).settings.musicVolume).toBe(0.5)
+    expect(migrateSave({ version: 1, settings: { musicVolume: 0.35 } }).settings.musicVolume).toBe(0.35)
+    expect(migrateSave({ version: 2, settings: { musicVolume: 0.62 } }).settings.musicVolume).toBe(0.62)
+    expect(migrateSave({ settings: {} }).settings.musicVolume).toBe(0.5)
   })
 
   it('clamps Astrarium ranks and discards unknown upgrade ids', () => {

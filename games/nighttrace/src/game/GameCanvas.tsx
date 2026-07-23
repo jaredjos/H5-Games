@@ -52,6 +52,13 @@ import {
 } from './animation'
 import { GameInput } from './input'
 import {
+  bossPatternForLevel,
+  chooseSupportPickup,
+  supportPickupFirstDropSeconds,
+  supportPickupIntervalSeconds,
+  type SupportPickupKind,
+} from './balance'
+import {
   DeterministicRandom,
   clamp,
   distanceSquared,
@@ -95,6 +102,7 @@ export interface GameCanvasHandle {
   rerollUpgrade(): void
   togglePause(): void
   activatePulse(): void
+  setOrientationPaused(paused: boolean): void
 }
 
 export interface GameCanvasProps {
@@ -102,6 +110,7 @@ export interface GameCanvasProps {
   settings: GameSettings
   unlockedWeapons: WeaponId[]
   persistentUpgrades: Record<string, number>
+  orientationPaused: boolean
   onSnapshot(snapshot: GameSnapshot): void
   onComplete(result: RunResult): void
   onExit(): void
@@ -181,6 +190,7 @@ interface ProjectileEntity {
 
 interface PickupEntity {
   active: boolean
+  kind: 'xp' | SupportPickupKind
   x: number
   y: number
   previousX: number
@@ -283,6 +293,7 @@ class NighttraceRuntime {
   private readonly motionEchoLayer = new Container()
   private readonly trailGlow = new Graphics()
   private readonly trailCore = new Graphics()
+  private readonly pickupAuraGraphics = new Graphics()
   private readonly loopGraphics = new Graphics()
   private readonly telegraphGraphics = new Graphics()
   private readonly ringGraphics = new Graphics()
@@ -328,6 +339,7 @@ class NighttraceRuntime {
   private snapshotClock = 0
   private manualPaused = false
   private visibilityPaused = false
+  private orientationPaused = false
   private upgradeOptions?: UpgradeOption[]
   private upgradeSeed: number
   private rerollsUsed = 0
@@ -357,6 +369,8 @@ class NighttraceRuntime {
   private enemyUid = 0
   private spawnBudget = 4
   private hazardTimer = 9
+  private nextSupportPickupAt = 60
+  private supportPickupDrops = 0
   private bossSpawned = false
   private boss?: EnemyEntity
   private bossIntroTimer = 0
@@ -385,8 +399,8 @@ class NighttraceRuntime {
   private attackVolley = 0
   private qaUpgradeGranted = false
   private readonly qaMode =
-    import.meta.env.DEV &&
     typeof location !== 'undefined' &&
+    ['localhost', '127.0.0.1'].includes(location.hostname) &&
     new URLSearchParams(location.search).has('qa')
   private readonly player: PlayerState
   private lastWidth = 0
@@ -409,6 +423,9 @@ class NighttraceRuntime {
     this.audio = new NighttraceAudio(settings)
     this.upgradeSeed = (level.id * 0x9e3779b1) >>> 0
     this.random = new DeterministicRandom((level.id * 0x85ebca6b + 0x27d4eb2d) >>> 0)
+    this.nextSupportPickupAt = this.qaMode
+      ? 18
+      : supportPickupFirstDropSeconds(level.difficulty)
 
     const vitality = persistentUpgrades.vitality ?? 0
     const aegis = persistentUpgrades.aegis ?? 0
@@ -499,6 +516,7 @@ class NighttraceRuntime {
         this.effectLayer,
       )
       this.trailLayer.addChild(this.loopGraphics, this.trailGlow, this.trailCore)
+      this.pickupLayer.addChild(this.pickupAuraGraphics)
       this.enemyLayer.addChild(this.motionGraphics)
       this.projectileLayer.addChild(this.projectileTrailGraphics)
       this.effectLayer.addChild(this.motionEchoLayer, this.telegraphGraphics, this.ringGraphics)
@@ -641,6 +659,13 @@ class NighttraceRuntime {
   togglePause() {
     if (!this.initialized || this.completed || this.upgradeOptions?.length) return
     this.manualPaused = !this.manualPaused
+    this.emitSnapshot(true)
+  }
+
+  setOrientationPaused(paused: boolean) {
+    if (this.orientationPaused === paused) return
+    this.orientationPaused = paused
+    this.accumulator = 0
     this.emitSnapshot(true)
   }
 
@@ -805,6 +830,7 @@ class NighttraceRuntime {
     this.rebuildEnemyGrid()
     this.updateWeapons(delta)
     this.updateProjectiles(delta)
+    this.updateSupportPickups()
     this.updatePickups(delta)
     this.updateTelegraphs(delta)
     this.updateVisualEffects(delta)
@@ -971,13 +997,34 @@ class NighttraceRuntime {
       this.drawProjectileTrail(projectile, renderX, renderY)
     }
 
+    this.pickupAuraGraphics.clear()
     for (const pickup of this.pickups) {
       if (!pickup.active) continue
-      pickup.sprite.position.set(
-        lerp(pickup.previousX, pickup.x, this.interpolation),
-        lerp(pickup.previousY, pickup.y, this.interpolation) + Math.sin(pickup.age * 5) * 3,
-      )
-      pickup.sprite.rotation = pickup.age * 0.7
+      const supportPickup = pickup.kind !== 'xp'
+      const renderX = lerp(pickup.previousX, pickup.x, this.interpolation)
+      const renderY =
+        lerp(pickup.previousY, pickup.y, this.interpolation) +
+        Math.sin(pickup.age * (supportPickup ? 3.6 : 5)) * (supportPickup ? 6 : 3)
+      pickup.sprite.position.set(renderX, renderY)
+      pickup.sprite.rotation = pickup.age * (supportPickup ? 0.34 : 0.7)
+      pickup.sprite.alpha = supportPickup
+        ? 0.9 + Math.sin(pickup.age * 4.4) * 0.1
+        : 0.96
+      if (supportPickup) {
+        const color = pickup.kind === 'dawnheart'
+          ? 0xff6f86
+          : pickup.kind === 'gravestar'
+            ? 0xffd978
+            : 0x70ecff
+        const pulse = 34 + Math.sin(pickup.age * 3.8) * 4
+        this.pickupAuraGraphics
+          .circle(renderX, renderY, pulse)
+          .fill({ color, alpha: 0.055 })
+          .stroke({ color, width: 3, alpha: 0.52 })
+        this.pickupAuraGraphics
+          .circle(renderX, renderY, pulse + 10)
+          .stroke({ color, width: 1, alpha: 0.2 })
+      }
     }
 
     this.drawTrace()
@@ -1681,6 +1728,43 @@ class NighttraceRuntime {
     }
   }
 
+  private updateSupportPickups() {
+    const bossAt = this.qaMode
+      ? Math.min(45, this.level.duration * 0.2)
+      : Math.max(45, this.level.duration - 38)
+    if (
+      this.elapsed < this.nextSupportPickupAt ||
+      this.elapsed >= bossAt ||
+      this.bossSpawned ||
+      this.completed
+    ) {
+      return
+    }
+
+    const kind = chooseSupportPickup({
+      hpRatio: this.player.hp / this.player.maxHp,
+      activeExperiencePickups: this.pickups.reduce(
+        (count, pickup) => count + (pickup.active && pickup.kind === 'xp' ? 1 : 0),
+        0,
+      ),
+      pulseCharge: this.player.pulseCharge,
+      dropIndex: this.supportPickupDrops,
+    })
+    if (!kind) {
+      this.nextSupportPickupAt = this.elapsed + 12
+      return
+    }
+    const point = this.findSafeSpawnPoint(250, 360, 86, 78)
+    this.spawnPickup(point.x, point.y, 0, kind)
+    this.supportPickupDrops += 1
+    this.nextSupportPickupAt =
+      this.elapsed +
+      supportPickupIntervalSeconds(
+        this.level.difficulty,
+        clamp(this.elapsed / this.level.duration, 0, 1),
+      )
+  }
+
   private updatePickups(delta: number) {
     const magnetRank = this.persistentUpgrades.magnetism ?? 0
     const gravRank = this.modules.find((module) => module.id === 'grav-anchor')?.rank ?? 0
@@ -1691,7 +1775,7 @@ class NighttraceRuntime {
       pickup.previousX = pickup.x
       pickup.previousY = pickup.y
       pickup.age += delta
-      if (pickup.age > 30) {
+      if (pickup.age > (pickup.kind === 'xp' ? 32 : 42)) {
         pickup.active = false
         pickup.sprite.visible = false
         continue
@@ -1699,22 +1783,68 @@ class NighttraceRuntime {
       const dx = this.player.x - pickup.x
       const dy = this.player.y - pickup.y
       const distance = Math.max(0.001, Math.hypot(dx, dy))
-      if (distance < magnetRadius) {
-        const speed = 120 + (1 - distance / magnetRadius) * 540
+      const attractionRadius = pickup.kind === 'xp'
+        ? magnetRadius
+        : 178 + magnetRank * 6 + gravRank * 7
+      if (distance < attractionRadius) {
+        const speed = 120 + (1 - distance / attractionRadius) * (pickup.kind === 'xp' ? 540 : 690)
         pickup.x += (dx / distance) * speed * delta
         pickup.y += (dy / distance) * speed * delta
       }
-      if (distance < 33) {
+      if (distance < (pickup.kind === 'xp' ? 33 : 42)) {
         pickup.active = false
         pickup.sprite.visible = false
-        this.player.xp += pickup.value
-        this.player.pulseCharge = clamp(this.player.pulseCharge + pickup.value * 0.16, 0, 100)
-        this.audio.play('pickup', 0.36)
-        while (this.player.xp >= this.player.xpToNext && !this.upgradeOptions?.length) {
-          this.levelUp()
+        if (pickup.kind === 'xp') {
+          this.collectExperience(pickup.value)
+          this.audio.play('pickup', 0.36)
+        } else {
+          this.collectSupportPickup(pickup.kind)
         }
       }
     }
+  }
+
+  private collectExperience(value: number) {
+    this.player.xp += value
+    this.player.pulseCharge = clamp(this.player.pulseCharge + value * 0.16, 0, 100)
+    while (this.player.xp >= this.player.xpToNext && !this.upgradeOptions?.length) {
+      this.levelUp()
+    }
+  }
+
+  private collectSupportPickup(kind: SupportPickupKind) {
+    let color = 0x70ecff
+    if (kind === 'dawnheart') {
+      color = 0xff6f86
+      this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.player.maxHp * 0.14)
+    } else if (kind === 'gravestar') {
+      color = 0xffd978
+      let gatheredExperience = 0
+      for (const pickup of this.pickups) {
+        if (!pickup.active || pickup.kind !== 'xp') continue
+        gatheredExperience += pickup.value
+        pickup.active = false
+        pickup.sprite.visible = false
+      }
+      if (gatheredExperience > 0) this.collectExperience(gatheredExperience)
+    } else {
+      this.player.pulseCharge = clamp(this.player.pulseCharge + 35, 0, 100)
+    }
+
+    this.audio.play('pickup', 1.05)
+    this.rings.push({
+      x: this.player.x,
+      y: this.player.y,
+      radius: 12,
+      maxRadius: 155,
+      life: 0.52,
+      total: 0.52,
+      color,
+      width: 7,
+    })
+    this.spawnBurst(this.player.x, this.player.y, color, 24, 250)
+    this.screenFlashAlpha = this.settings.reducedFlash ? 0.025 : 0.085
+    this.emitSnapshot(true)
   }
 
   private updateTelegraphs(delta: number) {
@@ -2034,12 +2164,23 @@ class NighttraceRuntime {
     )
   }
 
-  private spawnPickup(x: number, y: number, value: number) {
+  private spawnPickup(
+    x: number,
+    y: number,
+    value: number,
+    kind: 'xp' | SupportPickupKind = 'xp',
+  ) {
     let pickup = this.pickups.find((candidate) => !candidate.active)
     if (!pickup && this.pickups.length >= 320) {
-      pickup = this.pickups.reduce((oldest, candidate) =>
-        candidate.age > oldest.age ? candidate : oldest,
-      )
+      const experiencePickups = this.pickups.filter((candidate) => candidate.kind === 'xp')
+      pickup = experiencePickups.length > 0
+        ? experiencePickups.reduce((oldest, candidate) =>
+          candidate.age > oldest.age ? candidate : oldest)
+        : kind === 'xp'
+          ? undefined
+          : this.pickups.reduce((oldest, candidate) =>
+            candidate.age > oldest.age ? candidate : oldest)
+      if (!pickup) return
       pickup.active = false
       pickup.sprite.visible = false
     }
@@ -2050,6 +2191,7 @@ class NighttraceRuntime {
       this.pickupLayer.addChild(sprite)
       pickup = {
         active: false,
+        kind: 'xp',
         x: 0,
         y: 0,
         previousX: 0,
@@ -2061,18 +2203,53 @@ class NighttraceRuntime {
       this.pickups.push(pickup)
     }
     pickup.active = true
+    pickup.kind = kind
     pickup.x = x
     pickup.y = y
     pickup.previousX = x
     pickup.previousY = y
     pickup.value = value
-    pickup.age = this.random.range(0, Math.PI * 2)
-    pickup.sprite.texture = this.pickupFrames[value >= 5 ? 1 : 0] ?? Texture.WHITE
-    pickup.sprite.width = value >= 5 ? 34 : 24
-    pickup.sprite.height = value >= 5 ? 34 : 24
-    pickup.sprite.tint = this.settings.highContrastPickups ? 0xffffff : 0xbafcff
+    pickup.age = 0
+    const supportPickup = kind !== 'xp'
+    const frameIndex = kind === 'dawnheart'
+      ? 2
+      : kind === 'gravestar'
+        ? 3
+        : kind === 'pulse-core'
+          ? 4
+          : value >= 4
+            ? 1
+            : 0
+    pickup.sprite.texture = this.pickupFrames[frameIndex] ?? Texture.WHITE
+    const size = supportPickup ? 62 : value >= 4 ? 34 : 24
+    pickup.sprite.width = size
+    pickup.sprite.height = size
+    const pickupTint = kind === 'dawnheart'
+      ? 0xff7891
+      : kind === 'gravestar'
+        ? 0xffd978
+        : kind === 'pulse-core'
+          ? 0x73edff
+          : 0xbafcff
+    pickup.sprite.tint = this.settings.highContrastPickups && kind === 'xp'
+      ? 0xffffff
+      : pickupTint
     pickup.sprite.visible = true
     pickup.sprite.position.set(x, y)
+    if (supportPickup) {
+      const color = kind === 'dawnheart' ? 0xff6f86 : kind === 'gravestar' ? 0xffd978 : 0x70ecff
+      this.rings.push({
+        x,
+        y,
+        radius: 8,
+        maxRadius: 92,
+        life: 0.72,
+        total: 0.72,
+        color,
+        width: 5,
+      })
+      this.spawnBurst(x, y, color, 16, 170)
+    }
   }
 
   private spawnBurst(x: number, y: number, color: number, requestedCount: number, speed: number) {
@@ -2241,8 +2418,11 @@ class NighttraceRuntime {
   }
 
   private bossAttack(enemy: EnemyEntity) {
+    // Reserve enough headroom for one complete signature while preventing
+    // late-phase casts, hazards, and ordinary specials from flooding the arena.
+    if (this.activeTelegraphCount > 24) return
     const angle = Math.atan2(this.player.y - enemy.y, this.player.x - enemy.x)
-    const pattern = (this.level.id - 1) % 5
+    const pattern = bossPatternForLevel(this.level.id)
     const warningTime = Math.max(0.52, 0.9 - enemy.phase * 0.08)
     const attackStyle: AttackMotionStyle = [
       'boss-line',
@@ -2250,6 +2430,11 @@ class NighttraceRuntime {
       'boss-cross',
       'boss-mirror',
       'boss-cluster',
+      'boss-line',
+      'boss-orbit',
+      'boss-cluster',
+      'boss-cross',
+      'boss-mirror',
     ][pattern] as AttackMotionStyle
     this.triggerEnemyAttack(enemy, attackStyle, warningTime + 0.24, angle, true)
     this.audio.playBossAttack(enemy.phase, pattern)
@@ -2307,29 +2492,246 @@ class NighttraceRuntime {
     }
 
     if (pattern === 3) {
-      const mirroredX = clamp(WORLD_WIDTH - this.player.x, 72, WORLD_WIDTH - 72)
-      const mirroredY = clamp(WORLD_HEIGHT - this.player.y, 72, WORLD_HEIGHT - 72)
+      const mirrored = this.mirroredPlayerPoint()
       this.queueCircleTelegraph(this.player.x, this.player.y, 72 + enemy.phase * 7, warningTime, enemy.damage, true)
-      this.queueCircleTelegraph(mirroredX, mirroredY, 72 + enemy.phase * 7, warningTime, enemy.damage, true)
+      this.queueCircleTelegraph(mirrored.x, mirrored.y, 72 + enemy.phase * 7, warningTime, enemy.damage, true)
       if (enemy.phase >= 2) {
         this.queueLineTelegraph(enemy.x, enemy.y, angle, 820, 44, warningTime, enemy.damage * 1.12, true)
       }
       return
     }
 
-    const clusterCount = 2 + enemy.phase
-    for (let index = 0; index < clusterCount; index += 1) {
-      const spread = 58 + index * 28
-      const clusterAngle = angle + index * 2.4
-      this.queueCircleTelegraph(
-        clamp(this.player.x + Math.cos(clusterAngle) * spread, 64, WORLD_WIDTH - 64),
-        clamp(this.player.y + Math.sin(clusterAngle) * spread, 64, WORLD_HEIGHT - 64),
-        66 + enemy.phase * 5,
-        warningTime + index * 0.06,
+    if (pattern === 4) {
+      const clusterCount = 2 + enemy.phase
+      for (let index = 0; index < clusterCount; index += 1) {
+        const spread = 58 + index * 28
+        const clusterAngle = angle + index * 2.4
+        this.queueCircleTelegraph(
+          clamp(this.player.x + Math.cos(clusterAngle) * spread, 64, WORLD_WIDTH - 64),
+          clamp(this.player.y + Math.sin(clusterAngle) * spread, 64, WORLD_HEIGHT - 64),
+          66 + enemy.phase * 5,
+          warningTime + index * 0.06,
+          enemy.damage * 1.08,
+          true,
+        )
+      }
+      return
+    }
+
+    if (pattern === 5) {
+      const laneCount = 2 + enemy.phase
+      const sweepDown = Math.sin(this.elapsed * 0.8) >= 0
+      for (let index = 0; index < laneCount; index += 1) {
+        const laneY = ((index + 0.7) / laneCount) * WORLD_HEIGHT
+        this.queueLineTelegraph(
+          sweepDown ? 0 : WORLD_WIDTH,
+          clamp(laneY, 74, WORLD_HEIGHT - 74),
+          (sweepDown ? 0 : Math.PI) + (index - (laneCount - 1) / 2) * 0.045,
+          WORLD_WIDTH * 1.08,
+          30 + enemy.phase * 4,
+          warningTime + index * 0.055,
+          enemy.damage,
+          true,
+        )
+      }
+      this.queueLineTelegraph(
+        enemy.x,
+        enemy.y,
+        angle,
+        820,
+        34 + enemy.phase * 3,
+        warningTime + 0.14,
         enemy.damage * 1.08,
         true,
       )
+      return
     }
+
+    if (pattern === 6) {
+      const spiralCount = 4 + enemy.phase
+      const orbitRadius = 108 + enemy.phase * 17
+      const rotation = this.elapsed * 0.7 + enemy.phase * 0.35
+      for (let index = 0; index < spiralCount; index += 1) {
+        const orbit = rotation + (Math.PI * 2 * index) / spiralCount
+        this.queueCircleTelegraph(
+          clamp(this.player.x + Math.cos(orbit) * orbitRadius, 62, WORLD_WIDTH - 62),
+          clamp(this.player.y + Math.sin(orbit) * orbitRadius, 62, WORLD_HEIGHT - 62),
+          48 + enemy.phase * 3,
+          warningTime + index * 0.045,
+          enemy.damage,
+          true,
+        )
+      }
+      if (enemy.phase >= 3) {
+        this.queueCircleTelegraph(
+          this.player.x,
+          this.player.y,
+          58,
+          warningTime + 0.18,
+          enemy.damage * 1.08,
+          true,
+        )
+      }
+      return
+    }
+
+    if (pattern === 7) {
+      const forward = this.heroFacing
+      const side = { x: -forward.y, y: forward.x }
+      const impactDistance = 68 + enemy.phase * 12
+      const centers = [
+        {
+          x: this.player.x + forward.x * impactDistance,
+          y: this.player.y + forward.y * impactDistance,
+        },
+        {
+          x: this.player.x + side.x * (112 + enemy.phase * 9),
+          y: this.player.y + side.y * (112 + enemy.phase * 9),
+        },
+        {
+          x: this.player.x - side.x * (112 + enemy.phase * 9),
+          y: this.player.y - side.y * (112 + enemy.phase * 9),
+        },
+      ]
+      for (let index = 0; index < Math.min(centers.length, 1 + enemy.phase); index += 1) {
+        const center = centers[index]
+        this.queueCircleTelegraph(
+          clamp(center.x, 68, WORLD_WIDTH - 68),
+          clamp(center.y, 68, WORLD_HEIGHT - 68),
+          70 + enemy.phase * 5,
+          warningTime + index * 0.1,
+          enemy.damage * 1.06,
+          true,
+        )
+      }
+      if (enemy.phase >= 2) {
+        this.queueLineTelegraph(
+          enemy.x,
+          enemy.y,
+          angle + Math.PI * 0.5,
+          760,
+          36 + enemy.phase * 4,
+          warningTime + 0.08,
+          enemy.damage,
+          true,
+        )
+      }
+      return
+    }
+
+    if (pattern === 8) {
+      const verticalCount = 3 + Math.min(2, enemy.phase)
+      const horizontalCount = 3 + Math.min(1, enemy.phase)
+      const verticalLanes = Array.from(
+        { length: verticalCount },
+        (_, index) => ((index + 1) * WORLD_WIDTH) / (verticalCount + 1),
+      )
+      const horizontalLanes = Array.from(
+        { length: horizontalCount },
+        (_, index) => ((index + 1) * WORLD_HEIGHT) / (horizontalCount + 1),
+      )
+      const safeVertical = verticalLanes.reduce((best, lane, index) =>
+        Math.abs(lane - this.player.x) < Math.abs(verticalLanes[best] - this.player.x)
+          ? index
+          : best, 0)
+      const safeHorizontal = horizontalLanes.reduce((best, lane, index) =>
+        Math.abs(lane - this.player.y) < Math.abs(horizontalLanes[best] - this.player.y)
+          ? index
+          : best, 0)
+      verticalLanes.forEach((lane, index) => {
+        if (index === safeVertical) return
+        this.queueLineTelegraph(
+          lane,
+          0,
+          Math.PI * 0.5,
+          WORLD_HEIGHT,
+          28 + enemy.phase * 3,
+          warningTime + (index % 2) * 0.06,
+          enemy.damage,
+          true,
+        )
+      })
+      horizontalLanes.forEach((lane, index) => {
+        if (index === safeHorizontal) return
+        this.queueLineTelegraph(
+          0,
+          lane,
+          0,
+          WORLD_WIDTH,
+          28 + enemy.phase * 3,
+          warningTime + ((index + 1) % 2) * 0.06,
+          enemy.damage,
+          true,
+        )
+      })
+      return
+    }
+
+    const fanLines = 2 + enemy.phase
+    for (let index = 0; index < fanLines; index += 1) {
+      const offset = (index - (fanLines - 1) / 2) * 0.2
+      this.queueLineTelegraph(
+        enemy.x,
+        enemy.y,
+        angle + offset,
+        860,
+        32 + enemy.phase * 3,
+        warningTime,
+        enemy.damage * 1.06,
+        true,
+      )
+    }
+    const mirrored = this.mirroredPlayerPoint()
+    this.queueCircleTelegraph(
+      this.player.x,
+      this.player.y,
+      58 + enemy.phase * 4,
+      warningTime + 0.1,
+      enemy.damage,
+      true,
+    )
+    this.queueCircleTelegraph(
+      mirrored.x,
+      mirrored.y,
+      58 + enemy.phase * 4,
+      warningTime + 0.12,
+      enemy.damage,
+      true,
+    )
+    if (enemy.phase >= 2) {
+      const rotation = this.elapsed * 0.42
+      for (let index = 0; index < 1; index += 1) {
+        this.queueLineTelegraph(
+          enemy.x,
+          enemy.y,
+          rotation + index * Math.PI * 0.5,
+          820,
+          30 + enemy.phase * 3,
+          warningTime + 0.1,
+          enemy.damage,
+          true,
+        )
+      }
+    }
+  }
+
+  private mirroredPlayerPoint(minimumSeparation = 150): Vec2 {
+    const x = clamp(WORLD_WIDTH - this.player.x, 70, WORLD_WIDTH - 70)
+    const y = clamp(WORLD_HEIGHT - this.player.y, 70, WORLD_HEIGHT - 70)
+    if (Math.hypot(x - this.player.x, y - this.player.y) >= minimumSeparation) {
+      return { x, y }
+    }
+
+    const fallbackCandidates = [
+      { x: clamp(this.player.x + minimumSeparation, 70, WORLD_WIDTH - 70), y: this.player.y },
+      { x: clamp(this.player.x - minimumSeparation, 70, WORLD_WIDTH - 70), y: this.player.y },
+      { x: this.player.x, y: clamp(this.player.y + minimumSeparation, 70, WORLD_HEIGHT - 70) },
+      { x: this.player.x, y: clamp(this.player.y - minimumSeparation, 70, WORLD_HEIGHT - 70) },
+    ]
+    return fallbackCandidates.reduce((farthest, candidate) =>
+      distanceSquared(candidate, this.player) > distanceSquared(farthest, this.player)
+        ? candidate
+        : farthest)
   }
 
   private spawnHazard() {
@@ -2397,6 +2799,7 @@ class NighttraceRuntime {
     damage: number,
     bossAttack = false,
   ) {
+    if (this.activeTelegraphCount >= 32) return
     const telegraph = this.telegraphs.find((candidate) => !candidate.active)
     const next: TelegraphEntity = {
       active: true,
@@ -2427,6 +2830,7 @@ class NighttraceRuntime {
     damage: number,
     bossAttack = false,
   ) {
+    if (this.activeTelegraphCount >= 32) return
     const telegraph = this.telegraphs.find((candidate) => !candidate.active)
     const next: TelegraphEntity = {
       active: true,
@@ -3018,7 +3422,12 @@ class NighttraceRuntime {
   }
 
   private isPaused() {
-    return this.manualPaused || this.visibilityPaused || Boolean(this.upgradeOptions?.length)
+    return (
+      this.manualPaused ||
+      this.visibilityPaused ||
+      this.orientationPaused ||
+      Boolean(this.upgradeOptions?.length)
+    )
   }
 
   private sliceTexture(texture: Texture, columns: number, rows: number) {
@@ -3050,6 +3459,7 @@ const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCa
     settings,
     unlockedWeapons,
     persistentUpgrades,
+    orientationPaused,
     onSnapshot,
     onComplete,
     onExit,
@@ -3074,6 +3484,7 @@ const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCa
       rerollUpgrade: () => runtimeRef.current?.rerollUpgrade(),
       togglePause: () => runtimeRef.current?.togglePause(),
       activatePulse: () => runtimeRef.current?.activatePulse(),
+      setOrientationPaused: (paused) => runtimeRef.current?.setOrientationPaused(paused),
     }),
     [],
   )
@@ -3109,6 +3520,10 @@ const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCa
   useEffect(() => {
     runtimeRef.current?.updateSettings(settings)
   }, [settings])
+
+  useEffect(() => {
+    runtimeRef.current?.setOrientationPaused(orientationPaused)
+  }, [orientationPaused])
 
   return (
     <div

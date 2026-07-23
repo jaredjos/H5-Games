@@ -33,6 +33,11 @@ const SOUNDS: Record<SoundName, SoundShape> = {
   defeat: { frequency: 180, endFrequency: 45, duration: 0.9, volume: 0.15, type: 'sine' },
 }
 
+// The music slider now starts at 50%. These bus gains make that midpoint
+// approximately twice as loud as the former 62% × 0.16/0.22 default mix.
+const AMBIENT_MUSIC_GAIN = 0.4
+const BOSS_MUSIC_GAIN = 0.54
+
 export class NighttraceAudio {
   private context?: AudioContext
   private master?: GainNode
@@ -61,7 +66,7 @@ export class NighttraceAudio {
     const now = this.context.currentTime
     this.master.gain.setTargetAtTime(settings.masterVolume, now, 0.025)
     this.music.gain.setTargetAtTime(
-      settings.musicVolume * (this.bossMode ? 0.22 : 0.16),
+      settings.musicVolume * (this.bossMode ? BOSS_MUSIC_GAIN : AMBIENT_MUSIC_GAIN),
       now,
       0.025,
     )
@@ -82,7 +87,7 @@ export class NighttraceAudio {
       const compressor = context.createDynamicsCompressor()
 
       master.gain.value = this.settings.masterVolume
-      music.gain.value = this.settings.musicVolume * 0.16
+      music.gain.value = this.settings.musicVolume * AMBIENT_MUSIC_GAIN
       sfx.gain.value = this.settings.sfxVolume
 
       compressor.threshold.value = -18
@@ -198,13 +203,13 @@ export class NighttraceAudio {
     if (!context || context.state !== 'running' || this.destroyed) return
     if (context.currentTime - this.lastBossAttackAt < 0.16) return
     this.lastBossAttackAt = context.currentTime
-    const patternOffset = [0, 7, -5, 12, -9][pattern] ?? 0
+    const patternOffset = [0, 7, -5, 12, -9, 16, -12, 4, 19, -16][pattern] ?? 0
     this.scheduleTone({
       frequency: 78 + phase * 5 + patternOffset,
       endFrequency: 42 + patternOffset * 0.2,
       duration: 0.3 + phase * 0.035,
       volume: 0.045 + phase * 0.008,
-      type: pattern === 3 ? 'triangle' : 'sawtooth',
+      type: pattern === 3 || pattern === 6 || pattern === 8 ? 'triangle' : 'sawtooth',
       filterFrequency: 1380,
     })
   }

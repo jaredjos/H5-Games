@@ -3168,6 +3168,10 @@ kbd {
   display: none;
 }
 
+.landscape-gate {
+  display: none;
+}
+
 @media (hover: none), (pointer: coarse) {
   .game-screen button {
     min-height: 44px;
@@ -5202,6 +5206,370 @@ kbd {
     max-height: calc(100dvh - 28px);
     padding: 20px;
     overflow: auto;
+  }
+}
+
+@keyframes rotateDevice {
+  0%,
+  18% {
+    transform: rotate(0deg);
+  }
+  62%,
+  82% {
+    transform: rotate(90deg);
+  }
+  100% {
+    transform: rotate(90deg);
+  }
+}
+
+@keyframes landscapeGateIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 900px) and (orientation: portrait) {
+  .landscape-gate {
+    position: fixed;
+    z-index: 220;
+    inset: 0;
+    display: grid;
+    grid-template-columns: auto auto;
+    place-content: center;
+    justify-items: center;
+    gap: 10px 13px;
+    min-height: 100dvh;
+    padding:
+      max(28px, calc(var(--safe-top) + 22px))
+      max(28px, calc(var(--safe-right) + 22px))
+      max(28px, calc(var(--safe-bottom) + 22px))
+      max(28px, calc(var(--safe-left) + 22px));
+    overflow: hidden;
+    color: var(--ivory);
+    background:
+      radial-gradient(circle at 50% 42%, rgba(38, 155, 170, .18), transparent 30%),
+      linear-gradient(rgba(2, 7, 11, .89), rgba(1, 4, 7, .97)),
+      var(--asset-first-beacon) center/cover no-repeat;
+    text-align: center;
+    animation: landscapeGateIn 260ms ease both;
+  }
+
+  .landscape-gate::before,
+  .landscape-gate::after {
+    content: '';
+    position: absolute;
+    inset: 18px;
+    border: 1px solid rgba(203, 170, 101, .3);
+    pointer-events: none;
+  }
+
+  .landscape-gate::after {
+    inset: 27px;
+    border-color: rgba(98, 221, 245, .12);
+    clip-path: polygon(0 0, 16% 0, 16% 1px, 84% 1px, 84% 0, 100% 0, 100% 100%, 84% 100%, 84% calc(100% - 1px), 16% calc(100% - 1px), 16% 100%, 0 100%);
+  }
+
+  .landscape-gate__glow {
+    position: absolute;
+    width: 280px;
+    height: 280px;
+    border: 1px solid rgba(98, 221, 245, .16);
+    border-radius: 50%;
+    box-shadow:
+      0 0 80px rgba(71, 209, 226, .12),
+      inset 0 0 80px rgba(71, 209, 226, .06);
+    animation: slowOrbit 28s linear infinite;
+    pointer-events: none;
+  }
+
+  .landscape-gate__phone {
+    position: relative;
+    grid-column: 1 / -1;
+    width: 48px;
+    height: 78px;
+    margin-bottom: 4px;
+    border: 2px solid var(--gold-bright);
+    border-radius: 8px;
+    box-shadow:
+      0 0 22px rgba(240, 214, 149, .24),
+      inset 0 0 18px rgba(240, 214, 149, .08);
+    transform-origin: center;
+    animation: rotateDevice 2.8s cubic-bezier(.65, 0, .35, 1) infinite alternate;
+  }
+
+  .landscape-gate__phone::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 5px;
+    width: 13px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--gold-bright);
+    transform: translateX(-50%);
+  }
+
+  .landscape-gate__phone span {
+    position: absolute;
+    inset: 11px 5px 7px;
+    border: 1px solid rgba(98, 221, 245, .34);
+    background:
+      radial-gradient(circle, rgba(98, 221, 245, .3), transparent 46%),
+      rgba(2, 9, 14, .7);
+  }
+
+  .landscape-gate > svg {
+    grid-column: 1;
+    justify-self: end;
+    color: var(--cyan-bright);
+  }
+
+  .landscape-gate > small {
+    grid-column: 2;
+    justify-self: start;
+    color: var(--cyan-bright);
+    font: 500 .56rem/1 var(--display);
+    letter-spacing: .2em;
+    text-transform: uppercase;
+  }
+
+  .landscape-gate h1,
+  .landscape-gate p,
+  .landscape-gate button,
+  .landscape-gate__fallback {
+    grid-column: 1 / -1;
+  }
+
+  .landscape-gate h1 {
+    position: relative;
+    margin: 5px 0 0;
+    font: 500 clamp(1.55rem, 7vw, 2.45rem)/1.08 var(--display);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .landscape-gate p {
+    max-width: 390px;
+    margin: 4px 0 8px;
+    color: #b9b2a5;
+    font-size: .76rem;
+    line-height: 1.65;
+  }
+
+  .landscape-gate button {
+    position: relative;
+    min-width: 220px;
+    min-height: 48px;
+    padding: 12px 24px;
+    border: 1px solid var(--gold);
+    color: #071016;
+    background:
+      linear-gradient(115deg, rgba(255,255,255,.24), transparent 35%),
+      var(--gold-bright);
+    box-shadow: 0 12px 38px rgba(0, 0, 0, .45);
+    font: 600 .68rem/1 var(--display);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+
+  .landscape-gate__fallback {
+    max-width: 340px;
+    color: #77736b;
+    font-size: .56rem;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .upgrade-overlay {
+    align-content: center;
+    padding:
+      max(6px, calc(var(--safe-top) + 3px))
+      max(12px, calc(var(--safe-right) + 8px))
+      max(6px, calc(var(--safe-bottom) + 3px))
+      max(12px, calc(var(--safe-left) + 8px));
+    overflow: hidden;
+  }
+
+  .upgrade-heading {
+    position: relative;
+    width: min(540px, 70vw);
+    margin: 0 0 5px;
+  }
+
+  .upgrade-heading .ornament-rule {
+    display: none;
+  }
+
+  .upgrade-heading h1 {
+    width: 100%;
+    margin: 0;
+    padding: 7px 92px;
+    border-top: 1px solid rgba(203, 170, 101, .55);
+    border-bottom: 1px solid rgba(203, 170, 101, .35);
+    background:
+      linear-gradient(90deg, transparent, rgba(203, 170, 101, .17) 18% 82%, transparent);
+    font-size: clamp(.88rem, 2.8vw, 1.24rem);
+    line-height: 1;
+    text-shadow: 0 2px 9px #000;
+  }
+
+  .upgrade-heading > span {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    display: block;
+    font-size: .45rem;
+    transform: translateY(-50%);
+  }
+
+  .upgrade-loadout {
+    display: flex;
+    max-width: 88vw;
+    min-height: 29px;
+    gap: 14px;
+    margin-bottom: 7px;
+    overflow: hidden;
+  }
+
+  .upgrade-loadout > div {
+    gap: 5px;
+  }
+
+  .upgrade-loadout small {
+    font-size: .43rem;
+  }
+
+  .upgrade-loadout__slots > i {
+    width: 27px;
+    height: 27px;
+  }
+
+  .upgrade-loadout__slots > i svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .upgrade-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(7px, 1.5vw, 14px);
+    width: min(
+      790px,
+      calc(100vw - var(--safe-left) - var(--safe-right) - 24px)
+    );
+    max-width: 100%;
+    padding: 0;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .upgrade-card {
+    grid-template-rows: auto auto minmax(52px, 1fr) auto auto auto;
+    min-width: 0;
+    width: 100%;
+    height: clamp(180px, 58vh, 258px);
+    min-height: 0;
+    padding: 12px clamp(8px, 1.6vw, 15px) 14px;
+    scroll-snap-align: none;
+  }
+
+  .upgrade-card::after {
+    inset: 5px;
+  }
+
+  .upgrade-card__number {
+    bottom: -8px;
+    width: 28px;
+    height: 19px;
+    font-size: .55rem;
+  }
+
+  .upgrade-card > small {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: .44rem;
+    letter-spacing: .13em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .upgrade-card h2 {
+    display: -webkit-box;
+    min-height: 2.2em;
+    margin: 4px 0 0;
+    overflow: hidden;
+    font-size: clamp(.62rem, 1.8vw, .86rem);
+    line-height: 1.1;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .upgrade-card__art > span {
+    width: clamp(52px, 10vh, 74px);
+    height: clamp(52px, 10vh, 74px);
+  }
+
+  .upgrade-card__art svg {
+    width: clamp(29px, 6vh, 39px);
+    height: clamp(29px, 6vh, 39px);
+  }
+
+  .upgrade-card p {
+    display: -webkit-box;
+    min-height: 2.65em;
+    margin: 0 0 4px;
+    overflow: hidden;
+    font-size: clamp(.43rem, 1.2vw, .57rem);
+    line-height: 1.32;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .upgrade-card__stats {
+    min-height: 24px;
+    padding: 5px 3px;
+    overflow: hidden;
+    font-size: clamp(.39rem, 1.05vw, .48rem);
+    letter-spacing: .04em;
+  }
+
+  .upgrade-card__footer {
+    min-height: 17px;
+    margin-top: 3px;
+  }
+
+  .upgrade-card__pairing {
+    display: none;
+  }
+
+  .upgrade-card__rarity {
+    font-size: .44rem;
+  }
+
+  .reroll-button {
+    min-width: 150px;
+    min-height: 38px;
+    margin-top: 7px;
+    padding: 7px 15px;
+    font-size: .5rem;
+  }
+
+  .smart-draft-note {
+    display: none;
+  }
+}
+
+@media (max-height: 350px) and (orientation: landscape) {
+  .upgrade-loadout {
+    display: none;
+  }
+
+  .upgrade-card {
+    height: clamp(172px, 62vh, 205px);
   }
 }
 

@@ -4,15 +4,14 @@
 
 NIGHTTRACE is an original browser horde-survival game built with React, TypeScript, Vite, and PixiJS. Auto-attacking weapons keep the controls approachable; every step paints a luminous trace, and closing a loop turns movement itself into a weapon.
 
-## Play online
-
-[Launch NIGHTTRACE over HTTPS](https://jaredjos.github.io/H5-Games/nighttrace/)
+**Play the current HTTPS release:** [jaredjos.github.io/H5-Games/nighttrace](https://jaredjos.github.io/H5-Games/nighttrace/)
 
 ## Release lineage
 
 - `v1.0.0` — original desktop/browser release
 - `v1.1.0` — mobile-ready release with installable offline play, safe-area-aware touch UI, responsive portrait/landscape layouts, deployment-relative hosting, lifecycle-safe audio, and substantially lighter runtime art
 - `v1.1.1` — streamlined touch HUD with direct arena steering and a global 10% hostile-pressure increase across all sectors
+- `v1.2.0` — landscape-first combat, a simultaneous three-card mobile draft, a 50% default music setting mixed at roughly twice the former loudness, ten sector-specific boss patterns, and timed support pickups
 
 ## One-click Windows start
 
@@ -32,6 +31,11 @@ browser's **Add to Home Screen** or **Install app** action. The installed game
 requests a landscape, fullscreen-capable presentation and includes standard,
 maskable, and Apple touch icons. Build output uses deployment-relative asset,
 manifest, and service-worker URLs, so no path rewriting is required.
+
+When combat starts in a narrow portrait browser, NIGHTTRACE attempts fullscreen
+landscape mode. Browsers that do not allow automatic orientation locking receive
+an accessible rotate screen; the simulation and run timer remain paused until
+the phone is sideways. Menus remain usable in portrait.
 
 The versioned service worker caches the app shell, generated Vite chunks, and
 the complete optimized gameplay-art set during installation. After the first
@@ -70,7 +74,7 @@ Then open `http://127.0.0.1:5173/`.
 - `1`, `2`, `3` - choose one of the paused upgrade cards
 - `Esc` or `P` - pause or resume a run
 - `M` - mute or restore the master volume
-- Pointer/touch drag in the arena - steer with the virtual movement stick
+- Pointer/touch drag anywhere in the arena - steer directly
 - Touch controls - use the on-screen Pulse and pause buttons
 
 Weapons fire automatically. The movement trace is the second combat layer: close a circuit through a pack, then use the fully charged Pulse when the horde closes in.
@@ -91,10 +95,12 @@ Each weapon now has a distinct luminous projectile silhouette and pooled trail
 language. Boss arrivals shift the ambient score into a heavier combat state,
 phase changes and attacks receive restrained stingers, and every run ends on a
 dedicated victory or defeat cue that finishes before the results screen appears.
+The music slider starts at 50%, while the ambient and boss music buses are mixed
+at approximately twice the former default output.
 
 ## Campaign
 
-Ten data-driven sectors run from four to seven and a half minutes. Each adds enemy combinations, hazards, and a named boss while the health and spawn multipliers rise along a deliberate curve. Release `v1.1.1` applies one global `1.10` pressure multiplier to spawn intensity, enemy and boss health, and incoming damage in every sector, preserving the shape of the original curve while making the full campaign 10% more demanding.
+Ten data-driven sectors run from four to seven and a half minutes. Each adds enemy combinations, hazards, and a named boss while the health and spawn multipliers rise along a deliberate curve. The global `1.10` pressure multiplier applies to spawn intensity, enemy and boss health, and incoming damage in every sector, preserving the shape of the original curve while making the full campaign 10% more demanding. Release `v1.2.0` gives all ten starter-sector bosses a distinct telegraph family, with phase-scaled fans, orbits, crosses, reflections, clusters, storm lanes, chrono spirals, foundry strikes, safe-corridor grids, and the final eclipse sequence.
 
 | # | Sector | Time | Boss | First-clear unlock |
 | ---: | --- | ---: | --- | --- |
@@ -110,6 +116,14 @@ Ten data-driven sectors run from four to seven and a half minutes. Each adds ene
 | 10 | Crown of Dawn | 7:30 | The Sun-Eater | Crown of Dawn relic |
 
 Three-card drafts pause the action. A run can carry up to four weapons, four aligned modules, and three Trace Mods. Weapons have five ranks; mastering a weapon while holding its aligned module exposes its awakening. The Bright Draft Astrarium node unlocks one reroll per run, and the draft system keeps recovery or another actionable choice available when a build is saturated.
+
+Timed support relics add positional decisions without undoing the campaign
+curve. Their opportunities are based on elapsed minutes rather than kill count,
+slow down as sector pressure and run progress rise, and stop before the boss
+window. Dawnheart restores 14% vitality, Gravestar gathers existing XP motes,
+and Pulse Core restores 35 Pulse charge. A relic only appears when its effect
+would be useful, spawns outside automatic pickup range, and remains visually
+distinct through a dedicated atlas frame and persistent aura.
 
 Victories relight the next sector, recover weapon patterns, and can earn three mastery seals: clear, Trace, and Aegis. Failed runs do not unlock the next sector, but they still return earned and performance-based Dawn Shards.
 
@@ -135,6 +149,9 @@ pnpm preview
 
 ### Development-only QA mode
 
-While `pnpm dev` is running, open `http://127.0.0.1:5173/?qa` to accelerate the simulation, force an early upgrade draft, and reach the boss window quickly. The gate uses Vite's development flag, so `?qa` has no effect in a production build or `pnpm preview`.
+On `localhost` or `127.0.0.1`, append `?qa` to accelerate the simulation, force
+an early upgrade draft and support pickup, and reach the boss window quickly.
+The gate is hostname-restricted, so `?qa` has no effect on the public GitHub
+Pages release.
 
 There are no energy gates, ads, loot boxes, or paid progression systems.

@@ -1,7 +1,7 @@
 import type { RunResult, SaveData, TraceModId, WeaponId } from '../shared/types'
 import { LEVELS, WEAPONS, getLevel } from './content'
 
-export const SAVE_VERSION = 1
+export const SAVE_VERSION = 2
 export const SAVE_KEY = 'nighttrace.save.v1'
 
 export type MasteryId = 'clear' | 'trace' | 'aegis'
@@ -31,7 +31,7 @@ export interface RunRewardSummary {
 
 const DEFAULT_SETTINGS: SaveData['settings'] = {
   masterVolume: 0.85,
-  musicVolume: 0.62,
+  musicVolume: 0.5,
   sfxVolume: 0.82,
   reducedFlash: false,
   reducedShake: false,
@@ -130,11 +130,21 @@ function weaponArray(value: unknown): WeaponId[] {
   ]
 }
 
-function normalizeSettings(value: unknown): SaveData['settings'] {
+function normalizeSettings(
+  value: unknown,
+  migrateLegacyMusicDefault = false,
+): SaveData['settings'] {
   const source = isRecord(value) ? value : {}
+  const musicVolume = finiteNumber(source.musicVolume, DEFAULT_SETTINGS.musicVolume)
   return {
     masterVolume: clamp(finiteNumber(source.masterVolume, DEFAULT_SETTINGS.masterVolume), 0, 1),
-    musicVolume: clamp(finiteNumber(source.musicVolume, DEFAULT_SETTINGS.musicVolume), 0, 1),
+    musicVolume: clamp(
+      migrateLegacyMusicDefault && musicVolume === 0.62
+        ? DEFAULT_SETTINGS.musicVolume
+        : musicVolume,
+      0,
+      1,
+    ),
     sfxVolume: clamp(finiteNumber(source.sfxVolume, DEFAULT_SETTINGS.sfxVolume), 0, 1),
     reducedFlash: booleanValue(source.reducedFlash, DEFAULT_SETTINGS.reducedFlash),
     reducedShake: booleanValue(source.reducedShake, DEFAULT_SETTINGS.reducedShake),
@@ -177,11 +187,12 @@ function normalizeMastery(value: unknown): SaveData['mastery'] {
 }
 
 /**
- * Accepts v1 data as well as the unversioned prototype shape used by early
+ * Accepts v1 and v2 data as well as the unversioned prototype shape used by early
  * NIGHTTRACE builds. Unknown fields are intentionally ignored.
  */
 export function migrateSave(value: unknown): SaveData {
   const source = isRecord(value) ? value : {}
+  const sourceVersion = nonNegativeInteger(source.version)
   const completedLevels = numberArray(source.completedLevels ?? source.clearedLevels)
   const rawUnlockedLevel = nonNegativeInteger(source.unlockedLevel ?? source.unlockedChapter, 1)
   const inferredUnlock =
@@ -213,7 +224,7 @@ export function migrateSave(value: unknown): SaveData {
     dawnShards: nonNegativeInteger(source.dawnShards ?? source.shards ?? source.currency),
     upgrades: normalizeUpgrades(source.upgrades ?? source.astrarium),
     unlockedWeapons: [...unlockedWeapons],
-    settings: normalizeSettings(settingsSource),
+    settings: normalizeSettings(settingsSource, sourceVersion === 1),
   }
 }
 
