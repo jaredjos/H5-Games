@@ -1,0 +1,202 @@
+{
+  "_BufferResource-Dn-9JZCT.js": {
+    "file": "assets/BufferResource-Dn-9JZCT.js",
+    "name": "BufferResource",
+    "imports": [
+      "_Geometry-DzB2TO-e.js",
+      "_RenderTargetSystem-BVSmTh8-.js",
+      "_GCManagedHash-BA8dr6Vl.js"
+    ]
+  },
+  "_Cache-C_n_yy8I.js": {
+    "file": "assets/Cache-C_n_yy8I.js",
+    "name": "Cache",
+    "imports": [
+      "_Geometry-DzB2TO-e.js"
+    ]
+  },
+  "_CanvasPool-CGkbw3-w.js": {
+    "file": "assets/CanvasPool-CGkbw3-w.js",
+    "name": "CanvasPool",
+    "imports": [
+      "_Geometry-DzB2TO-e.js"
+    ]
+  },
+  "_Filter-B_p90UOL.js": {
+    "file": "assets/Filter-B_p90UOL.js",
+    "name": "Filter",
+    "imports": [
+      "_Geometry-DzB2TO-e.js"
+    ]
+  },
+  "_GCManagedHash-BA8dr6Vl.js": {
+    "file": "assets/GCManagedHash-BA8dr6Vl.js",
+    "name": "GCManagedHash",
+    "imports": [
+      "_Geometry-DzB2TO-e.js"
+    ]
+  },
+  "_Geometry-DzB2TO-e.js": {
+    "file": "assets/Geometry-DzB2TO-e.js",
+    "name": "Geometry",
+    "imports": [
+      "_rolldown-runtime-Bh1tDfsg.js"
+    ]
+  },
+  "_GraphicsContext-R4cr1GfT.js": {
+    "file": "assets/GraphicsContext-R4cr1GfT.js",
+    "name": "GraphicsContext",
+    "imports": [
+      "_Geometry-DzB2TO-e.js",
+      "_canvasUtils-CDjWVGyl.js",
+      "_GCManagedHash-BA8dr6Vl.js",
+      "_getTextureBatchBindGroup-Pkbslmno.js"
+    ]
+  },
+  "_RenderTargetSystem-BVSmTh8-.js": {
+    "file": "assets/RenderTargetSystem-BVSmTh8-.js",
+    "name": "RenderTargetSystem",
+    "imports": [
+      "_Geometry-DzB2TO-e.js",
+      "_Filter-B_p90UOL.js",
+      "_GCManagedHash-BA8dr6Vl.js"
+    ]
+  },
+  "_canvasUtils-CDjWVGyl.js": {
+    "file": "assets/canvasUtils-CDjWVGyl.js",
+    "name": "canvasUtils",
+    "imports": [
+      "_Geometry-DzB2TO-e.js"
+    ]
+  },
+  "_getPo2TextureFromSource-tZOpeQQp.js": {
+    "file": "assets/getPo2TextureFromSource-tZOpeQQp.js",
+    "name": "getPo2TextureFromSource",
+    "imports": [
+      "_Geometry-DzB2TO-e.js",
+      "_Filter-B_p90UOL.js",
+      "_Cache-C_n_yy8I.js",
+      "_canvasUtils-CDjWVGyl.js"
+    ]
+  },
+  "_getTextureBatchBindGroup-Pkbslmno.js": {
+    "file": "assets/getTextureBatchBindGroup-Pkbslmno.js",
+    "name": "getTextureBatchBindGroup",
+    "imports": [
+      "_Geometry-DzB2TO-e.js"
+    ]
+  },
+  "_init-Cmui9Zl5.js": {
+    "file": "assets/init-Cmui9Zl5.js",
+    "name": "init",
+    "imports": [
+      "_Geometry-DzB2TO-e.js",
+      "_Filter-B_p90UOL.js",
+      "_getPo2TextureFromSource-tZOpeQQp.js",
+      "_canvasUtils-CDjWVGyl.js",
+      "_CanvasPool-CGkbw3-w.js"
+    ]
+  },
+  "_rolldown-runtime-Bh1tDfsg.js": {
+    "file": "assets/rolldown-runtime-Bh1tDfsg.js",
+    "name": "rolldown-runtime"
+  },
+  "index.html": {
+    "file": "assets/index-oI9fcSpv.js",
+    "name": "index",
+    "src": "index.html",
+    "isEntry": true,
+    "imports": [
+      "_rolldown-runtime-Bh1tDfsg.js"
+    ],
+    "dynamicImports": [
+      "src/game/GameCanvas.tsx"
+    ],
+    "css": [
+      "assets/index-DNyTWt-M.css"
+    ]
+  },
+  "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/environment-browser/browserAll.mjs": {
+    "file": "assets/browserAll-dF29trlt.js",
+    "name": "browserAll",
+    "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/environment-browser/browserAll.mjs",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Geometry-DzB2TO-e.js",
+      "_Filter-B_p90UOL.js",
+      "_getPo2TextureFromSource-tZOpeQQp.js",
+      "_init-Cmui9Zl5.js"
+    ]
+  },
+  "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/environment-webworker/webworkerAll.mjs": {
+    "file": "assets/webworkerAll-B46HYmq1.js",
+    "name": "webworkerAll",
+    "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/environment-webworker/webworkerAll.mjs",
+    "isDynamicEntry": true,
+    "imports": [
+      "_getPo2TextureFromSource-tZOpeQQp.js",
+      "_init-Cmui9Zl5.js"
+    ]
+  },
+  "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/canvas/CanvasRenderer.mjs": {
+    "file": "assets/CanvasRenderer-C-xyf-0F.js",
+    "name": "CanvasRenderer",
+    "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/canvas/CanvasRenderer.mjs",
+    "isDynamicEntry": true,
+    "imports": [
+      "src/game/GameCanvas.tsx"
+    ]
+  },
+  "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gl/WebGLRenderer.mjs": {
+    "file": "assets/WebGLRenderer-CP5GCq2t.js",
+    "name": "WebGLRenderer",
+    "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gl/WebGLRenderer.mjs",
+    "isDynamicEntry": true,
+    "imports": [
+      "src/game/GameCanvas.tsx"
+    ]
+  },
+  "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gpu/WebGPURenderer.mjs": {
+    "file": "assets/WebGPURenderer-DOMlBZOg.js",
+    "name": "WebGPURenderer",
+    "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gpu/WebGPURenderer.mjs",
+    "isDynamicEntry": true,
+    "imports": [
+      "src/game/GameCanvas.tsx"
+    ]
+  },
+  "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/scene/text-bitmap/BitmapFont.mjs": {
+    "file": "assets/BitmapFont-BGXJH43C.js",
+    "name": "BitmapFont",
+    "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/scene/text-bitmap/BitmapFont.mjs",
+    "isDynamicEntry": true,
+    "imports": [
+      "src/game/GameCanvas.tsx"
+    ]
+  },
+  "src/game/GameCanvas.tsx": {
+    "file": "assets/GameCanvas-Bz_j-Fft.js",
+    "name": "GameCanvas",
+    "src": "src/game/GameCanvas.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html",
+      "_Geometry-DzB2TO-e.js",
+      "_Filter-B_p90UOL.js",
+      "_getPo2TextureFromSource-tZOpeQQp.js",
+      "_Cache-C_n_yy8I.js",
+      "_canvasUtils-CDjWVGyl.js",
+      "_CanvasPool-CGkbw3-w.js",
+      "_GraphicsContext-R4cr1GfT.js",
+      "_RenderTargetSystem-BVSmTh8-.js",
+      "_GCManagedHash-BA8dr6Vl.js",
+      "_getTextureBatchBindGroup-Pkbslmno.js",
+      "_BufferResource-Dn-9JZCT.js"
+    ],
+    "dynamicImports": [
+      "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/environment-browser/browserAll.mjs",
+      "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/environment-webworker/webworkerAll.mjs",
+      "src/game/GameCanvas.tsx"
+    ]
+  }
+}
