@@ -52,8 +52,16 @@ import {
 } from './animation'
 import { GameInput } from './input'
 import {
+  bossAttackRecoverySeconds,
+  bossHealthForBuild,
   bossPatternForLevel,
   chooseSupportPickup,
+  eligibleEnemyPool,
+  estimateBossDps,
+  experienceToNextLevel,
+  hordeActiveCap,
+  hordePressureAt,
+  sectorBaselineAt,
   supportPickupFirstDropSeconds,
   supportPickupIntervalSeconds,
   type SupportPickupKind,
@@ -367,8 +375,8 @@ class NighttraceRuntime {
   private readonly trace: Vec2[] = []
   private readonly weaponCooldowns = new Map<WeaponId, number>()
   private enemyUid = 0
-  private spawnBudget = 4
-  private hazardTimer = 9
+  private spawnBudget = 0
+  private hazardTimer = 22
   private nextSupportPickupAt = 60
   private supportPickupDrops = 0
   private bossSpawned = false
@@ -444,7 +452,7 @@ class NighttraceRuntime {
       maxShield,
       speed: 235 * (1 + redShift * 0.015),
       xp: 0,
-      xpToNext: 16,
+      xpToNext: experienceToNextLevel(1),
       level: 1,
       pulseCharge: 0,
     }
@@ -559,7 +567,7 @@ class NighttraceRuntime {
       this.app.ticker.add(this.tick)
       this.layout()
       this.initialized = true
-      for (let index = 0; index < 6; index += 1) this.spawnEnemy()
+      for (let index = 0; index < 4; index += 1) this.spawnEnemy()
       this.emitSnapshot(true)
     } catch (error) {
       try {
@@ -1075,22 +1083,36 @@ class NighttraceRuntime {
 
   private updateSpawning(delta: number) {
     if (this.bossSpawned && this.elapsed > this.level.duration) return
-    const progress = clamp(this.elapsed / this.level.duration, 0, 1)
-    const activeCount = this.enemies.reduce(
+    const pressure = hordePressureAt(this.elapsed, this.level.duration)
+    const baseline = sectorBaselineAt(
+      this.level.spawnRate,
+      this.level.enemyHealth,
+      this.elapsed,
+    )
+    let activeCount = this.enemies.reduce(
       (total, enemy) => total + (enemy.active && !enemy.isBoss ? 1 : 0),
       0,
     )
-    const cap = Math.min(380, 80 + this.level.id * 18 + Math.floor(progress * 120))
+    const cap = hordeActiveCap(this.level.id, pressure.progress)
     const intensity =
-      this.level.spawnRate *
-      (2.1 + progress * 4.8) *
+      baseline.spawnRate *
+      pressure.spawnIntensityFactor *
       GLOBAL_DIFFICULTY_MULTIPLIER
-    this.spawnBudget += delta * intensity * (this.boss ? 0.45 : 1)
+    this.spawnBudget = Math.min(
+      3.5,
+      this.spawnBudget + delta * intensity * (this.boss ? 0.45 : 1),
+    )
 
-    while (this.spawnBudget >= 1 && activeCount + 1 < cap) {
+    let spawnedThisStep = 0
+    while (
+      this.spawnBudget >= 1 &&
+      activeCount + 1 < cap &&
+      spawnedThisStep < 4
+    ) {
       this.spawnEnemy()
+      activeCount += 1
+      spawnedThisStep += 1
       this.spawnBudget -= 1
-      if (this.spawnBudget > 8) this.spawnBudget = 8
     }
   }
 
@@ -1135,7 +1157,13 @@ class NighttraceRuntime {
       this.enemies.push(enemy)
     }
 
-    const id = this.random.pick(this.level.enemyPool)
+    const pressure = hordePressureAt(this.elapsed, this.level.duration)
+    const baseline = sectorBaselineAt(
+      this.level.spawnRate,
+      this.level.enemyHealth,
+      this.elapsed,
+    )
+    const id = this.random.pick(eligibleEnemyPool(this.level.enemyPool, pressure.progress))
     const frameIndex = Math.max(0, ENEMY_IDS.indexOf(id))
     const spawn = this.findSafeSpawnPoint(480, 680, 60, 54)
     const { x, y } = spawn
@@ -1147,12 +1175,11 @@ class NighttraceRuntime {
       chronowisp: 0.9,
       'cinder-guard': 1.68,
     }[id]
-    const progress = clamp(this.elapsed / this.level.duration, 0, 1)
     const health =
       34 *
-      this.level.enemyHealth *
+      baseline.enemyHealth *
       typeScale *
-      (1 + progress * 0.72) *
+      pressure.enemyHealthMultiplier *
       GLOBAL_DIFFICULTY_MULTIPLIER
     const size = 66 * Math.sqrt(typeScale)
 
@@ -1168,10 +1195,13 @@ class NighttraceRuntime {
     enemy.radius = 19 + size * 0.13
     enemy.speed =
       (id === 'shardwing' ? 142 : id === 'chronowisp' ? 118 : id === 'cinder-guard' ? 61 : 86) *
-      (1 + this.level.difficulty * 0.035)
+      (1 + this.level.difficulty * 0.035) *
+      pressure.enemySpeedMultiplier
     enemy.hp = health
     enemy.maxHp = health
-    enemy.damage = 7 + this.level.difficulty * 2.1 + typeScale * 1.7
+    enemy.damage =
+      (7 + this.level.difficulty * 2.1 + typeScale * 1.7) *
+      pressure.enemyDamageMultiplier
     enemy.xp = Math.max(2, Math.round(2.5 * typeScale))
     enemy.contactCooldown = 0
     enemy.hitFlash = 0
@@ -1249,11 +1279,23 @@ class NighttraceRuntime {
 
     const spawn = this.findSafeSpawnPoint(390, 440, 150, 130, -Math.PI * 0.5, 0.35)
     const { x, y } = spawn
-    const health =
+    const baseHealth =
       (this.qaMode ? 850 : 1120) *
       this.level.enemyHealth *
       (1 + this.level.id * 0.12) *
       GLOBAL_DIFFICULTY_MULTIPLIER
+    const estimatedDps = estimateBossDps({
+      playerLevel: this.player.level,
+      weapons: this.weapons,
+      modules: this.modules,
+      traceMods: this.traceMods,
+      forceRank: this.persistentUpgrades.force ?? 0,
+      bossDamageRank: this.persistentUpgrades['dawn-within'] ?? 0,
+      critRank: this.persistentUpgrades['parallax-eye'] ?? 0,
+    })
+    const health = this.qaMode
+      ? baseHealth
+      : bossHealthForBuild(baseHealth, estimatedDps, this.level.id)
 
     enemy.active = true
     enemy.uid = ++this.enemyUid
@@ -1339,7 +1381,7 @@ class NighttraceRuntime {
         enemy.attackTimer -= delta
         if (enemy.attackTimer <= 0) {
           this.bossAttack(enemy)
-          enemy.attackTimer = Math.max(0.72, 2.15 - enemy.phase * 0.36 - this.level.difficulty * 0.05)
+          enemy.attackTimer = bossAttackRecoverySeconds(this.level.id, enemy.phase)
         }
       }
 
@@ -3349,7 +3391,7 @@ class NighttraceRuntime {
   private levelUp() {
     this.player.xp -= this.player.xpToNext
     this.player.level += 1
-    this.player.xpToNext = Math.round(16 + this.player.level * 8 + this.player.level ** 1.35 * 2)
+    this.player.xpToNext = experienceToNextLevel(this.player.level)
     const draft = createUpgradeDraft(this.getUpgradeContext(), this.upgradeSeed)
     this.upgradeOptions = draft.options
     this.upgradeSeed = draft.seed

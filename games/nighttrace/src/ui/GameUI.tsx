@@ -348,7 +348,7 @@ export function PulseControl({
       <span className="pulse-control__ring" />
       <StarMark />
       <strong>Pulse</strong>
-      <kbd>Space</kbd>
+      <kbd>{compact ? 'Tap' : 'Space'}</kbd>
     </button>
   )
 }

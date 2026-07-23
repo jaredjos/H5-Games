@@ -12,6 +12,7 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.1.0` — mobile-ready release with installable offline play, safe-area-aware touch UI, responsive portrait/landscape layouts, deployment-relative hosting, lifecycle-safe audio, and substantially lighter runtime art
 - `v1.1.1` — streamlined touch HUD with direct arena steering and a global 10% hostile-pressure increase across all sectors
 - `v1.2.0` — landscape-first combat, a simultaneous three-card mobile draft, a 50% default music setting mixed at roughly twice the former loudness, ten sector-specific boss patterns, and timed support pickups
+- `v1.3.0` — re-authored encounter pacing with a readable one-minute warmup, accelerating mid/late hordes, progression-gated specialists, steeper late upgrade costs, and build-aware sovereign durability
 
 ## One-click Windows start
 
@@ -75,7 +76,7 @@ Then open `http://127.0.0.1:5173/`.
 - `Esc` or `P` - pause or resume a run
 - `M` - mute or restore the master volume
 - Pointer/touch drag anywhere in the arena - steer directly
-- Touch controls - use the on-screen Pulse and pause buttons
+- Touch controls - tap the on-screen **Pulse** button when charged, and use the pause button for menus
 
 Weapons fire automatically. The movement trace is the second combat layer: close a circuit through a pack, then use the fully charged Pulse when the horde closes in.
 
@@ -100,7 +101,23 @@ at approximately twice the former default output.
 
 ## Campaign
 
-Ten data-driven sectors run from four to seven and a half minutes. Each adds enemy combinations, hazards, and a named boss while the health and spawn multipliers rise along a deliberate curve. The global `1.10` pressure multiplier applies to spawn intensity, enemy and boss health, and incoming damage in every sector, preserving the shape of the original curve while making the full campaign 10% more demanding. Release `v1.2.0` gives all ten starter-sector bosses a distinct telegraph family, with phase-scaled fans, orbits, crosses, reflections, clusters, storm lanes, chrono spirals, foundry strikes, safe-corridor grids, and the final eclipse sequence.
+Ten data-driven sectors run from four to seven and a half minutes. Each adds
+enemy combinations, hazards, and a named boss while the health and spawn
+multipliers rise along a deliberate curve. Release `v1.3.0` reshapes that
+curve around the actual run clock: every sector begins with four nearby
+Nightborn, a lower-damage one-minute warmup, a 22-second first-hazard grace
+period, and specialist species that enter progressively. Authored sector
+pressure blends in during that minute rather than landing all at once.
+
+After the warmup, horde density, vitality, speed, and contact damage accelerate
+nonlinearly until the sovereign arrives. Late upgrade costs also rise after
+player level eight, so a successful build remains powerful without flattening
+the final minutes. Sovereign vitality is calculated from the current weapons,
+modules, awakenings, Trace Mods, and Astrarium ranks using sublinear scaling
+and safety caps. Reference builds target roughly 20 seconds in Sector 1 and 30
+seconds in Sector 10, leaving time for each boss's phase-scaled fans, orbits,
+crosses, reflections, clusters, storm lanes, chrono spirals, foundry strikes,
+safe-corridor grids, or final eclipse sequence.
 
 | # | Sector | Time | Boss | First-clear unlock |
 | ---: | --- | ---: | --- | --- |
@@ -118,12 +135,13 @@ Ten data-driven sectors run from four to seven and a half minutes. Each adds ene
 Three-card drafts pause the action. A run can carry up to four weapons, four aligned modules, and three Trace Mods. Weapons have five ranks; mastering a weapon while holding its aligned module exposes its awakening. The Bright Draft Astrarium node unlocks one reroll per run, and the draft system keeps recovery or another actionable choice available when a build is saturated.
 
 Timed support relics add positional decisions without undoing the campaign
-curve. Their opportunities are based on elapsed minutes rather than kill count,
-slow down as sector pressure and run progress rise, and stop before the boss
-window. Dawnheart restores 14% vitality, Gravestar gathers existing XP motes,
-and Pulse Core restores 35 Pulse charge. A relic only appears when its effect
-would be useful, spawns outside automatic pickup range, and remains visually
-distinct through a dedicated atlas frame and persistent aura.
+curve. Their opportunities are based on elapsed minutes rather than kill count:
+the first useful relic appears around 45–50 seconds, later opportunities slow
+down as sector pressure and run progress rise, and all relic drops stop before
+the boss window. Dawnheart restores 14% vitality, Gravestar gathers existing XP
+motes, and Pulse Core restores 35 Pulse charge. A relic only appears when its
+effect would be useful, spawns outside automatic pickup range, and remains
+visually distinct through a dedicated atlas frame and persistent aura.
 
 Victories relight the next sector, recover weapon patterns, and can earn three mastery seals: clear, Trace, and Aegis. Failed runs do not unlock the next sector, but they still return earned and performance-based Dawn Shards.
 
