@@ -4,6 +4,10 @@
 
 A cinematic 3D reinvention of Snake. Guide a biomechanical serpent through ten escalating arenas, collect energy cores, evade hunters, and use Aegis, Fang, and Phase boosters to survive.
 
+## Play online
+
+[Launch The Impossible Snake over HTTPS](https://jaredjos.github.io/H5-Games/the-impossible-snake/)
+
 ## Features
 
 - Ten levels with distinct speed, obstacle, and hunter configurations
@@ -54,4 +58,3 @@ npm run package:crazygames
 ```
 
 Generated archives are written to `releases/` and are excluded from Git. See [PUBLISHING.md](PUBLISHING.md) for lifecycle events, ad behavior, analytics, and review checklists. Submission copy and controls are in [SUBMISSION.md](SUBMISSION.md).
-

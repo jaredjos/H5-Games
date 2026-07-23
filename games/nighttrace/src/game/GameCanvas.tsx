@@ -30,7 +30,12 @@ import type {
   WeaponId,
   Vec2,
 } from '../shared/types'
-import { WEAPONS, createUpgradeDraft, type UpgradeDraftContext } from './content'
+import {
+  GLOBAL_DIFFICULTY_MULTIPLIER,
+  WEAPONS,
+  createUpgradeDraft,
+  type UpgradeDraftContext,
+} from './content'
 import { NighttraceAudio } from './audio'
 import {
   HERO_FIRE_DURATION,
@@ -1029,7 +1034,10 @@ class NighttraceRuntime {
       0,
     )
     const cap = Math.min(380, 80 + this.level.id * 18 + Math.floor(progress * 120))
-    const intensity = this.level.spawnRate * (2.1 + progress * 4.8)
+    const intensity =
+      this.level.spawnRate *
+      (2.1 + progress * 4.8) *
+      GLOBAL_DIFFICULTY_MULTIPLIER
     this.spawnBudget += delta * intensity * (this.boss ? 0.45 : 1)
 
     while (this.spawnBudget >= 1 && activeCount + 1 < cap) {
@@ -1093,7 +1101,12 @@ class NighttraceRuntime {
       'cinder-guard': 1.68,
     }[id]
     const progress = clamp(this.elapsed / this.level.duration, 0, 1)
-    const health = 34 * this.level.enemyHealth * typeScale * (1 + progress * 0.72)
+    const health =
+      34 *
+      this.level.enemyHealth *
+      typeScale *
+      (1 + progress * 0.72) *
+      GLOBAL_DIFFICULTY_MULTIPLIER
     const size = 66 * Math.sqrt(typeScale)
 
     enemy.active = true
@@ -1189,7 +1202,11 @@ class NighttraceRuntime {
 
     const spawn = this.findSafeSpawnPoint(390, 440, 150, 130, -Math.PI * 0.5, 0.35)
     const { x, y } = spawn
-    const health = (this.qaMode ? 850 : 1120) * this.level.enemyHealth * (1 + this.level.id * 0.12)
+    const health =
+      (this.qaMode ? 850 : 1120) *
+      this.level.enemyHealth *
+      (1 + this.level.id * 0.12) *
+      GLOBAL_DIFFICULTY_MULTIPLIER
 
     enemy.active = true
     enemy.uid = ++this.enemyUid
@@ -1949,7 +1966,10 @@ class NighttraceRuntime {
 
   private damagePlayer(amount: number) {
     if (this.hurtCooldown > 0 || this.completed) return
-    let remaining = amount * (this.qaMode ? 0.1 : 0.72)
+    let remaining =
+      amount *
+      GLOBAL_DIFFICULTY_MULTIPLIER *
+      (this.qaMode ? 0.1 : 0.72)
     if (this.player.shield > 0) {
       const absorbed = Math.min(this.player.shield, remaining)
       this.player.shield -= absorbed

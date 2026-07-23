@@ -4,22 +4,25 @@
 
 NIGHTTRACE is an original browser horde-survival game built with React, TypeScript, Vite, and PixiJS. Auto-attacking weapons keep the controls approachable; every step paints a luminous trace, and closing a loop turns movement itself into a weapon.
 
+## Play online
+
+[Launch NIGHTTRACE over HTTPS](https://jaredjos.github.io/H5-Games/nighttrace/)
+
 ## Release lineage
 
 - `v1.0.0` — original desktop/browser release
 - `v1.1.0` — mobile-ready release with installable offline play, safe-area-aware touch UI, responsive portrait/landscape layouts, deployment-relative hosting, lifecycle-safe audio, and substantially lighter runtime art
+- `v1.1.1` — streamlined touch HUD with direct arena steering and a global 10% hostile-pressure increase across all sectors
 
-## One-click Windows release
+## One-click Windows start
 
-Download and extract the Windows archive from the matching
-[GitHub Release](../../releases), then double-click
-**`NIGHTTRACE Launcher.exe`**. It starts the prebuilt game, opens it in your
-default browser, and does not require Node, pnpm, an install step, or a terminal
-command.
+Double-click **`NIGHTTRACE Launcher.exe`** in this folder. It starts the
+prebuilt game, opens it in your default browser, and does not require Node,
+pnpm, an install step, or a terminal command.
 
 Keep the small NIGHTTRACE launcher window open while playing. Close that
 window or press `Ctrl+C` to stop the local game server. `PLAY NIGHTTRACE.cmd`
-is included in the release archive as an equivalent double-click shortcut.
+is included as an equivalent double-click shortcut to the launcher.
 
 ## Mobile install and offline play
 
@@ -91,7 +94,7 @@ dedicated victory or defeat cue that finishes before the results screen appears.
 
 ## Campaign
 
-Ten data-driven sectors run from four to seven and a half minutes. Each adds enemy combinations, hazards, and a named boss while the health and spawn multipliers rise along a deliberate curve.
+Ten data-driven sectors run from four to seven and a half minutes. Each adds enemy combinations, hazards, and a named boss while the health and spawn multipliers rise along a deliberate curve. Release `v1.1.1` applies one global `1.10` pressure multiplier to spawn intensity, enemy and boss health, and incoming damage in every sector, preserving the shape of the original curve while making the full campaign 10% more demanding.
 
 | # | Sector | Time | Boss | First-clear unlock |
 | ---: | --- | ---: | --- | --- |

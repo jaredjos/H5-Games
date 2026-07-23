@@ -498,10 +498,6 @@ export function PauseOverlay({
   )
 }
 
-function dispatchMovement(code: 'KeyW' | 'KeyA' | 'KeyS' | 'KeyD', down: boolean) {
-  window.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code, key: code.at(-1)?.toLowerCase(), bubbles: true }))
-}
-
 export function MobileTouchControls({
   pulseCharge,
   pulseReady,
@@ -513,29 +509,8 @@ export function MobileTouchControls({
   onPulse: () => void
   onPause: () => void
 }) {
-  useEffect(() => () => {
-    ;(['KeyW', 'KeyA', 'KeyS', 'KeyD'] as const).forEach((code) => dispatchMovement(code, false))
-  }, [])
-
-  const bind = (code: 'KeyW' | 'KeyA' | 'KeyS' | 'KeyD') => ({
-    onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
-      event.currentTarget.setPointerCapture(event.pointerId)
-      dispatchMovement(code, true)
-    },
-    onPointerUp: () => dispatchMovement(code, false),
-    onPointerCancel: () => dispatchMovement(code, false),
-    onLostPointerCapture: () => dispatchMovement(code, false),
-  })
-
   return (
     <div className="mobile-controls">
-      <div className="touch-dpad" aria-label="Movement controls">
-        <button className="touch-dpad__up" {...bind('KeyW')} aria-label="Move up">▲</button>
-        <button className="touch-dpad__left" {...bind('KeyA')} aria-label="Move left">◀</button>
-        <span><StarMark small /></span>
-        <button className="touch-dpad__right" {...bind('KeyD')} aria-label="Move right">▶</button>
-        <button className="touch-dpad__down" {...bind('KeyS')} aria-label="Move down">▼</button>
-      </div>
       <PulseControl charge={pulseCharge} ready={pulseReady} compact onPulse={onPulse} />
       <button className="touch-pause" onClick={onPause} aria-label="Pause"><Menu /></button>
     </div>

@@ -3172,11 +3172,6 @@ kbd {
   .game-screen button {
     min-height: 44px;
   }
-
-  .touch-dpad button {
-    min-width: 44px;
-    touch-action: none;
-  }
 }
 
 .results-screen {
@@ -3965,7 +3960,7 @@ kbd {
     inset: auto var(--safe-right) var(--safe-bottom) var(--safe-left);
     display: flex;
     align-items: flex-end;
-    justify-content: space-between;
+    justify-content: flex-end;
     padding: 0 18px 18px;
     pointer-events: none;
     touch-action: none;
@@ -3976,44 +3971,6 @@ kbd {
   .mobile-controls > * {
     pointer-events: auto;
   }
-
-  .touch-dpad {
-    display: grid;
-    grid-template-columns: repeat(3, 44px);
-    grid-template-rows: repeat(3, 44px);
-    place-items: center;
-    width: 146px;
-    height: 146px;
-    border: 1px solid rgba(203,170,101,.22);
-    border-radius: 50%;
-    background: rgba(2,7,11,.42);
-    backdrop-filter: blur(2px);
-  }
-
-  .touch-dpad button {
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    border: 1px solid rgba(203,170,101,.22);
-    color: rgba(243,237,221,.7);
-    background: rgba(2,7,11,.7);
-    font-size: .62rem;
-    touch-action: none;
-  }
-
-  .touch-dpad button:active {
-    border-color: var(--cyan);
-    color: var(--cyan-bright);
-    background: rgba(15,78,94,.58);
-  }
-
-  .touch-dpad__up { grid-column: 2; grid-row: 1; }
-  .touch-dpad__left { grid-column: 1; grid-row: 2; }
-  .touch-dpad > span { grid-column: 2; grid-row: 2; }
-  .touch-dpad__right { grid-column: 3; grid-row: 2; }
-  .touch-dpad__down { grid-column: 2; grid-row: 3; }
 
   .pulse-control--compact {
     position: relative;
@@ -4452,18 +4409,6 @@ kbd {
 
   .mobile-controls {
     padding: 0 10px 9px;
-  }
-
-  .touch-dpad {
-    width: 146px;
-    height: 146px;
-    grid-template-columns: repeat(3, 44px);
-    grid-template-rows: repeat(3, 44px);
-  }
-
-  .touch-dpad button {
-    width: 44px;
-    height: 44px;
   }
 
   .pulse-control--compact {
@@ -5160,18 +5105,6 @@ kbd {
 
   .mobile-controls {
     padding-bottom: 5px;
-  }
-
-  .touch-dpad {
-    width: 146px;
-    height: 146px;
-    grid-template-columns: repeat(3, 44px);
-    grid-template-rows: repeat(3, 44px);
-  }
-
-  .touch-dpad button {
-    width: 44px;
-    height: 44px;
   }
 
   .pulse-control--compact {

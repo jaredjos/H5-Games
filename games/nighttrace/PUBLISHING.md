@@ -4,7 +4,8 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current release tag: `nighttrace-v1.1.0`
+- Current web release: `v1.1.1`
+- Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
 
@@ -46,6 +47,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 
 - `nighttrace-v1.0.0`: frozen desktop/browser release.
 - `nighttrace-v1.1.0`: mobile/PWA hardening release.
+- `v1.1.1`: hosted web balance and touch-HUD update; no new archive tag.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

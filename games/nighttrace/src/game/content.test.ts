@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { TraceModId } from '../shared/types'
 import {
+  GLOBAL_DIFFICULTY_MULTIPLIER,
   LEVELS,
   MODULE_SLOT_CAP,
   MODULES,
@@ -16,6 +17,7 @@ import {
 
 describe('NIGHTTRACE content catalog', () => {
   it('defines the ten-stage campaign balance curve', () => {
+    expect(GLOBAL_DIFFICULTY_MULTIPLIER).toBe(1.1)
     expect(LEVELS).toHaveLength(10)
     expect(LEVELS.map((level) => level.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     expect(new Set(LEVELS.map((level) => level.name)).size).toBe(10)

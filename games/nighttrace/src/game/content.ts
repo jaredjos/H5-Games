@@ -16,6 +16,7 @@ export const MODULE_RANK_CAP = 3
 export const WEAPON_SLOT_CAP = 4
 export const MODULE_SLOT_CAP = 4
 export const TRACE_MOD_SLOT_CAP = 3
+export const GLOBAL_DIFFICULTY_MULTIPLIER = 1.1
 
 export const WEAPONS = {
   'helio-lance': {
