@@ -1,0 +1,10 @@
+{
+  "name": "NIGHTTRACE",
+  "short_name": "NIGHTTRACE",
+  "description": "Draw the path. Burn the horde.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#05080d",
+  "theme_color": "#05080d",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
