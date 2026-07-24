@@ -1,13 +1,19 @@
 {
   "schema": 1,
   "game": "NIGHTTRACE",
-  "game_version_at_capture": "1.4.0",
-  "captured_at_utc": "2026-07-24T02:32:48.542291+00:00",
+  "latest_game_version_at_capture": "1.5.1",
+  "capture_versions": [
+    "1.4.0",
+    "1.5.1"
+  ],
+  "capture_version_note": "Ash Halo and Null Bell were recaptured from v1.5.1. The other six unchanged weapon proofs remain their original v1.4.0 production frames.",
+  "captured_at_utc": "2026-07-24T07:05:20.890502+00:00",
   "renderer": "production Pixi gameplay renderer",
   "viewport": {
-    "width": 1440,
-    "height": 900,
-    "dpr_cap": 2
+    "nominal_width": 1440,
+    "nominal_height": 900,
+    "dpr_cap": 2,
+    "note": "See each capture for exact pixel dimensions."
   },
   "selection_method": "Local-only showcase route; one actual weapon loadout; weapon-specific deterministic target fixtures; production effect frozen at its authored readability beat. qa=1 accelerates fixed simulation ticks without changing the captured gameplay state.",
   "state_definitions": {
@@ -37,6 +43,7 @@
       "weapon_id": "helio-lance",
       "weapon_name": "Helio Lance",
       "state": "solo",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 0,
@@ -54,6 +61,7 @@
       "weapon_id": "helio-lance",
       "weapon_name": "Helio Lance",
       "state": "combined",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 1,
@@ -71,6 +79,7 @@
       "weapon_id": "helio-lance",
       "weapon_name": "Helio Lance",
       "state": "mastered",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 0,
@@ -88,6 +97,7 @@
       "weapon_id": "helio-lance",
       "weapon_name": "Helio Lance",
       "state": "final",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 3,
@@ -105,6 +115,7 @@
       "weapon_id": "crescent-array",
       "weapon_name": "Crescent Array",
       "state": "solo",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 0,
@@ -122,6 +133,7 @@
       "weapon_id": "crescent-array",
       "weapon_name": "Crescent Array",
       "state": "combined",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 1,
@@ -139,6 +151,7 @@
       "weapon_id": "crescent-array",
       "weapon_name": "Crescent Array",
       "state": "mastered",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 0,
@@ -156,6 +169,7 @@
       "weapon_id": "crescent-array",
       "weapon_name": "Crescent Array",
       "state": "final",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 3,
@@ -173,6 +187,7 @@
       "weapon_id": "arc-choir",
       "weapon_name": "Arc Choir",
       "state": "solo",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 0,
@@ -190,6 +205,7 @@
       "weapon_id": "arc-choir",
       "weapon_name": "Arc Choir",
       "state": "combined",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 1,
@@ -207,6 +223,7 @@
       "weapon_id": "arc-choir",
       "weapon_name": "Arc Choir",
       "state": "mastered",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 0,
@@ -224,6 +241,7 @@
       "weapon_id": "arc-choir",
       "weapon_name": "Arc Choir",
       "state": "final",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 3,
@@ -241,6 +259,7 @@
       "weapon_id": "rift-seeds",
       "weapon_name": "Rift Seeds",
       "state": "solo",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 0,
@@ -258,6 +277,7 @@
       "weapon_id": "rift-seeds",
       "weapon_name": "Rift Seeds",
       "state": "combined",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 1,
@@ -275,6 +295,7 @@
       "weapon_id": "rift-seeds",
       "weapon_name": "Rift Seeds",
       "state": "mastered",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 0,
@@ -292,6 +313,7 @@
       "weapon_id": "rift-seeds",
       "weapon_name": "Rift Seeds",
       "state": "final",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 3,
@@ -309,6 +331,7 @@
       "weapon_id": "comet-swarm",
       "weapon_name": "Comet Swarm",
       "state": "solo",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 0,
@@ -326,6 +349,7 @@
       "weapon_id": "comet-swarm",
       "weapon_name": "Comet Swarm",
       "state": "combined",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 1,
@@ -343,6 +367,7 @@
       "weapon_id": "comet-swarm",
       "weapon_name": "Comet Swarm",
       "state": "mastered",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 0,
@@ -360,6 +385,7 @@
       "weapon_id": "comet-swarm",
       "weapon_name": "Comet Swarm",
       "state": "final",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 3,
@@ -377,6 +403,7 @@
       "weapon_id": "ash-halo",
       "weapon_name": "Ash Halo",
       "state": "solo",
+      "capture_version": "1.5.1",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 0,
@@ -387,13 +414,14 @@
       "file": "outputs/nighttrace-upgrade-runtime-captures/ash-halo/solo.png",
       "width": 1440,
       "height": 900,
-      "bytes": 274661,
-      "sha256": "213cca38633a750a0db8b6f2650ca358ff57a4c3f5330ca210cdfd06afdd4c3b"
+      "bytes": 2148225,
+      "sha256": "fa7f4cc19942f196b50fdd0b53ecee5851a3efa2139ebddde4c3218ea851f966"
     },
     {
       "weapon_id": "ash-halo",
       "weapon_name": "Ash Halo",
       "state": "combined",
+      "capture_version": "1.5.1",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 1,
@@ -404,13 +432,14 @@
       "file": "outputs/nighttrace-upgrade-runtime-captures/ash-halo/combined.png",
       "width": 1440,
       "height": 900,
-      "bytes": 275593,
-      "sha256": "29b421c601a552276091a8d5fb72f9da31d03f970a00ac7a20c15f75beb51afe"
+      "bytes": 2146844,
+      "sha256": "dd3496892531137e93c3401615519292e884950e12f82c96f1feb10125ceb442"
     },
     {
       "weapon_id": "ash-halo",
       "weapon_name": "Ash Halo",
       "state": "mastered",
+      "capture_version": "1.5.1",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 0,
@@ -421,13 +450,14 @@
       "file": "outputs/nighttrace-upgrade-runtime-captures/ash-halo/mastered.png",
       "width": 1440,
       "height": 900,
-      "bytes": 276826,
-      "sha256": "1417068f2b9da2187cb447a2107694132d3dbb76b3264b0c66beabde90d4f83a"
+      "bytes": 2154876,
+      "sha256": "afb25a6b044b42ce747032737bf2bf4e1667e574f18b516aeb99aff0bbda2366"
     },
     {
       "weapon_id": "ash-halo",
       "weapon_name": "Ash Halo",
       "state": "final",
+      "capture_version": "1.5.1",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 3,
@@ -438,13 +468,14 @@
       "file": "outputs/nighttrace-upgrade-runtime-captures/ash-halo/final.png",
       "width": 1440,
       "height": 900,
-      "bytes": 284917,
-      "sha256": "3eefc346e6759326bb9a31d34d6d2b4ab8e69cb863e56290298dedeb780fc115"
+      "bytes": 2157873,
+      "sha256": "54387e8b98d23efa4b473c8ed3ba715755eace57779a93e55e164d16b9ce7d1e"
     },
     {
       "weapon_id": "mirror-bow",
       "weapon_name": "Mirror Bow",
       "state": "solo",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 0,
@@ -462,6 +493,7 @@
       "weapon_id": "mirror-bow",
       "weapon_name": "Mirror Bow",
       "state": "combined",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 1,
@@ -479,6 +511,7 @@
       "weapon_id": "mirror-bow",
       "weapon_name": "Mirror Bow",
       "state": "mastered",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 0,
@@ -496,6 +529,7 @@
       "weapon_id": "mirror-bow",
       "weapon_name": "Mirror Bow",
       "state": "final",
+      "capture_version": "1.4.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 3,
@@ -513,6 +547,7 @@
       "weapon_id": "null-bell",
       "weapon_name": "Null Bell",
       "state": "solo",
+      "capture_version": "1.5.1",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 0,
@@ -523,13 +558,14 @@
       "file": "outputs/nighttrace-upgrade-runtime-captures/null-bell/solo.png",
       "width": 1440,
       "height": 900,
-      "bytes": 276621,
-      "sha256": "49af9c45b52013bad78c7859586d83433c523315a4a199453fe94eb948f9a808"
+      "bytes": 2151331,
+      "sha256": "1efe59997c15b5d7473debf4dba676c20cb2d68da96e2f2bfd66c021b5db51e7"
     },
     {
       "weapon_id": "null-bell",
       "weapon_name": "Null Bell",
       "state": "combined",
+      "capture_version": "1.5.1",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 1,
@@ -540,13 +576,14 @@
       "file": "outputs/nighttrace-upgrade-runtime-captures/null-bell/combined.png",
       "width": 1440,
       "height": 900,
-      "bytes": 278633,
-      "sha256": "bb151d7a47ae4fd84b768724d3a710fa680981a25b0bbd541d65b390b14dddfb"
+      "bytes": 2151273,
+      "sha256": "7ab09223e10137fc446ad0ce83a90081c24766291c8e65cc4a6c7626ee792ac0"
     },
     {
       "weapon_id": "null-bell",
       "weapon_name": "Null Bell",
       "state": "mastered",
+      "capture_version": "1.5.1",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 0,
@@ -557,13 +594,14 @@
       "file": "outputs/nighttrace-upgrade-runtime-captures/null-bell/mastered.png",
       "width": 1440,
       "height": 900,
-      "bytes": 282095,
-      "sha256": "5005e02fafa66a80bf7b1798df6eccef7f36849ff94531e06cfed62025a0c26f"
+      "bytes": 2164572,
+      "sha256": "9c5861ecb385caf6a2c13a625ec4825b965129d0376d6c08db3a56f04dc69766"
     },
     {
       "weapon_id": "null-bell",
       "weapon_name": "Null Bell",
       "state": "final",
+      "capture_version": "1.5.1",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 3,
@@ -574,8 +612,8 @@
       "file": "outputs/nighttrace-upgrade-runtime-captures/null-bell/final.png",
       "width": 1440,
       "height": 900,
-      "bytes": 284141,
-      "sha256": "47dba42fd588c68fa04796293010547af932d1a3fd1d65f05c641dbbb1e9b82c"
+      "bytes": 2170416,
+      "sha256": "97df6c5180c2343aadd9159ef7a4adabe453633ddf71d46be918fcde90c8deac"
     }
   ]
 }
