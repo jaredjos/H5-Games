@@ -4,6 +4,7 @@ import {
   ALL_WEAPON_VFX_IDS,
   WEAPON_VFX_PALETTE_NAMES,
   resolveWeaponVfxState,
+  weaponVfxMotifProfile,
   weaponVfxProfile,
   type WeaponVfxState,
 } from './weaponVfx'
@@ -127,5 +128,65 @@ describe('weapon VFX profiles', () => {
       expect(Number.isInteger(first.particleCount), weaponId).toBe(true)
       expect(Number.isInteger(first.segmentCount), weaponId).toBe(true)
     }
+  })
+})
+
+describe('reworked area-weapon motifs', () => {
+  it('transforms Ash Halo through a sparse cinder-crown silhouette', () => {
+    const profiles = SHOWCASE_STATES.map((state) =>
+      weaponVfxMotifProfile('ash-halo', state),
+    )
+
+    expect(profiles.map((profile) => profile.primaryCount)).toEqual([3, 5, 7, 8])
+    expect(profiles.map((profile) => profile.fragmentCount)).toEqual([4, 6, 8, 10])
+    expect(profiles.map((profile) => profile.awakeningSignature)).toEqual([
+      null,
+      null,
+      null,
+      'cinder-seraph-wings',
+    ])
+    for (const profile of profiles) {
+      expect(profile).toMatchObject({
+        motif: 'cinder-crown',
+        maxConcurrent: 1,
+        concentricBandCount: 0,
+        usesClosedRing: false,
+      })
+      expect(Object.isFrozen(profile)).toBe(true)
+    }
+  })
+
+  it('transforms Null Bell through directional shattered-toll panes', () => {
+    const profiles = SHOWCASE_STATES.map((state) =>
+      weaponVfxMotifProfile('null-bell', state),
+    )
+
+    expect(profiles.map((profile) => profile.primaryCount)).toEqual([4, 6, 8, 8])
+    expect(profiles.map((profile) => profile.fragmentCount)).toEqual([4, 6, 8, 12])
+    expect(profiles.map((profile) => profile.awakeningSignature)).toEqual([
+      null,
+      null,
+      null,
+      'midnight-silence-cross',
+    ])
+    for (const profile of profiles) {
+      expect(profile).toMatchObject({
+        motif: 'shattered-toll',
+        maxConcurrent: 1,
+        concentricBandCount: 0,
+        usesClosedRing: false,
+      })
+      expect(Object.isFrozen(profile)).toBe(true)
+    }
+  })
+
+  it('keeps the two area weapons visually distinct and deterministic', () => {
+    const state = resolveWeaponVfxState(5, 3, true)
+    const ash = weaponVfxMotifProfile('ash-halo', state)
+    const bell = weaponVfxMotifProfile('null-bell', state)
+
+    expect(ash.motif).not.toBe(bell.motif)
+    expect(weaponVfxMotifProfile('ash-halo', state)).toEqual(ash)
+    expect(weaponVfxMotifProfile('null-bell', state)).toEqual(bell)
   })
 })

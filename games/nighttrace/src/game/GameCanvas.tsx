@@ -95,6 +95,7 @@ import {
 } from './enemyPresentation'
 import {
   resolveWeaponVfxState,
+  weaponVfxMotifProfile,
   weaponVfxProfile,
   type WeaponVfxStage,
   type WeaponVfxState,
@@ -328,6 +329,8 @@ interface WeaponEffectEntity {
   total: number
   seed: number
   points?: Vec2[]
+  hitPulseLife?: number
+  hitPulseTotal?: number
 }
 
 const canvasHostStyle: CSSProperties = {
@@ -621,8 +624,8 @@ class NighttraceRuntime {
       this.projectileLayer.addChild(this.projectileTrailGraphics)
       this.effectLayer.addChild(
         this.motionEchoLayer,
-        this.telegraphGraphics,
         this.weaponVfxGraphics,
+        this.telegraphGraphics,
         this.ringGraphics,
       )
       this.app.stage.addChild(this.world, this.screenEffects)
@@ -966,16 +969,32 @@ class NighttraceRuntime {
         ),
       )
       this.host.dataset.showcaseEffects = String(this.weaponEffects.length)
-      this.host.dataset.showcaseStage =
-        this.weapons[0]
-          ? resolveWeaponVfxState(
-              this.weapons[0].rank,
-              this.modules.find(
-                (module) => module.id === WEAPONS[this.weapons[0].id].moduleId,
-              )?.rank ?? 0,
-              Boolean(this.weapons[0].awakened),
-            ).stage
-          : ''
+      const showcaseWeapon = this.weapons[0]
+      const showcaseState = showcaseWeapon
+        ? resolveWeaponVfxState(
+            showcaseWeapon.rank,
+            this.modules.find(
+              (module) => module.id === WEAPONS[showcaseWeapon.id].moduleId,
+            )?.rank ?? 0,
+            Boolean(showcaseWeapon.awakened),
+          )
+        : undefined
+      this.host.dataset.showcaseStage = showcaseState?.stage ?? ''
+      this.host.dataset.showcaseVisibleEffects = String(
+        showcaseWeapon
+          ? this.weaponEffects.filter((effect) => effect.weaponId === showcaseWeapon.id).length
+          : 0,
+      )
+      const showcaseMotif =
+        showcaseWeapon &&
+        showcaseState &&
+        (showcaseWeapon.id === 'ash-halo' || showcaseWeapon.id === 'null-bell')
+          ? weaponVfxMotifProfile(showcaseWeapon.id, showcaseState)
+          : undefined
+      this.host.dataset.showcaseMotif = showcaseMotif?.motif ?? ''
+      this.host.dataset.showcaseConcentricBands = String(
+        showcaseMotif?.concentricBandCount ?? 0,
+      )
       if (this.elapsed >= showcaseCaptureSeconds(this.showcase.weaponId)) {
         this.showcaseFrozen = true
         this.host.dataset.showcaseReady = 'true'
@@ -1441,14 +1460,14 @@ class NighttraceRuntime {
             ]
           : weaponId === 'ash-halo'
             ? [
-                [112, 0],
-                [84, 84],
-                [0, 122],
-                [-88, 82],
-                [-128, 0],
-                [-88, -82],
-                [0, -126],
-                [86, -84],
+                [106, -18],
+                [72, 88],
+                [-14, 118],
+                [-101, 72],
+                [-124, -24],
+                [-74, -97],
+                [22, -118],
+                [96, -71],
               ]
             : weaponId === 'comet-swarm'
               ? [
@@ -1463,14 +1482,14 @@ class NighttraceRuntime {
                 ]
             : weaponId === 'null-bell'
               ? [
-                  [176, 0],
-                  [132, 132],
-                  [0, 188],
-                  [-136, 134],
-                  [-192, 0],
-                  [-134, -132],
-                  [0, -186],
-                  [132, -134],
+                  [168, -22],
+                  [112, 142],
+                  [-28, 176],
+                  [-158, 112],
+                  [-188, -34],
+                  [-118, -154],
+                  [24, -180],
+                  [148, -104],
                 ]
               : weaponId === 'crescent-array'
                 ? [
@@ -1927,17 +1946,21 @@ class NighttraceRuntime {
       }
       case 'ash-halo': {
         const radius = 126 + rank * 16 + moduleRank * 18
-        this.areaDamage(
+        const impacts = this.areaDamage(
           this.player.x,
           this.player.y,
           radius,
           damage * (1 + moduleRank * 0.1),
           owned.id,
         )
-        this.emitWeaponCastVfx(owned.id, visualState, angle, radius, visualSeed)
-        if (owned.awakened) {
-          this.spawnBurst(this.player.x, this.player.y, 0xffb05e, 16, 210)
-        }
+        this.emitWeaponCastVfx(
+          owned.id,
+          visualState,
+          angle,
+          radius,
+          visualSeed,
+          impacts,
+        )
         break
       }
       case 'mirror-bow':
@@ -1972,17 +1995,21 @@ class NighttraceRuntime {
         break
       case 'null-bell': {
         const radius = 220 + rank * 22 + moduleRank * 14
-        this.areaDamage(
+        const impacts = this.areaDamage(
           this.player.x,
           this.player.y,
           radius,
           damage * (1 + moduleRank * 0.13),
           owned.id,
         )
-        this.emitWeaponCastVfx(owned.id, visualState, angle, radius, visualSeed)
-        if (owned.awakened) {
-          this.spawnBurst(this.player.x, this.player.y, 0xb9c7ff, 18, 180)
-        }
+        this.emitWeaponCastVfx(
+          owned.id,
+          visualState,
+          angle,
+          radius,
+          visualSeed,
+          impacts,
+        )
         break
       }
     }
@@ -2005,6 +2032,43 @@ class NighttraceRuntime {
   }
 
   private pushWeaponEffect(effect: WeaponEffectEntity) {
+    if (effect.kind === 'ash-corona' || effect.kind === 'null-toll') {
+      const existing = this.weaponEffects.find(
+        (candidate) => candidate.kind === effect.kind,
+      )
+      if (existing) {
+        existing.visualState = effect.visualState
+        existing.radius = effect.radius
+        existing.maxRadius = effect.maxRadius
+        existing.points = effect.points
+        existing.hitPulseLife = effect.hitPulseLife
+        existing.hitPulseTotal = effect.hitPulseTotal
+
+        if (effect.kind === 'ash-corona') {
+          // Keep the field alive without rewinding its breathing phase on
+          // every rapid cast. The short hit accent is refreshed separately.
+          existing.life = effect.life
+          existing.total = effect.total
+        } else {
+          const existingProgress = clamp(
+            1 - existing.life / Math.max(existing.total, 0.001),
+            0,
+            1,
+          )
+          // Let an active pressure wave finish. A dense cooldown build may
+          // retrigger only after the previous toll has entered its decay.
+          if (existingProgress >= 0.72) {
+            existing.x = effect.x
+            existing.y = effect.y
+            existing.angle = effect.angle
+            existing.seed = effect.seed
+            existing.life = effect.life
+            existing.total = effect.total
+          }
+        }
+        return
+      }
+    }
     if (this.weaponEffects.length >= 72) {
       let shortestIndex = 0
       for (let index = 1; index < this.weaponEffects.length; index += 1) {
@@ -2023,6 +2087,7 @@ class NighttraceRuntime {
     angle: number,
     radius: number,
     seed: number,
+    points: Vec2[] = [],
   ) {
     const kind: Record<WeaponId, WeaponEffectKind | undefined> = {
       'helio-lance': 'helio-gate',
@@ -2046,6 +2111,8 @@ class NighttraceRuntime {
       'mirror-bow': 0.5,
       'null-bell': visualState.stage === 'final' ? 1.08 : 0.86,
     }[weaponId] ?? 0.5
+    const hitPulseTotal =
+      weaponId === 'ash-halo' ? 0.24 : weaponId === 'null-bell' ? 0.34 : undefined
     this.pushWeaponEffect({
       kind: effectKind,
       weaponId,
@@ -2058,6 +2125,9 @@ class NighttraceRuntime {
       life: duration,
       total: duration,
       seed,
+      points: points.slice(0, 12),
+      hitPulseLife: hitPulseTotal,
+      hitPulseTotal,
     })
 
     const profile = weaponVfxProfile(weaponId, visualState)
@@ -2490,7 +2560,12 @@ class NighttraceRuntime {
     }
     for (const ring of this.rings) ring.life -= delta
     for (const effect of this.loopEffects) effect.life -= delta
-    for (const effect of this.weaponEffects) effect.life -= delta
+    for (const effect of this.weaponEffects) {
+      effect.life -= delta
+      if (effect.hitPulseLife !== undefined) {
+        effect.hitPulseLife = Math.max(0, effect.hitPulseLife - delta)
+      }
+    }
     this.screenFlashAlpha = Math.max(0, this.screenFlashAlpha - delta * 1.5)
     this.shake = Math.max(0, this.shake - delta * 26)
   }
@@ -2976,10 +3051,13 @@ class NighttraceRuntime {
 
   private areaDamage(x: number, y: number, radius: number, damage: number, weaponId: WeaponId) {
     const radiusSquared = radius * radius
+    const impacts: Vec2[] = []
     for (const enemy of this.enemies) {
       if (!enemy.active || (enemy.x - x) ** 2 + (enemy.y - y) ** 2 > radiusSquared) continue
       this.damageEnemy(enemy, damage, weaponId)
+      if (impacts.length < 12) impacts.push({ x: enemy.x, y: enemy.y })
     }
+    return impacts
   }
 
   private chainLightning(
@@ -3640,6 +3718,158 @@ class NighttraceRuntime {
     graphics.stroke({ color, width, alpha })
   }
 
+  private drawCinderFeather(
+    graphics: Graphics,
+    x: number,
+    y: number,
+    angle: number,
+    length: number,
+    width: number,
+    glowColor: number,
+    coreColor: number,
+    alpha: number,
+    bend: -1 | 1,
+  ) {
+    const forwardX = Math.cos(angle)
+    const forwardY = Math.sin(angle)
+    const normalX = -forwardY
+    const normalY = forwardX
+    const buildPoints = (widthScale: number, lengthScale: number) => {
+      const halfWidth = width * widthScale
+      const tailX = x - forwardX * length * 0.48 * lengthScale
+      const tailY = y - forwardY * length * 0.48 * lengthScale
+      const shoulderX =
+        x +
+        forwardX * length * 0.02 * lengthScale +
+        normalX * bend * width * 0.22
+      const shoulderY =
+        y +
+        forwardY * length * 0.02 * lengthScale +
+        normalY * bend * width * 0.22
+      const tipX =
+        x +
+        forwardX * length * 0.58 * lengthScale +
+        normalX * bend * width * 0.48
+      const tipY =
+        y +
+        forwardY * length * 0.58 * lengthScale +
+        normalY * bend * width * 0.48
+      return [
+        tailX + normalX * halfWidth * 0.18,
+        tailY + normalY * halfWidth * 0.18,
+        shoulderX + normalX * halfWidth,
+        shoulderY + normalY * halfWidth,
+        tipX,
+        tipY,
+        shoulderX - normalX * halfWidth * 0.62,
+        shoulderY - normalY * halfWidth * 0.62,
+        tailX - normalX * halfWidth * 0.12,
+        tailY - normalY * halfWidth * 0.12,
+      ]
+    }
+
+    graphics
+      .poly(buildPoints(1.28, 1.08), true)
+      .fill({ color: glowColor, alpha: alpha * 0.15 })
+    graphics
+      .poly(buildPoints(0.72, 1), true)
+      .fill({ color: glowColor, alpha: alpha * 0.62 })
+    graphics
+      .poly(buildPoints(0.28, 0.86), true)
+      .fill({ color: coreColor, alpha: alpha * 0.92 })
+  }
+
+  private drawBellGlyph(
+    graphics: Graphics,
+    x: number,
+    y: number,
+    size: number,
+    rotation: number,
+    edgeColor: number,
+    coreColor: number,
+    alpha: number,
+  ) {
+    const cos = Math.cos(rotation)
+    const sin = Math.sin(rotation)
+    const transform = (localX: number, localY: number): [number, number] => [
+      x + (localX * cos - localY * sin) * size,
+      y + (localX * sin + localY * cos) * size,
+    ]
+    const canopy = [
+      transform(-0.5, 0.24),
+      transform(-0.34, -0.28),
+      transform(-0.2, -0.48),
+      transform(0.2, -0.48),
+      transform(0.34, -0.28),
+      transform(0.5, 0.24),
+      transform(0.3, 0.34),
+      transform(-0.3, 0.34),
+    ].flat()
+    const clapper = [
+      transform(0, 0.22),
+      transform(0.16, 0.5),
+      transform(0, 0.66),
+      transform(-0.16, 0.5),
+    ].flat()
+
+    graphics
+      .poly(canopy, true)
+      .fill({ color: 0x0b0d21, alpha: alpha * 0.74 })
+      .stroke({ color: edgeColor, width: Math.max(1.5, size * 0.08), alpha })
+    graphics
+      .poly(clapper, true)
+      .fill({ color: coreColor, alpha: alpha * 0.94 })
+  }
+
+  private drawPressureWedge(
+    graphics: Graphics,
+    x: number,
+    y: number,
+    angle: number,
+    distance: number,
+    length: number,
+    width: number,
+    edgeColor: number,
+    fillColor: number,
+    alpha: number,
+  ) {
+    const forwardX = Math.cos(angle)
+    const forwardY = Math.sin(angle)
+    const normalX = -forwardY
+    const normalY = forwardX
+    const backX = x + forwardX * (distance - length * 0.52)
+    const backY = y + forwardY * (distance - length * 0.52)
+    const shoulderX = x + forwardX * (distance + length * 0.16)
+    const shoulderY = y + forwardY * (distance + length * 0.16)
+    const tipX = x + forwardX * (distance + length * 0.64)
+    const tipY = y + forwardY * (distance + length * 0.64)
+
+    graphics
+      .poly(
+        [
+          backX + normalX * width * 0.22,
+          backY + normalY * width * 0.22,
+          shoulderX + normalX * width * 0.5,
+          shoulderY + normalY * width * 0.5,
+          tipX,
+          tipY,
+          shoulderX - normalX * width * 0.5,
+          shoulderY - normalY * width * 0.5,
+          backX - normalX * width * 0.22,
+          backY - normalY * width * 0.22,
+          x + forwardX * (distance - length * 0.12),
+          y + forwardY * (distance - length * 0.12),
+        ],
+        true,
+      )
+      .fill({ color: fillColor, alpha: alpha * 0.12 })
+      .stroke({
+        color: edgeColor,
+        width: Math.max(1.4, width * 0.055),
+        alpha: alpha * 0.88,
+      })
+  }
+
   private drawCrescentGlyph(
     graphics: Graphics,
     x: number,
@@ -3719,6 +3949,10 @@ class NighttraceRuntime {
       if (effect.life <= 0) {
         this.weaponEffects.splice(index, 1)
         continue
+      }
+      if (effect.kind === 'ash-corona') {
+        effect.x = this.player.x
+        effect.y = this.player.y
       }
       const progress = clamp(1 - effect.life / effect.total, 0, 1)
       const attack = clamp(progress / 0.14, 0, 1)
@@ -4104,88 +4338,172 @@ class NighttraceRuntime {
           break
         }
         case 'ash-corona': {
-          graphics
-            .circle(effect.x, effect.y, radius)
-            .fill({ color: profile.glowColor, alpha: motionAlpha * (0.025 + stage * 0.008) })
-          this.drawJaggedRing(
-            graphics,
-            effect.x,
-            effect.y,
-            radius,
-            34 + stage * 8,
-            rotation,
-            effect.seed,
-            3 + stage * 1.8,
-            profile.glowColor,
-            9 + stage * 1.4,
-            motionAlpha * 0.09,
+          const motif = weaponVfxMotifProfile('ash-halo', state)
+          const crownCycle =
+            ((this.motionClock * (0.38 + stage * 0.035) +
+              effect.seed * 0.00071) %
+              1 +
+              1) %
+            1
+          const crownBreath = (Math.sin(crownCycle * Math.PI * 2) + 1) * 0.5
+          const hitPulse = clamp(
+            (effect.hitPulseLife ?? 0) /
+              Math.max(effect.hitPulseTotal ?? 1, 0.001),
+            0,
+            1,
           )
-          this.drawJaggedRing(
-            graphics,
-            effect.x,
-            effect.y,
-            radius,
-            34 + stage * 8,
-            rotation,
-            effect.seed,
-            3 + stage * 1.8,
-            profile.accentColor,
-            3.3 + stage * 0.55,
-            motionAlpha * 0.9,
-          )
-          this.drawSegmentedRing(
-            graphics,
-            effect.x,
-            effect.y,
-            radius * (0.82 - stage * 0.03),
-            9 + stage * 4,
-            -rotation * 1.2,
-            profile.coreColor,
-            1.8 + stage * 0.28,
-            motionAlpha * 0.64,
-            0.5,
-          )
-          this.drawRadialTicks(
-            graphics,
-            effect.x,
-            effect.y,
-            radius * 0.96,
-            12 + stage * 6,
-            7 + stage * 3,
-            -rotation,
-            stage === 3 ? profile.secondaryColor : profile.accentColor,
-            1.6 + stage * 0.2,
-            motionAlpha * 0.68,
-          )
-          const embers = 7 + stage * 5
-          for (let ember = 0; ember < embers; ember += 1) {
-            const emberAngle = rotation * (ember % 2 ? -0.8 : 1) + (Math.PI * 2 * ember) / embers
-            const emberRadius = radius * (0.72 + ((effect.seed + ember * 7) % 23) / 100)
-            graphics
-              .circle(
-                effect.x + Math.cos(emberAngle) * emberRadius,
-                effect.y + Math.sin(emberAngle) * emberRadius,
-                1.6 + (ember % 3) * 0.7,
-              )
-              .fill({
-                color: ember % 2 ? profile.coreColor : profile.accentColor,
-                alpha: motionAlpha * 0.72,
-              })
-          }
-          if (stage === 3) {
-            const crownY = effect.y - radius * 0.94
-            this.drawStarburst(
-              graphics,
-              effect.x,
-              crownY,
-              9,
-              2,
-              radius * 0.18,
-              rotation,
-              profile.coreColor,
-              2.2,
-              motionAlpha * 0.82,
+          const holdFade = clamp(effect.life / 0.16, 0, 1)
+          const crownAlpha =
+            holdFade *
+            (0.68 + crownBreath * 0.16 + hitPulse * 0.16) *
+            (this.settings.reducedFlash ? 0.7 : 1)
+          const crownRadius =
+            effect.maxRadius * (0.72 + crownBreath * 0.08 + hitPulse * 0.05)
+          const crownRotation =
+            effect.angle +
+            this.motionClock * (0.34 + stage * 0.055) +
+            effect.seed * 0.013
+          const membranePoints: number[] = []
+          for (let point = 0; point < 12; point += 1) {
+            const pointAngle =
+              crownRotation * 0.32 + (Math.PI * 2 * point) / 12
+            const noise =
+              0.92 +
+              Math.sin((effect.seed + point * 19) * 1.371) * 0.045 +
+              Math.sin(crownCycle * Math.PI * 2 + point * 1.83) * 0.025
+            membranePoints.push(
+              effect.x + Math.cos(pointAngle) * crownRadius * noise,
+              effect.y + Math.sin(pointAngle) * crownRadius * noise * 0.78,
             )
+          }
+          graphics
+            .poly(membranePoints, true)
+            .fill({
+              color: 0x57252a,
+              alpha: crownAlpha * (0.022 + stage * 0.004),
+            })
+
+          const featherPositions: Vec2[] = []
+          const halfFinalCount = Math.ceil(motif.primaryCount / 2)
+          for (let feather = 0; feather < motif.primaryCount; feather += 1) {
+            const direction: -1 | 1 = feather % 2 === 0 ? 1 : -1
+            let featherAngle: number
+            if (stage === 3) {
+              const wing = feather < halfFinalCount ? -1 : 1
+              const slot = feather % halfFinalCount
+              const fanOffset = (slot - (halfFinalCount - 1) * 0.5) * 0.24
+              featherAngle =
+                crownRotation * 0.48 +
+                (wing < 0 ? Math.PI * 0.08 : Math.PI * 1.08) +
+                wing * fanOffset
+            } else {
+              const jitter = Math.sin((effect.seed + feather * 23) * 1.19) * 0.1
+              featherAngle =
+                crownRotation * (direction > 0 ? 0.62 : -0.44) +
+                (Math.PI * 2 * feather) / motif.primaryCount +
+                jitter
+            }
+            const featherRadius =
+              crownRadius *
+              (0.68 + ((effect.seed + feather * 11) % 17) / 100)
+            const featherX = effect.x + Math.cos(featherAngle) * featherRadius
+            const featherY =
+              effect.y + Math.sin(featherAngle) * featherRadius * 0.78
+            featherPositions.push({ x: featherX, y: featherY })
+            this.drawCinderFeather(
+              graphics,
+              featherX,
+              featherY,
+              featherAngle + direction * Math.PI * 0.48,
+              25 + stage * 7 + hitPulse * 8,
+              7 + stage * 1.7,
+              profile.glowColor,
+              feather % 3 === 0 ? profile.coreColor : profile.secondaryColor,
+              crownAlpha * (0.72 + hitPulse * 0.18),
+              direction,
+            )
+            this.drawDiamondGlyph(
+              graphics,
+              featherX,
+              featherY,
+              2.8 + stage * 0.6,
+              featherAngle,
+              feather % 2 ? profile.secondaryColor : profile.coreColor,
+              crownAlpha * 0.82,
+              true,
+            )
+          }
+
+          const lashAlpha =
+            hitPulse * holdFade * (this.settings.reducedFlash ? 0.7 : 1)
+          for (let hit = 0; hit < Math.min(effect.points?.length ?? 0, 3 + stage); hit += 1) {
+            const target = effect.points?.[hit]
+            const source = featherPositions[hit % featherPositions.length]
+            if (!target || !source) continue
+            const dx = target.x - source.x
+            const dy = target.y - source.y
+            const length = Math.max(1, Math.hypot(dx, dy))
+            const normalX = -dy / length
+            const normalY = dx / length
+            const bend = (hit % 2 ? -1 : 1) * Math.min(18, length * 0.18)
+            const lash = [
+              source,
+              {
+                x: lerp(source.x, target.x, 0.52) + normalX * bend,
+                y: lerp(source.y, target.y, 0.52) + normalY * bend,
+              },
+              target,
+            ]
+            this.drawPolyline(
+              graphics,
+              lash,
+              profile.glowColor,
+              7 + stage,
+              lashAlpha * 0.1,
+            )
+            this.drawPolyline(
+              graphics,
+              lash,
+              profile.coreColor,
+              1.5 + stage * 0.25,
+              lashAlpha * 0.82,
+            )
+            this.drawDiamondGlyph(
+              graphics,
+              target.x,
+              target.y,
+              4 + stage,
+              crownRotation + hit,
+              profile.secondaryColor,
+              lashAlpha * 0.9,
+              true,
+            )
+          }
+
+          for (let chip = 0; chip < motif.fragmentCount; chip += 1) {
+            const chipAngle =
+              -crownRotation * 0.38 +
+              (Math.PI * 2 * chip) / motif.fragmentCount +
+              Math.sin((effect.seed + chip * 31) * 0.77) * 0.16
+            const chipRadius =
+              crownRadius * (0.58 + ((effect.seed + chip * 7) % 38) / 100)
+            const chipX = effect.x + Math.cos(chipAngle) * chipRadius
+            const chipY = effect.y + Math.sin(chipAngle) * chipRadius * 0.78
+            const chipLength = 4 + (chip % 3) * 2 + stage
+            graphics
+              .moveTo(
+                chipX - Math.cos(chipAngle) * chipLength,
+                chipY - Math.sin(chipAngle) * chipLength,
+              )
+              .lineTo(
+                chipX + Math.cos(chipAngle) * chipLength,
+                chipY + Math.sin(chipAngle) * chipLength,
+              )
+              .stroke({
+                color: chip % 2 ? profile.secondaryColor : profile.accentColor,
+                width: 1.2 + (chip % 2) * 0.5,
+                alpha: crownAlpha * 0.54,
+              })
           }
           break
         }
@@ -4273,85 +4591,259 @@ class NighttraceRuntime {
           break
         }
         case 'null-toll': {
-          graphics
-            .circle(effect.x, effect.y, radius)
-            .fill({ color: profile.glowColor, alpha: motionAlpha * (0.02 + stage * 0.006) })
-          const bands = 2 + stage
-          for (let band = 0; band < bands; band += 1) {
-            const bandRadius = radius * (1 - band * (0.14 + stage * 0.01))
-            this.drawSegmentedRing(
-              graphics,
-              effect.x,
-              effect.y,
-              bandRadius,
-              12 + stage * 4 + band * 2,
-              (band % 2 ? -1 : 1) * rotation,
-              profile.glowColor,
-              Math.max(4, 9 - band * 0.8 + stage * 0.5),
-              motionAlpha * (0.075 - band * 0.008),
-              0.2 + band * 0.03,
-            )
-            this.drawSegmentedRing(
-              graphics,
-              effect.x,
-              effect.y,
-              bandRadius,
-              12 + stage * 4 + band * 2,
-              (band % 2 ? -1 : 1) * rotation,
-              band % 2 ? profile.secondaryColor : profile.accentColor,
-              Math.max(1.3, 3.2 - band * 0.34 + stage * 0.24),
-              motionAlpha * (0.78 - band * 0.1),
-              0.2 + band * 0.03,
-            )
-          }
-          this.drawRadialTicks(
+          const motif = weaponVfxMotifProfile('null-bell', state)
+          const glyphAttack = clamp(progress / 0.1, 0, 1)
+          const glyphDecay = 1 - clamp((progress - 0.34) / 0.32, 0, 1)
+          const glyphAlpha =
+            glyphAttack * glyphDecay * (this.settings.reducedFlash ? 0.7 : 1)
+          const bellY =
+            effect.y -
+            28 -
+            stage * 4 -
+            (1 - glyphAttack) * 10
+          this.drawBellGlyph(
             graphics,
             effect.x,
-            effect.y,
-            radius * 0.94,
-            12 + stage * 6,
-            7 + stage * 2,
-            -rotation,
+            bellY,
+            30 + stage * 5,
+            effect.angle * 0.08,
+            profile.accentColor,
             profile.coreColor,
-            1.6,
-            motionAlpha * 0.64,
+            glyphAlpha,
           )
-          const runes = 4 + stage * 3
-          for (let rune = 0; rune < runes; rune += 1) {
-            const runeAngle = rotation * 0.7 + (Math.PI * 2 * rune) / runes
-            this.drawDiamondGlyph(
+
+          const strikeProgress = clamp(progress / 0.28, 0, 1)
+          const strikeAlpha =
+            Math.sin(strikeProgress * Math.PI) *
+            (this.settings.reducedFlash ? 0.66 : 1)
+          const strikeLength = effect.maxRadius * (0.32 + strikeProgress * 0.5)
+          const strikeDirectionX = Math.cos(effect.angle)
+          const strikeDirectionY = Math.sin(effect.angle)
+          const strikeNormalX = -strikeDirectionY
+          const strikeNormalY = strikeDirectionX
+          const waveform: Vec2[] = []
+          for (let point = 0; point < 9; point += 1) {
+            const t = point / 8
+            const along = (t * 2 - 1) * strikeLength
+            const wave =
+              Math.sin(t * Math.PI * 8) *
+              (1 - Math.abs(t * 2 - 1)) *
+              (9 + stage * 2)
+            waveform.push({
+              x:
+                effect.x +
+                strikeDirectionX * along +
+                strikeNormalX * wave,
+              y:
+                effect.y +
+                strikeDirectionY * along +
+                strikeNormalY * wave,
+            })
+          }
+          this.drawPolyline(
+            graphics,
+            waveform,
+            profile.glowColor,
+            11 + stage * 1.5,
+            strikeAlpha * 0.08,
+          )
+          this.drawPolyline(
+            graphics,
+            waveform,
+            profile.coreColor,
+            2 + stage * 0.28,
+            strikeAlpha * 0.78,
+          )
+
+          const releaseProgress = clamp((progress - 0.08) / 0.58, 0, 1)
+          const releaseDecay = 1 - clamp((progress - 0.72) / 0.28, 0, 1)
+          if (stage >= 2 && releaseProgress > 0) {
+            const plateRadius =
+              lerp(effect.maxRadius * 0.12, effect.maxRadius * 0.74, releaseProgress)
+            const platePoints: number[] = []
+            for (let corner = 0; corner < 4; corner += 1) {
+              const cornerAngle =
+                effect.angle * 0.12 +
+                Math.PI * 0.25 +
+                corner * Math.PI * 0.5
+              platePoints.push(
+                effect.x + Math.cos(cornerAngle) * plateRadius,
+                effect.y + Math.sin(cornerAngle) * plateRadius,
+              )
+            }
+            graphics
+              .poly(platePoints, true)
+              .fill({
+                color: 0x0b0d21,
+                alpha:
+                  releaseDecay *
+                  (this.settings.reducedFlash ? 0.014 : 0.026),
+              })
+
+            const fractureCount = 4 + stage
+            for (let fracture = 0; fracture < fractureCount; fracture += 1) {
+              const fractureAngle =
+                effect.angle * 0.18 +
+                (Math.PI * 2 * fracture) / fractureCount +
+                Math.sin((effect.seed + fracture * 29) * 0.93) * 0.18
+              const bend =
+                (fracture % 2 ? -1 : 1) *
+                plateRadius *
+                (0.08 + (fracture % 3) * 0.018)
+              const normalX = -Math.sin(fractureAngle)
+              const normalY = Math.cos(fractureAngle)
+              this.drawPolyline(
+                graphics,
+                [
+                  {
+                    x: effect.x + Math.cos(fractureAngle) * plateRadius * 0.12,
+                    y: effect.y + Math.sin(fractureAngle) * plateRadius * 0.12,
+                  },
+                  {
+                    x:
+                      effect.x +
+                      Math.cos(fractureAngle) * plateRadius * 0.46 +
+                      normalX * bend,
+                    y:
+                      effect.y +
+                      Math.sin(fractureAngle) * plateRadius * 0.46 +
+                      normalY * bend,
+                  },
+                  {
+                    x: effect.x + Math.cos(fractureAngle) * plateRadius * 0.9,
+                    y: effect.y + Math.sin(fractureAngle) * plateRadius * 0.9,
+                  },
+                ],
+                fracture % 2 ? profile.secondaryColor : profile.accentColor,
+                1.2 + stage * 0.18,
+                releaseDecay * motionAlpha * 0.56,
+              )
+            }
+          }
+
+          for (let wedge = 0; wedge < motif.primaryCount; wedge += 1) {
+            const staggeredRelease = clamp(
+              (releaseProgress - wedge * 0.018) / 0.86,
+              0,
+              1,
+            )
+            const wedgeAngle =
+              effect.angle * 0.2 +
+              (Math.PI * 2 * wedge) / motif.primaryCount +
+              (wedge % 2 ? 0.055 : -0.025)
+            const wedgeDistance = lerp(
+              effect.maxRadius * 0.18,
+              effect.maxRadius * 0.84,
+              1 - (1 - staggeredRelease) ** 3,
+            )
+            const wedgeAlpha =
+              Math.sin(staggeredRelease * Math.PI * 0.82) *
+              releaseDecay *
+              (this.settings.reducedFlash ? 0.7 : 1)
+            this.drawPressureWedge(
               graphics,
-              effect.x + Math.cos(runeAngle) * radius * 0.7,
-              effect.y + Math.sin(runeAngle) * radius * 0.7,
-              3 + stage * 0.7,
-              runeAngle,
-              rune % 3 === 0 ? profile.secondaryColor : profile.accentColor,
-              motionAlpha * 0.58,
-              stage === 3,
+              effect.x,
+              effect.y,
+              wedgeAngle,
+              wedgeDistance,
+              34 + stage * 8,
+              38 + stage * 7,
+              wedge % 3 === 0 ? profile.coreColor : profile.accentColor,
+              0x0b0d21,
+              wedgeAlpha,
             )
           }
+
           if (stage === 3) {
-            const strikeLength = radius * 1.08
-            graphics
-              .moveTo(
-                effect.x - Math.cos(effect.angle) * strikeLength,
-                effect.y - Math.sin(effect.angle) * strikeLength,
-              )
-              .lineTo(
-                effect.x + Math.cos(effect.angle) * strikeLength,
-                effect.y + Math.sin(effect.angle) * strikeLength,
-              )
-              .stroke({ color: profile.glowColor, width: 13, alpha: motionAlpha * 0.1 })
-            graphics
-              .moveTo(
-                effect.x - Math.cos(effect.angle) * strikeLength,
-                effect.y - Math.sin(effect.angle) * strikeLength,
-              )
-              .lineTo(
-                effect.x + Math.cos(effect.angle) * strikeLength,
-                effect.y + Math.sin(effect.angle) * strikeLength,
-              )
-              .stroke({ color: profile.coreColor, width: 3.4, alpha: motionAlpha * 0.82 })
+            const cutProgress = clamp((progress - 0.12) / 0.46, 0, 1)
+            const cutAlpha =
+              Math.sin(cutProgress * Math.PI) *
+              releaseDecay *
+              (this.settings.reducedFlash ? 0.58 : 0.86)
+            const cutRadius = lerp(
+              effect.maxRadius * 0.24,
+              effect.maxRadius * 0.82,
+              1 - (1 - cutProgress) ** 3,
+            )
+            const cutInner = effect.maxRadius * 0.12
+            for (let axis = 0; axis < 2; axis += 1) {
+              const cutAngle =
+                effect.angle * 0.2 + Math.PI * 0.25 + axis * Math.PI * 0.5
+              const directionX = Math.cos(cutAngle)
+              const directionY = Math.sin(cutAngle)
+              const cutColor =
+                axis === 0 ? profile.coreColor : profile.secondaryColor
+              for (const side of [-1, 1]) {
+                const start = {
+                  x: effect.x + directionX * cutInner * side,
+                  y: effect.y + directionY * cutInner * side,
+                }
+                const end = {
+                  x: effect.x + directionX * cutRadius * side,
+                  y: effect.y + directionY * cutRadius * side,
+                }
+                this.drawPolyline(
+                  graphics,
+                  [start, end],
+                  profile.glowColor,
+                  8,
+                  cutAlpha * 0.08,
+                )
+                this.drawPolyline(
+                  graphics,
+                  [start, end],
+                  cutColor,
+                  1.8,
+                  cutAlpha,
+                )
+              }
+            }
+          }
+
+          const hitPulse = clamp(
+            (effect.hitPulseLife ?? 0) /
+              Math.max(effect.hitPulseTotal ?? 1, 0.001),
+            0,
+            1,
+          )
+          const impactAlpha =
+            hitPulse *
+            (this.settings.reducedFlash ? 0.66 : 1)
+          for (let hit = 0; hit < Math.min(effect.points?.length ?? 0, 4 + stage * 2); hit += 1) {
+            const target = effect.points?.[hit]
+            if (!target) continue
+            const targetAngle =
+              Math.atan2(target.y - effect.y, target.x - effect.x) +
+              Math.sin((effect.seed + hit * 17) * 0.71) * 0.18
+            this.drawDiamondGlyph(
+              graphics,
+              target.x,
+              target.y,
+              5 + stage * 1.2,
+              targetAngle + Math.PI * 0.25,
+              hit % 2 ? profile.secondaryColor : profile.coreColor,
+              impactAlpha * 0.86,
+              true,
+            )
+            for (let shard = 0; shard < 3; shard += 1) {
+              const shardAngle = targetAngle + (shard - 1) * 0.72
+              const shardInner = 7 + stage * 1.5
+              const shardOuter = 15 + stage * 3 + shard * 2
+              graphics
+                .moveTo(
+                  target.x + Math.cos(shardAngle) * shardInner,
+                  target.y + Math.sin(shardAngle) * shardInner,
+                )
+                .lineTo(
+                  target.x + Math.cos(shardAngle) * shardOuter,
+                  target.y + Math.sin(shardAngle) * shardOuter,
+                )
+                .stroke({
+                  color: shard === 1 ? profile.coreColor : profile.accentColor,
+                  width: 1.4 + stage * 0.18,
+                  alpha: impactAlpha * 0.72,
+                })
+            }
           }
           break
         }
@@ -5202,9 +5694,9 @@ class NighttraceRuntime {
       'arc-choir': [38, 20],
       'rift-seeds': [31, 31],
       'comet-swarm': [38, 22],
-      'ash-halo': [27, 27],
+      'ash-halo': [34, 20],
       'mirror-bow': [54, 21],
-      'null-bell': [36, 36],
+      'null-bell': [30, 32],
     }[weaponId] as [number, number]
   }
 
@@ -5421,36 +5913,73 @@ class NighttraceRuntime {
     }
 
     if (projectile.weaponId === 'ash-halo') {
-      this.drawStarburst(
+      for (const side of [-1, 1]) {
+        this.drawPolyline(
+          graphics,
+          [
+            {
+              x: startX + normalX * side * (3 + stage),
+              y: startY + normalY * side * (3 + stage),
+            },
+            {
+              x:
+                lerp(startX, x, 0.58) +
+                normalX * side * (7 + stage * 2),
+              y:
+                lerp(startY, y, 0.58) +
+                normalY * side * (7 + stage * 2),
+            },
+            {
+              x: x - dx * 3 + normalX * side * 1.5,
+              y: y - dy * 3 + normalY * side * 1.5,
+            },
+          ],
+          side > 0 ? profile.secondaryColor : profile.accentColor,
+          side > 0 ? 1.6 : 2.2,
+          side > 0 ? 0.5 : 0.42,
+        )
+      }
+      this.drawCinderFeather(
         graphics,
-        x,
-        y,
-        7 + stage * 2,
-        2,
-        8 + stage * 2,
-        this.motionClock + projectile.visualSeed,
-        profile.accentColor,
-        1.6,
-        0.72,
+        x - dx * 2,
+        y - dy * 2,
+        Math.atan2(dy, dx),
+        12 + stage * 2,
+        4 + stage,
+        profile.glowColor,
+        profile.coreColor,
+        0.62,
+        projectile.visualSeed % 2 === 0 ? 1 : -1,
       )
       return
     }
 
     if (projectile.weaponId === 'null-bell') {
-      for (let ring = 0; ring < 2 + stage; ring += 1) {
-        this.drawSegmentedRing(
+      const echoes = 1 + Math.min(2, stage)
+      for (let echo = 0; echo < echoes; echo += 1) {
+        const centerX = x - dx * (8 + echo * 9)
+        const centerY = y - dy * (8 + echo * 9)
+        const depth = 7 + echo * 3
+        const spread = 7 + stage * 1.5 + echo * 1.5
+        this.drawPolyline(
           graphics,
-          x - dx * ring * 5,
-          y - dy * ring * 5,
-          6 + ring * 3,
-          8 + stage * 2,
-          this.motionClock * (ring % 2 ? -1 : 1),
-          ring % 2 ? profile.secondaryColor : profile.accentColor,
-          1.2,
-          0.48 - ring * 0.06,
-          0.5,
+          [
+            {
+              x: centerX - dx * depth + normalX * spread,
+              y: centerY - dy * depth + normalY * spread,
+            },
+            { x: centerX + dx * depth, y: centerY + dy * depth },
+            {
+              x: centerX - dx * depth - normalX * spread,
+              y: centerY - dy * depth - normalY * spread,
+            },
+          ],
+          echo % 2 ? profile.secondaryColor : profile.accentColor,
+          Math.max(1, 1.8 - echo * 0.28),
+          0.48 - echo * 0.1,
         )
       }
+      return
     }
   }
 
@@ -5508,12 +6037,16 @@ class NighttraceRuntime {
     })
     create('ash-halo', (graphics, color) => {
       graphics
-        .poly([16, 0, 28, 13, 25, 29, 16, 38, 5, 29, 1, 15, 11, 6], true)
-        .fill({ color, alpha: 0.82 })
+        .poly([0, 14, 14, 3, 34, 7, 48, 14, 34, 21, 14, 25], true)
+        .fill({ color, alpha: 0.28 })
       graphics
-        .poly([16, 7, 22, 17, 18, 31, 10, 27, 9, 17], true)
-        .fill({ color: 0xfff2c9, alpha: 0.94 })
-      graphics.circle(16, 20, 12).stroke({ color: 0xffc45a, width: 2, alpha: 0.56 })
+        .poly([6, 14, 20, 7, 45, 14, 20, 21], true)
+        .fill({ color: 0xffd06a, alpha: 0.8 })
+      graphics
+        .poly([14, 14, 26, 11, 46, 14, 26, 17], true)
+        .fill({ color: 0xfff2c9, alpha: 0.98 })
+      graphics.moveTo(4, 8).lineTo(18, 4).stroke({ color: color, width: 1.5, alpha: 0.62 })
+      graphics.moveTo(4, 20).lineTo(18, 24).stroke({ color: 0xffd06a, width: 1.2, alpha: 0.56 })
     })
     create('mirror-bow', (graphics, color) => {
       graphics.poly([0, 16, 20, 1, 65, 8, 82, 16, 65, 24, 20, 31], true).fill({ color, alpha: 0.24 })
@@ -5522,12 +6055,16 @@ class NighttraceRuntime {
       graphics.poly([34, 5, 42, 16, 34, 27, 26, 16], true).stroke({ color: 0xc196ff, width: 2, alpha: 0.68 })
     })
     create('null-bell', (graphics, color) => {
-      graphics.circle(21, 21, 19).fill({ color, alpha: 0.12 })
-      graphics.circle(21, 21, 18).stroke({ color, width: 3.5, alpha: 0.72 })
-      graphics.circle(21, 21, 11).stroke({ color: 0xffd27a, width: 2.4, alpha: 0.62 })
-      graphics.circle(21, 21, 5).stroke({ color: 0xf0f1ff, width: 2.6, alpha: 0.92 })
-      graphics.moveTo(21, 0).lineTo(21, 42).stroke({ color: 0xf0f1ff, width: 1.2, alpha: 0.54 })
-      graphics.circle(21, 21, 2.5).fill({ color: 0xffffff, alpha: 0.98 })
+      graphics
+        .poly([4, 25, 9, 10, 15, 4, 27, 4, 33, 10, 38, 25, 31, 30, 11, 30], true)
+        .fill({ color: 0x0b0d21, alpha: 0.94 })
+        .stroke({ color, width: 3.2, alpha: 0.86 })
+      graphics
+        .poly([21, 25, 27, 34, 21, 40, 15, 34], true)
+        .fill({ color: 0xf0f1ff, alpha: 0.96 })
+      graphics
+        .poly([11, 18, 21, 11, 31, 18, 21, 23], true)
+        .stroke({ color: 0xb6a0ff, width: 1.8, alpha: 0.68 })
     })
 
     const spark = new Graphics()

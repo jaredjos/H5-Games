@@ -16,10 +16,11 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.3.1` — runtime-captured upgrade documentation plus stronger, species-specific horde locomotion, attack anticipation/release poses, sovereign motion profiles, responsive shadows, footfalls, hover trails, and compact attack accents
 - `v1.4.0` — a complete eight-weapon visual overhaul with stage-aware silhouettes, cast gates, impact punctuation, mastery density, awakened signatures, deterministic 32-state capture evidence, and landscape-phone validation
 - `v1.5.0` — public Combat Lab and Boss Trials modes, isolated ten-boss progression, configurable no-limit testing, hostile-palette horde/boss motion graphics, mode-aware HUD/results, and expanded desktop/mobile validation
+- `v1.5.1` — Ash Halo and Null Bell clarity rework: non-concentric Cinder Crown and Shattered Toll silhouettes, continuous rapid-fire motion, a distinct Final Bell silence cross, refreshed runtime proofs, and desktop/mobile validation
 
 ## Runtime guide and visual evidence
 
-- [Combat Systems Codex (PDF)](https://jaredjos.github.io/H5-Games/nighttrace/docs/NIGHTTRACE_Combat_Systems_Codex.pdf) — 23 pages covering every weapon state, modules, Trace Mods, Astrarium, support relics, all ten boss signatures, adaptive boss HP, and the current minute-based difficulty curve
+- [Combat Systems Codex (PDF)](https://jaredjos.github.io/H5-Games/nighttrace/docs/NIGHTTRACE_Combat_Systems_Codex.pdf) — the core combat reference; use the current upgrade-state sheet below for the v1.5.1 Halo and Bell silhouettes
 - [Upgrade states: Helio Lance through Rift Seeds](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-01.png)
 - [Upgrade states: Comet Swarm through Null Bell](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-02.png)
 - [Capture manifest](https://jaredjos.github.io/H5-Games/nighttrace/docs/capture-manifest.json) — deterministic loadouts, local-only routes, viewport, file hashes, and capture method for all 32 real gameplay frames
@@ -122,9 +123,10 @@ Each weapon now has a full four-stage visual identity. Helio Lance builds from
 a focused solar rail into a crowned spear gate; Crescent Array grows into an
 eclipsed orbit wheel; Arc Choir forms cathedral-like lightning geometry; Rift
 Seeds compress into dark singularities; Comet Swarm gains ember-rich curved
-wakes; Ash Halo becomes a living cinder corona; Mirror Bow refracts through
-prismatic lanes; and Null Bell resolves as a runic compression field with a
-final strike axis. Cast, travel, impact, decay, mastery density, and awakening
+wakes; Ash Halo becomes a sparse Cinder Crown of ember sentinels and seraph-wing
+fans; Mirror Bow refracts through prismatic lanes; and Null Bell resolves as
+directional Shattered Toll panes with a Final silence cross. Neither area power
+uses stacked circular bands. Cast, travel, impact, decay, mastery density, and awakening
 punctuation are authored separately while damage, cooldowns, target counts,
 collision radii, and encounter balance remain unchanged.
 

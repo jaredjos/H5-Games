@@ -33,6 +33,22 @@ export interface WeaponVfxProfile {
   segmentCount: number
 }
 
+export type ReworkedAreaWeaponId = 'ash-halo' | 'null-bell'
+export type WeaponVfxMotif = 'cinder-crown' | 'shattered-toll'
+export type WeaponVfxAwakeningSignature =
+  | 'cinder-seraph-wings'
+  | 'midnight-silence-cross'
+
+export interface WeaponVfxMotifProfile {
+  motif: WeaponVfxMotif
+  primaryCount: number
+  fragmentCount: number
+  awakeningSignature: WeaponVfxAwakeningSignature | null
+  maxConcurrent: 1
+  concentricBandCount: 0
+  usesClosedRing: false
+}
+
 export const ALL_WEAPON_VFX_IDS = Object.freeze([
   'helio-lance',
   'crescent-array',
@@ -133,7 +149,7 @@ const BASE_PROFILES = Object.freeze({
     coreColor: 0xfff2c9,
     glowColor: 0xff6b42,
     accentColor: 0xff3828,
-    secondaryColor: 0xffc45a,
+    secondaryColor: 0xffd06a,
     trailLengthScale: 0.54,
     trailWidthScale: 1.24,
     projectileScale: 1,
@@ -155,9 +171,9 @@ const BASE_PROFILES = Object.freeze({
   }),
   'null-bell': Object.freeze({
     coreColor: 0xf0f1ff,
-    glowColor: 0x5f6dff,
+    glowColor: 0x747bff,
     accentColor: 0x8b78ff,
-    secondaryColor: 0xffd27a,
+    secondaryColor: 0xb6a0ff,
     trailLengthScale: 0.58,
     trailWidthScale: 1.3,
     projectileScale: 1.06,
@@ -173,6 +189,29 @@ const STAGE_INDEX: Readonly<Record<WeaponVfxStage, number>> = Object.freeze({
   mastered: 2,
   final: 3,
 })
+
+const REWORKED_AREA_MOTIFS = Object.freeze({
+  'ash-halo': Object.freeze({
+    motif: 'cinder-crown',
+    primaryCounts: Object.freeze([3, 5, 7, 8]),
+    fragmentCounts: Object.freeze([4, 6, 8, 10]),
+    awakeningSignature: 'cinder-seraph-wings',
+  }),
+  'null-bell': Object.freeze({
+    motif: 'shattered-toll',
+    primaryCounts: Object.freeze([4, 6, 8, 8]),
+    fragmentCounts: Object.freeze([4, 6, 8, 12]),
+    awakeningSignature: 'midnight-silence-cross',
+  }),
+} as const satisfies Readonly<Record<
+  ReworkedAreaWeaponId,
+  {
+    motif: WeaponVfxMotif
+    primaryCounts: readonly number[]
+    fragmentCounts: readonly number[]
+    awakeningSignature: WeaponVfxAwakeningSignature
+  }
+>>)
 
 const roundTo = (value: number, places = 3) => {
   const magnitude = 10 ** places
@@ -260,5 +299,24 @@ export function weaponVfxProfile(
       base.segmentCount +
       Math.ceil(state.detail / 2) +
       stageIndex,
+  })
+}
+
+export function weaponVfxMotifProfile(
+  weaponId: ReworkedAreaWeaponId,
+  state: WeaponVfxState,
+): WeaponVfxMotifProfile {
+  const definition = REWORKED_AREA_MOTIFS[weaponId]
+  const stageIndex = STAGE_INDEX[state.stage]
+
+  return Object.freeze({
+    motif: definition.motif,
+    primaryCount: definition.primaryCounts[stageIndex],
+    fragmentCount: definition.fragmentCounts[stageIndex],
+    awakeningSignature:
+      state.stage === 'final' ? definition.awakeningSignature : null,
+    maxConcurrent: 1,
+    concentricBandCount: 0,
+    usesClosedRing: false,
   })
 }

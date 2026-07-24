@@ -49,6 +49,9 @@ unlimited vitality; no Lab result writes rewards or progression.
 - Cyan for player energy and XP, solar gold for rewards, coral for danger, violet for shadow.
 - Painterly 2.5D assets with angular glass-and-brass code-native UI.
 - Enemy silhouettes remain readable beneath allied VFX; saturated coral is reserved for threats.
+- Area powers use one dominant silhouette: Ash Halo is a sparse warm Cinder
+  Crown, while Null Bell is a cool directional Shattered Toll. Neither stacks
+  concentric bands, and boss telegraphs render above both.
 - Horde motion accents are low-alpha and LOD-capped; boss specials may dominate
   the frame through crimson/violet seals, segmented rings, streak echoes, and
   impact cores.

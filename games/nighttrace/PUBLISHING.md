@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.5.0`
+- Current web release: `v1.5.1`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -21,7 +21,7 @@ pnpm build
 pnpm verify:build
 ```
 
-The release is acceptable only when all nine test files and all 96 unit tests
+The release is acceptable only when all nine test files and all 99 unit tests
 pass, lint exits cleanly, the subpath verifier passes, no production source
 maps are emitted, and Vite produces `dist/index.html`.
 
@@ -36,6 +36,14 @@ The v1.5.0 mode and hostile-presentation gate additionally requires:
 - 844×390 landscape combat and mode screens without document overflow
 - 390×844 portrait menus plus a paused landscape combat gate
 - no browser console warnings or errors
+
+The v1.5.1 area-power clarity gate additionally requires:
+
+- Ash Halo reports `cinder-crown`, zero concentric bands, and one live effect
+- Null Bell reports `shattered-toll`, zero concentric bands, and one live effect
+- all four states remain visually distinct in deterministic 1440x900 captures
+- both Final states remain readable in the 844x390 landscape combat viewport
+- dense Halo casts refresh the hit accent without rewinding the crown animation
 
 ## Release archives
 
@@ -65,6 +73,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.3.1`: runtime documentation and enemy/boss motion-readability update.
 - `v1.4.0`: complete eight-weapon VFX overhaul and refreshed runtime evidence.
 - `v1.5.0`: public Combat Lab, progressive Boss Trials, hostile motion/VFX hierarchy, and expanded mobile QA.
+- `v1.5.1`: non-concentric Ash Halo / Null Bell clarity rework, rapid-fire motion continuity, and refreshed runtime proofs.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

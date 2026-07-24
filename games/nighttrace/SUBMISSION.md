@@ -2,7 +2,7 @@
 
 ## Shipping target
 
-NIGHTTRACE v1.5.0 is an installable mobile web app suitable for HTTPS static
+NIGHTTRACE v1.5.1 is an installable mobile web app suitable for HTTPS static
 hosting and Add to Home Screen on current Android and iOS browsers. Menus remain
 usable in portrait; combat is landscape-first and pauses behind an accessible
 rotate gate when required. It supports safe-area insets, 44 px minimum touch
@@ -37,7 +37,7 @@ or remote backend. Campaign progress and settings are stored locally under
 - Hosting: root and nested-path build contract
 - Production hygiene: no source maps and no root-absolute app references
 - Weapon VFX: all eight powers validated across Solo, Combined, Mastered, and
-  Final states; representative Final states validated in landscape-phone view
+  Final states; non-concentric Halo/Bell Final states validated in landscape-phone view
 - Public modes: Combat Lab validated with arbitrary arena/boss/loadout
   selection and infinite vitality; Boss Trials validated with sequential
   locks, curated builds, boss-only start gates, and isolated save progression

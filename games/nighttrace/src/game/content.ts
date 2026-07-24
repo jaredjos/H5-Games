@@ -78,7 +78,7 @@ export const WEAPONS = {
     id: 'ash-halo',
     name: 'Ash Halo',
     shortName: 'Halo',
-    description: 'Rapid cinder pulses scorch every creature close to the bearer.',
+    description: 'A crown of cinder sentinels lashes every creature close to the bearer.',
     moduleId: 'thermal-mantle',
     awakening: 'Cinder Seraph',
     color: 0xff6b42,
@@ -100,7 +100,7 @@ export const WEAPONS = {
     id: 'null-bell',
     name: 'Null Bell',
     shortName: 'Bell',
-    description: 'A midnight toll expands outward and damages a vast surrounding radius.',
+    description: 'A shattered midnight toll drives nightglass pressure fronts through the horde.',
     moduleId: 'deep-capacitor',
     awakening: 'Midnight Absolute',
     color: 0x5f6dff,
@@ -138,7 +138,7 @@ export const MODULES = {
   'thermal-mantle': {
     id: 'thermal-mantle',
     name: 'Thermal Mantle',
-    description: 'Expands Ash Halo radius and increases every cinder pulse.',
+    description: 'Expands the Cinder Crown and strengthens every sentinel lash.',
   },
   'flux-mirror': {
     id: 'flux-mirror',
@@ -148,7 +148,7 @@ export const MODULES = {
   'deep-capacitor': {
     id: 'deep-capacitor',
     name: 'Deep Capacitor',
-    description: 'Widens Null Bell range, amplifies its toll, and accelerates its cadence.',
+    description: 'Widens Shattered Toll pressure fronts and accelerates their cadence.',
   },
 } satisfies Record<ModuleId, ModuleDefinition>
 

@@ -1,5 +1,6 @@
 import {
   Aperture,
+  Bell,
   CircleDot,
   Flame,
   HeartPulse,
@@ -138,7 +139,7 @@ const weaponIcons: Record<WeaponId, typeof Zap> = {
   'comet-swarm': Sparkles,
   'ash-halo': Flame,
   'mirror-bow': Aperture,
-  'null-bell': Radio,
+  'null-bell': Bell,
 }
 
 const moduleIcons: Record<ModuleId, typeof Zap> = {
