@@ -86,6 +86,8 @@ export function PanelFrame({
 
 const NAV_ITEMS: Array<{ id: ShellScreenId; label: string }> = [
   { id: 'campaign', label: 'Campaign' },
+  { id: 'boss-trials', label: 'Trials' },
+  { id: 'combat-lab', label: 'Lab' },
   { id: 'astrarium', label: 'Astrarium' },
   { id: 'codex', label: 'Codex' },
   { id: 'settings', label: 'Settings' },

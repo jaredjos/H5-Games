@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.4.0`
+- Current web release: `v1.5.0`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -21,14 +21,21 @@ pnpm build
 pnpm verify:build
 ```
 
-The release is acceptable only when all seven test files and all 66 unit tests
+The release is acceptable only when all nine test files and all 96 unit tests
 pass, lint exits cleanly, the subpath verifier passes, no production source
 maps are emitted, and Vite produces `dist/index.html`.
 
-The v1.4.0 weapon-visual gate additionally requires 32 deterministic runtime
-captures (eight weapons across Solo, Combined, Mastered, and Final), updated
-capture hashes, and landscape-phone checks with no document overflow or browser
-errors.
+The v1.5.0 mode and hostile-presentation gate additionally requires:
+
+- all ten Lab arenas and bosses visible and selectable
+- Solo, Combined, Mastered, Final, manual rank, awakening, and Trace controls
+- infinite Lab vitality and zero Lab progression writes
+- strict sequential Boss Trial unlocks with no campaign mutations
+- boss-only encounter gates that begin audio from a player gesture
+- visible restrained horde accents and prominent hostile boss specials
+- 844×390 landscape combat and mode screens without document overflow
+- 390×844 portrait menus plus a paused landscape combat gate
+- no browser console warnings or errors
 
 ## Release archives
 
@@ -57,6 +64,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.3.0`: minute-based horde curve and adaptive boss-durability update.
 - `v1.3.1`: runtime documentation and enemy/boss motion-readability update.
 - `v1.4.0`: complete eight-weapon VFX overhaul and refreshed runtime evidence.
+- `v1.5.0`: public Combat Lab, progressive Boss Trials, hostile motion/VFX hierarchy, and expanded mobile QA.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

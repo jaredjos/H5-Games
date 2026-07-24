@@ -3,6 +3,7 @@ import type { RunResult } from '../shared/types'
 import {
   DEFAULT_SAVE,
   SAVE_KEY,
+  applyBossTrialReward,
   applyPersistentReward,
   calculateRunReward,
   createDefaultSave,
@@ -35,6 +36,7 @@ class MemoryStorage implements StorageLike {
 
 function runResult(overrides: Partial<RunResult> = {}): RunResult {
   return {
+    runMode: 'campaign',
     victory: false,
     levelId: 1,
     survivalTime: 150,
@@ -64,6 +66,7 @@ describe('versioned saves', () => {
     const storage = new MemoryStorage()
     const save = createDefaultSave()
     save.dawnShards = 321
+    save.bossTrialClears = 4
     save.upgrades.force = 4
     save.settings.musicVolume = 0.35
 
@@ -73,6 +76,7 @@ describe('versioned saves', () => {
     expect(storage.values.has(SAVE_KEY)).toBe(true)
     expect(loaded).toEqual(stored)
     expect(loaded.dawnShards).toBe(321)
+    expect(loaded.bossTrialClears).toBe(4)
     expect(loaded.upgrades.force).toBe(4)
   })
 
@@ -93,8 +97,9 @@ describe('versioned saves', () => {
       audio: { masterVolume: 4, musicVolume: -2, sfxVolume: 0.4 },
     })
 
-    expect(migrated.version).toBe(2)
+    expect(migrated.version).toBe(3)
     expect(migrated.unlockedLevel).toBe(2)
+    expect(migrated.bossTrialClears).toBe(0)
     expect(migrated.completedLevels).toEqual([1])
     expect(migrated.dawnShards).toBe(12)
     expect(migrated.unlockedWeapons).toEqual(
@@ -112,7 +117,16 @@ describe('versioned saves', () => {
     expect(migrateSave({ version: 1, settings: { musicVolume: 0.62 } }).settings.musicVolume).toBe(0.5)
     expect(migrateSave({ version: 1, settings: { musicVolume: 0.35 } }).settings.musicVolume).toBe(0.35)
     expect(migrateSave({ version: 2, settings: { musicVolume: 0.62 } }).settings.musicVolume).toBe(0.62)
+    expect(migrateSave({ version: 3, settings: { musicVolume: 0.62 } }).settings.musicVolume).toBe(0.62)
     expect(migrateSave({ settings: {} }).settings.musicVolume).toBe(0.5)
+  })
+
+  it('migrates and clamps Boss Trials progress from legacy and current saves', () => {
+    expect(migrateSave({ bossTrialClears: 4.9 }).bossTrialClears).toBe(4)
+    expect(migrateSave({ version: 1, bossTrialClears: -7 }).bossTrialClears).toBe(0)
+    expect(migrateSave({ version: 2, bossTrialClears: 99 }).bossTrialClears).toBe(10)
+    expect(migrateSave({ version: 3, bossTrialClears: 7 }).bossTrialClears).toBe(7)
+    expect(migrateSave({ version: 2 }).bossTrialClears).toBe(0)
   })
 
   it('clamps Astrarium ranks and discards unknown upgrade ids', () => {
@@ -149,6 +163,7 @@ describe('run rewards and mastery', () => {
     expect(next.dawnShards).toBeGreaterThan(0)
     expect(next.completedLevels).toEqual([])
     expect(next.unlockedLevel).toBe(1)
+    expect(next.bossTrialClears).toBe(0)
     expect(next.unlockedWeapons).toEqual(['helio-lance'])
     expect(save.dawnShards).toBe(0)
   })
@@ -171,6 +186,26 @@ describe('run rewards and mastery', () => {
     expect(getMasteryCount(next)).toBe(3)
     expect(hasMastery(next, 1, 'trace')).toBe(true)
     expect(next.dawnShards).toBeGreaterThan(result.dawnShards)
+  })
+
+  it('leaves Boss Trials progress unchanged when campaign rewards are applied', () => {
+    const save = { ...createDefaultSave(), bossTrialClears: 6 }
+    const next = applyPersistentReward(save, runResult({ victory: true }))
+
+    expect(next.bossTrialClears).toBe(6)
+    expect(save.bossTrialClears).toBe(6)
+  })
+
+  it('ignores non-campaign results in campaign progression', () => {
+    const save = { ...createDefaultSave(), bossTrialClears: 2, dawnShards: 40 }
+    const next = applyPersistentReward(save, runResult({
+      runMode: 'boss-trial',
+      victory: true,
+      levelId: 3,
+      dawnShards: 999,
+    }))
+
+    expect(next).toEqual(save)
   })
 
   it('does not award mastery for a failed run', () => {
@@ -201,5 +236,88 @@ describe('run rewards and mastery', () => {
     expect(repeatedReward.firstClearBonus).toBe(0)
     expect(repeatedReward.masteryBonus).toBe(0)
     expect(repeatedReward.newlyEarnedMastery).toEqual([])
+  })
+})
+
+describe('Boss Trials rewards', () => {
+  it('advances only the strict next trial and grants a deterministic first-clear reward', () => {
+    const save = createDefaultSave()
+    const result = runResult({
+      runMode: 'boss-trial',
+      victory: true,
+      levelId: 1,
+      dawnShards: 999,
+    })
+
+    const first = applyBossTrialReward(save, result)
+    const repeatedFromSameState = applyBossTrialReward(save, result)
+
+    expect(first).toEqual(repeatedFromSameState)
+    expect(first.bossTrialClears).toBe(1)
+    expect(first.dawnShards).toBe(15)
+    expect(save).toEqual(DEFAULT_SAVE)
+  })
+
+  it('pays a smaller replay stipend without advancing progress', () => {
+    const firstClear = applyBossTrialReward(
+      createDefaultSave(),
+      runResult({ runMode: 'boss-trial', victory: true, levelId: 1 }),
+    )
+    const replay = applyBossTrialReward(
+      firstClear,
+      runResult({ runMode: 'boss-trial', victory: true, levelId: 1 }),
+    )
+
+    expect(replay.bossTrialClears).toBe(1)
+    expect(replay.dawnShards - firstClear.dawnShards).toBe(4)
+    expect(firstClear.dawnShards).toBeGreaterThan(replay.dawnShards - firstClear.dawnShards)
+  })
+
+  it('rejects skipped, invalid, failed, campaign, and Combat Lab runs', () => {
+    const save = { ...createDefaultSave(), dawnShards: 23 }
+    const results: RunResult[] = [
+      runResult({ runMode: 'boss-trial', victory: true, levelId: 2 }),
+      runResult({ runMode: 'boss-trial', victory: true, levelId: 11 }),
+      runResult({ runMode: 'boss-trial', victory: false, levelId: 1 }),
+      runResult({ runMode: 'campaign', victory: true, levelId: 1 }),
+      runResult({ runMode: 'combat-lab', victory: true, levelId: 1 }),
+    ]
+
+    for (const result of results) {
+      expect(applyBossTrialReward(save, result)).toEqual(save)
+    }
+  })
+
+  it('preserves all campaign progression fields while advancing Boss Trials', () => {
+    const save = createDefaultSave()
+    save.unlockedLevel = 4
+    save.completedLevels = [1, 2, 3]
+    save.mastery = { 1: ['clear', 'trace'] }
+    save.unlockedWeapons = ['helio-lance', 'crescent-array', 'arc-choir', 'rift-seeds']
+    save.upgrades.force = 3
+
+    const next = applyBossTrialReward(
+      save,
+      runResult({ runMode: 'boss-trial', victory: true, levelId: 1 }),
+    )
+
+    expect(next.bossTrialClears).toBe(1)
+    expect(next.unlockedLevel).toBe(save.unlockedLevel)
+    expect(next.completedLevels).toEqual(save.completedLevels)
+    expect(next.mastery).toEqual(save.mastery)
+    expect(next.unlockedWeapons).toEqual(save.unlockedWeapons)
+    expect(next.upgrades).toEqual(save.upgrades)
+  })
+
+  it('closes the tenth trial once and then treats it as a replay', () => {
+    const save = { ...createDefaultSave(), bossTrialClears: 9 }
+    const result = runResult({ runMode: 'boss-trial', victory: true, levelId: 10 })
+    const clear = applyBossTrialReward(save, result)
+    const replay = applyBossTrialReward(clear, result)
+
+    expect(clear.bossTrialClears).toBe(10)
+    expect(clear.dawnShards).toBe(42)
+    expect(replay.bossTrialClears).toBe(10)
+    expect(replay.dawnShards - clear.dawnShards).toBe(13)
   })
 })

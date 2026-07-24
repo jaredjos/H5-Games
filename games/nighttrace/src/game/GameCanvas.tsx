@@ -24,6 +24,7 @@ import type {
   LevelDefinition,
   OwnedModule,
   OwnedWeapon,
+  RunConfig,
   RunResult,
   TraceModId,
   UpgradeOption,
@@ -34,6 +35,7 @@ import {
   GLOBAL_DIFFICULTY_MULTIPLIER,
   WEAPONS,
   createUpgradeDraft,
+  getLevel,
   type UpgradeDraftContext,
 } from './content'
 import { NighttraceAudio } from './audio'
@@ -83,6 +85,15 @@ import {
   showcaseLoadout,
 } from './showcase'
 import {
+  HOSTILE_IMPACT_COLOR,
+  HOSTILE_SHADOW_COLOR,
+  HOSTILE_WARNING_COLOR,
+  bossImpactProgress,
+  bossPresentation,
+  enemyPresentation,
+  sampleHostileEnvelope,
+} from './enemyPresentation'
+import {
   resolveWeaponVfxState,
   weaponVfxProfile,
   type WeaponVfxStage,
@@ -119,6 +130,7 @@ const HERO_ART_ROOT_Y = (690 * HERO_RUNTIME_SCALE) / HERO_RUNTIME_FRAME_SIZE
 const HERO_ART_SCALE = 66 / (550 * HERO_RUNTIME_SCALE)
 
 export interface GameCanvasHandle {
+  beginEncounter(): void
   selectUpgrade(optionId: string): void
   rerollUpgrade(): void
   togglePause(): void
@@ -128,6 +140,7 @@ export interface GameCanvasHandle {
 
 export interface GameCanvasProps {
   level: LevelDefinition
+  runConfig: RunConfig
   settings: GameSettings
   unlockedWeapons: WeaponId[]
   persistentUpgrades: Record<string, number>
@@ -249,6 +262,7 @@ interface TelegraphEntity {
   total: number
   damage: number
   bossAttack: boolean
+  color?: number
 }
 
 interface RingEffect {
@@ -335,6 +349,8 @@ const backgroundForLevel = (levelId: number) => {
 class NighttraceRuntime {
   private readonly host: HTMLDivElement
   private readonly level: LevelDefinition
+  private readonly bossLevel: LevelDefinition
+  private readonly runConfig: RunConfig
   private readonly unlockedWeapons: WeaponId[]
   private readonly persistentUpgrades: Record<string, number>
   private readonly callbacks: RuntimeCallbacks
@@ -407,12 +423,8 @@ class NighttraceRuntime {
   private largestChain = 0
   private readonly showcase = currentLocalWeaponShowcase()
   private showcaseFrozen = false
-  private weapons: OwnedWeapon[] = this.showcase
-    ? showcaseLoadout(this.showcase).weapons
-    : [{ id: 'helio-lance', rank: 1 }]
-  private modules: OwnedModule[] = this.showcase
-    ? showcaseLoadout(this.showcase).modules
-    : []
+  private weapons: OwnedWeapon[] = []
+  private modules: OwnedModule[] = []
   private traceMods: TraceModId[] = []
   private readonly weaponDamage = new Map<WeaponId, number>()
   private readonly random: DeterministicRandom
@@ -438,6 +450,7 @@ class NighttraceRuntime {
   private bossSpawned = false
   private boss?: EnemyEntity
   private bossIntroTimer = 0
+  private awaitingStart = false
   private motionClock = 0
   private heroFacing: Vec2 = { x: 0, y: 1 }
   private heroVisualFacing: -1 | 1 = 1
@@ -473,6 +486,7 @@ class NighttraceRuntime {
   constructor(
     host: HTMLDivElement,
     level: LevelDefinition,
+    runConfig: RunConfig,
     settings: GameSettings,
     unlockedWeapons: WeaponId[],
     persistentUpgrades: Record<string, number>,
@@ -480,6 +494,8 @@ class NighttraceRuntime {
   ) {
     this.host = host
     this.level = level
+    this.runConfig = runConfig
+    this.bossLevel = getLevel(runConfig.bossLevelId)
     this.settings = settings
     this.unlockedWeapons = unlockedWeapons.length ? [...unlockedWeapons] : ['helio-lance']
     this.persistentUpgrades = persistentUpgrades
@@ -487,11 +503,25 @@ class NighttraceRuntime {
     this.audio = new NighttraceAudio(settings)
     this.upgradeSeed = (level.id * 0x9e3779b1) >>> 0
     this.random = new DeterministicRandom((level.id * 0x85ebca6b + 0x27d4eb2d) >>> 0)
-    this.nextSupportPickupAt = this.qaMode
-      ? 18
-      : this.showcase
-        ? Number.POSITIVE_INFINITY
-      : supportPickupFirstDropSeconds(level.difficulty)
+    this.awaitingStart = runConfig.bossOnly
+    if (this.showcase) {
+      const showcaseBuild = showcaseLoadout(this.showcase)
+      this.weapons = showcaseBuild.weapons.map((weapon) => ({ ...weapon }))
+      this.modules = showcaseBuild.modules.map((module) => ({ ...module }))
+    } else if (runConfig.startingLoadout) {
+      this.weapons = runConfig.startingLoadout.weapons.map((weapon) => ({ ...weapon }))
+      this.modules = runConfig.startingLoadout.modules.map((module) => ({ ...module }))
+      this.traceMods = [...runConfig.startingLoadout.traceMods]
+    } else {
+      this.weapons = [{ id: 'helio-lance', rank: 1 }]
+    }
+    this.nextSupportPickupAt = runConfig.bossOnly
+      ? Number.POSITIVE_INFINITY
+      : this.qaMode
+        ? 18
+        : this.showcase
+          ? Number.POSITIVE_INFINITY
+          : supportPickupFirstDropSeconds(level.difficulty)
 
     const vitality = persistentUpgrades.vitality ?? 0
     const aegis = persistentUpgrades.aegis ?? 0
@@ -510,8 +540,10 @@ class NighttraceRuntime {
       maxShield,
       speed: 235 * (1 + redShift * 0.015),
       xp: 0,
-      xpToNext: experienceToNextLevel(1),
-      level: 1,
+      xpToNext: experienceToNextLevel(
+        Math.max(1, Math.min(99, Math.floor(runConfig.playerLevel))),
+      ),
+      level: Math.max(1, Math.min(99, Math.floor(runConfig.playerLevel))),
       pulseCharge: 0,
     }
 
@@ -633,7 +665,9 @@ class NighttraceRuntime {
       this.layout()
       this.initialized = true
       if (this.showcase) this.spawnShowcaseTargets()
-      else for (let index = 0; index < 4; index += 1) this.spawnEnemy()
+      else if (!this.runConfig.bossOnly) {
+        for (let index = 0; index < 4; index += 1) this.spawnEnemy()
+      }
       this.emitSnapshot(true)
     } catch (error) {
       try {
@@ -650,6 +684,15 @@ class NighttraceRuntime {
   updateSettings(settings: GameSettings) {
     this.settings = settings
     this.audio.updateSettings(settings)
+  }
+
+  async beginEncounter() {
+    if (!this.initialized || this.completed) return
+    await this.audio.unlock()
+    if (!this.awaitingStart) return
+    this.awaitingStart = false
+    this.spawnBoss()
+    this.emitSnapshot(true)
   }
 
   selectUpgrade(optionId: string) {
@@ -858,6 +901,15 @@ class NighttraceRuntime {
       }
       return
     }
+    if (this.awaitingStart) {
+      this.updateVisualEffects(delta)
+      this.snapshotClock += delta
+      if (this.snapshotClock >= 0.1) {
+        this.snapshotClock = 0
+        this.emitSnapshot()
+      }
+      return
+    }
     if (this.bossIntroTimer > 0) {
       this.bossIntroTimer = Math.max(0, this.bossIntroTimer - delta)
       this.updateVisualEffects(delta)
@@ -943,12 +995,12 @@ class NighttraceRuntime {
     }
 
     this.updateTrace()
-    this.updateSpawning(delta)
+    if (!this.runConfig.bossOnly) this.updateSpawning(delta)
     this.updateEnemies(delta)
     this.rebuildEnemyGrid()
     this.updateWeapons(delta)
     this.updateProjectiles(delta)
-    this.updateSupportPickups()
+    if (!this.runConfig.bossOnly) this.updateSupportPickups()
     this.updatePickups(delta)
     this.updateTelegraphs(delta)
     this.updateVisualEffects(delta)
@@ -956,12 +1008,14 @@ class NighttraceRuntime {
     const bossAt = this.qaMode
       ? Math.min(45, this.level.duration * 0.2)
       : Math.max(45, this.level.duration - 38)
-    if (!this.bossSpawned && this.elapsed >= bossAt) this.spawnBoss()
+    if (!this.runConfig.bossOnly && !this.bossSpawned && this.elapsed >= bossAt) this.spawnBoss()
 
-    this.hazardTimer -= delta
-    if (this.hazardTimer <= 0 && !this.bossIntroTimer) {
-      this.spawnHazard()
-      this.hazardTimer = Math.max(5.2, 14 - this.level.difficulty * 1.15)
+    if (!this.runConfig.bossOnly) {
+      this.hazardTimer -= delta
+      if (this.hazardTimer <= 0 && !this.bossIntroTimer) {
+        this.spawnHazard()
+        this.hazardTimer = Math.max(5.2, 14 - this.level.difficulty * 1.15)
+      }
     }
 
     if (this.settings.autoPulse && this.player.pulseCharge >= 100) this.activatePulse()
@@ -1044,6 +1098,10 @@ class NighttraceRuntime {
         .stroke({ color: 0xffdf83, width: 2 + heroGlow * 3, alpha: heroGlow * 0.42 })
     }
 
+    const activeHordeCount = this.enemies.reduce(
+      (count, enemy) => count + (enemy.active && !enemy.isBoss ? 1 : 0),
+      0,
+    )
     for (const enemy of this.enemies) {
       if (!enemy.active) continue
       const renderX = lerp(enemy.previousX, enemy.x, this.interpolation)
@@ -1061,8 +1119,8 @@ class NighttraceRuntime {
             attackAngle: enemy.attackMotionAngle,
             attackStyle: enemy.attackMotionStyle,
             reducedMotion: this.settings.reducedShake,
-            bossFrame: this.level.bossFrame,
-            levelId: this.level.id,
+            bossFrame: this.bossLevel.bossFrame,
+            levelId: this.bossLevel.id,
             phase: enemy.phase,
           })
         : sampleEnemyMotion({
@@ -1082,6 +1140,7 @@ class NighttraceRuntime {
         pose,
         moveRatio,
         attackProgress,
+        activeHordeCount,
       )
       enemy.sprite.position.set(renderX + pose.offsetX, renderY + pose.offsetY)
       enemy.sprite.rotation = pose.rotation
@@ -1503,9 +1562,10 @@ class NighttraceRuntime {
     const { x, y } = spawn
     const baseHealth =
       (this.qaMode ? 850 : 1120) *
-      this.level.enemyHealth *
-      (1 + this.level.id * 0.12) *
-      GLOBAL_DIFFICULTY_MULTIPLIER
+      this.bossLevel.enemyHealth *
+      (1 + this.bossLevel.id * 0.12) *
+      GLOBAL_DIFFICULTY_MULTIPLIER *
+      this.runConfig.bossHealthMultiplier
     const estimatedDps = estimateBossDps({
       playerLevel: this.player.level,
       weapons: this.weapons,
@@ -1517,7 +1577,7 @@ class NighttraceRuntime {
     })
     const health = this.qaMode
       ? baseHealth
-      : bossHealthForBuild(baseHealth, estimatedDps, this.level.id)
+      : bossHealthForBuild(baseHealth, estimatedDps, this.bossLevel.id)
 
     enemy.active = true
     enemy.uid = ++this.enemyUid
@@ -1529,25 +1589,26 @@ class NighttraceRuntime {
     enemy.vx = 0
     enemy.vy = 0
     enemy.radius = 58
-    enemy.speed = 48 + this.level.difficulty * 4
+    enemy.speed = 48 + this.bossLevel.difficulty * 4
     enemy.hp = health
     enemy.maxHp = health
-    enemy.damage = 18 + this.level.difficulty * 3.1
+    enemy.damage = 18 + this.bossLevel.difficulty * 3.1
     enemy.xp = 0
     enemy.contactCooldown = 0
     enemy.hitFlash = 0
     enemy.isBoss = true
     enemy.phase = 1
     enemy.facing = 1
+    const introDuration = this.qaMode ? 1.05 : 1.65
     enemy.attackMotionStyle = 'boss-intro'
-    enemy.attackMotionRemaining = this.qaMode ? 1.3 : 2.2
+    enemy.attackMotionRemaining = introDuration
     enemy.attackMotionDuration = enemy.attackMotionRemaining
     enemy.attackMotionAngle = Math.atan2(this.player.y - y, this.player.x - x)
     enemy.attackTimer = 1.75
-    enemy.sprite.texture = this.bossFrames[this.level.bossFrame % 6]
+    enemy.sprite.texture = this.bossFrames[this.bossLevel.bossFrame % 6]
     enemy.sprite.anchor.set(0.5, 0.62)
-    enemy.sprite.width = 210 + this.level.id * 3
-    enemy.sprite.height = 245 + this.level.id * 4
+    enemy.sprite.width = 210 + this.bossLevel.id * 3
+    enemy.sprite.height = 245 + this.bossLevel.id * 4
     enemy.baseScaleX = Math.abs(enemy.sprite.scale.x)
     enemy.baseScaleY = Math.abs(enemy.sprite.scale.y)
     enemy.sprite.scale.set(enemy.baseScaleX, enemy.baseScaleY)
@@ -1556,7 +1617,7 @@ class NighttraceRuntime {
     enemy.sprite.visible = true
     enemy.sprite.position.set(x, y)
     this.boss = enemy
-    this.bossIntroTimer = this.qaMode ? 1.3 : 2.2
+    this.bossIntroTimer = introDuration
     // The React HUD owns the sovereign name reveal. Keep the canvas layer focused
     // on the letterbox, shake, and particle entrance so the title is announced once.
     this.cinematicTitle.text = ''
@@ -1595,7 +1656,7 @@ class NighttraceRuntime {
             maxRadius: 260,
             life: 0.7,
             total: 0.7,
-            color: 0xff6e52,
+            color: bossPresentation(this.bossLevel.bossId).primaryColor,
             width: 8,
           })
           this.audio.playBossPhase(nextPhase)
@@ -1603,7 +1664,7 @@ class NighttraceRuntime {
         enemy.attackTimer -= delta
         if (enemy.attackTimer <= 0) {
           this.bossAttack(enemy)
-          enemy.attackTimer = bossAttackRecoverySeconds(this.level.id, enemy.phase)
+          enemy.attackTimer = bossAttackRecoverySeconds(this.bossLevel.id, enemy.phase)
         }
       }
 
@@ -1650,6 +1711,8 @@ class NighttraceRuntime {
         58,
         1.15,
         enemy.damage * 0.8,
+        false,
+        this.actorAccentColor(enemy),
       )
       enemy.attackTimer = this.random.range(4.8, 6.8)
       return
@@ -1665,6 +1728,8 @@ class NighttraceRuntime {
         34,
         0.76,
         enemy.damage * 1.15,
+        false,
+        this.actorAccentColor(enemy),
       )
       enemy.attackTimer = this.random.range(5.4, 7.4)
       return
@@ -1691,7 +1756,15 @@ class NighttraceRuntime {
 
     if (enemy.id === 'cinder-guard') {
       this.triggerEnemyAttack(enemy, 'slam', 0.92, angle, true)
-      this.queueCircleTelegraph(enemy.x, enemy.y, 92, 0.92, enemy.damage)
+      this.queueCircleTelegraph(
+        enemy.x,
+        enemy.y,
+        92,
+        0.92,
+        enemy.damage,
+        false,
+        this.actorAccentColor(enemy),
+      )
       enemy.attackTimer = this.random.range(6.2, 8.4)
     }
   }
@@ -2265,8 +2338,9 @@ class NighttraceRuntime {
   }
 
   private collectExperience(value: number) {
-    this.player.xp += value
     this.player.pulseCharge = clamp(this.player.pulseCharge + value * 0.16, 0, 100)
+    if (this.runConfig.fixedLoadout) return
+    this.player.xp += value
     while (this.player.xp >= this.player.xpToNext && !this.upgradeOptions?.length) {
       this.levelUp()
     }
@@ -2329,6 +2403,11 @@ class NighttraceRuntime {
             Math.abs(localY) <= telegraph.width * 0.5 + 18
 
       if (hit) this.damagePlayer(telegraph.damage)
+      const impactColor = telegraph.color ?? (
+        telegraph.bossAttack
+          ? bossPresentation(this.bossLevel.bossId).primaryColor
+          : HOSTILE_WARNING_COLOR
+      )
       this.rings.push({
         x: telegraph.x,
         y: telegraph.y,
@@ -2336,10 +2415,39 @@ class NighttraceRuntime {
         maxRadius: telegraph.kind === 'circle' ? telegraph.radius : Math.min(telegraph.length, 180),
         life: 0.26,
         total: 0.26,
-        color: telegraph.bossAttack ? 0xff4e64 : 0xffb45e,
+        color: impactColor,
         width: 10,
       })
-      this.spawnBurst(telegraph.x, telegraph.y, 0xff6a4f, 14, 180)
+      if (telegraph.kind === 'line') {
+        const endX = telegraph.x + Math.cos(telegraph.angle) * telegraph.length
+        const endY = telegraph.y + Math.sin(telegraph.angle) * telegraph.length
+        this.loopEffects.push({
+          points: [
+            { x: telegraph.x, y: telegraph.y },
+            { x: endX, y: endY },
+          ],
+          life: telegraph.bossAttack ? 0.32 : 0.22,
+          total: telegraph.bossAttack ? 0.32 : 0.22,
+          color: impactColor,
+          closed: false,
+          width: Math.max(6, telegraph.width * (telegraph.bossAttack ? 0.32 : 0.2)),
+        })
+        this.spawnBurst(
+          lerp(telegraph.x, endX, 0.72),
+          lerp(telegraph.y, endY, 0.72),
+          impactColor,
+          telegraph.bossAttack ? 12 : 6,
+          telegraph.bossAttack ? 220 : 130,
+        )
+      } else {
+        this.spawnBurst(
+          telegraph.x,
+          telegraph.y,
+          impactColor,
+          telegraph.bossAttack ? 18 : 9,
+          telegraph.bossAttack ? 220 : 150,
+        )
+      }
     }
   }
 
@@ -2497,7 +2605,16 @@ class NighttraceRuntime {
     const wasBoss = enemy.isBoss
     if (lethal) {
       if (wasBoss) {
-        this.spawnMotionEcho(enemy.sprite, enemy.x, enemy.y, this.bossTint(), 0.7, 0, -18, 0.34)
+        this.spawnMotionEcho(
+          enemy.sprite,
+          enemy.x,
+          enemy.y,
+          this.actorAccentColor(enemy),
+          0.7,
+          0,
+          -18,
+          0.34,
+        )
         this.spawnBurst(enemy.x, enemy.y, 0xffd87a, 52, 390)
         this.rings.push({
           x: enemy.x,
@@ -2561,12 +2678,17 @@ class NighttraceRuntime {
       amount *
       GLOBAL_DIFFICULTY_MULTIPLIER *
       (this.qaMode ? 0.1 : 0.72)
-    if (this.player.shield > 0) {
+    if (!this.runConfig.invincible && this.player.shield > 0) {
       const absorbed = Math.min(this.player.shield, remaining)
       this.player.shield -= absorbed
       remaining -= absorbed
     }
-    if (remaining > 0) this.player.hp = Math.max(0, this.player.hp - remaining)
+    if (!this.runConfig.invincible && remaining > 0) {
+      this.player.hp = Math.max(0, this.player.hp - remaining)
+    } else if (this.runConfig.invincible) {
+      this.player.hp = this.player.maxHp
+      this.player.shield = this.player.maxShield
+    }
     this.hurtCooldown = this.qaMode ? 0.75 : 0.42
     this.shieldDelay = 4
     this.shake = Math.max(this.shake, 9)
@@ -2586,14 +2708,17 @@ class NighttraceRuntime {
     this.audio.playGameEnd(victory)
     this.screenFlashAlpha = this.settings.reducedFlash ? 0.05 : 0.25
     const result: RunResult = {
+      runMode: this.runConfig.mode,
       victory,
-      levelId: this.level.id,
-      survivalTime: Math.min(this.elapsed, this.level.duration),
+      levelId: this.bossLevel.id,
+      survivalTime: this.runConfig.bossOnly
+        ? this.elapsed
+        : Math.min(this.elapsed, this.level.duration),
       kills: this.kills,
       closedLoops: this.closedLoops,
       largestChain: this.largestChain,
       dawnShards: victory
-        ? 28 + this.level.id * 16 + Math.floor(this.kills * 0.08) + this.closedLoops * 2
+        ? 28 + this.bossLevel.id * 16 + Math.floor(this.kills * 0.08) + this.closedLoops * 2
         : Math.floor(this.kills * 0.035 + this.closedLoops),
       weaponDamage: this.weapons.map((weapon) => ({
         id: weapon.id,
@@ -2898,7 +3023,7 @@ class NighttraceRuntime {
     // late-phase casts, hazards, and ordinary specials from flooding the arena.
     if (this.activeTelegraphCount > 24) return
     const angle = Math.atan2(this.player.y - enemy.y, this.player.x - enemy.x)
-    const pattern = bossPatternForLevel(this.level.id)
+    const pattern = bossPatternForLevel(this.bossLevel.id)
     const warningTime = Math.max(0.52, 0.9 - enemy.phase * 0.08)
     const attackStyle: AttackMotionStyle = [
       'boss-line',
@@ -3274,6 +3399,7 @@ class NighttraceRuntime {
     life: number,
     damage: number,
     bossAttack = false,
+    color?: number,
   ) {
     if (this.activeTelegraphCount >= 32) return
     const telegraph = this.telegraphs.find((candidate) => !candidate.active)
@@ -3290,6 +3416,7 @@ class NighttraceRuntime {
       total: life,
       damage,
       bossAttack,
+      color,
     }
     if (telegraph) Object.assign(telegraph, next)
     else this.telegraphs.push(next)
@@ -3305,6 +3432,7 @@ class NighttraceRuntime {
     life: number,
     damage: number,
     bossAttack = false,
+    color?: number,
   ) {
     if (this.activeTelegraphCount >= 32) return
     const telegraph = this.telegraphs.find((candidate) => !candidate.active)
@@ -3321,6 +3449,7 @@ class NighttraceRuntime {
       total: life,
       damage,
       bossAttack,
+      color,
     }
     if (telegraph) Object.assign(telegraph, next)
     else this.telegraphs.push(next)
@@ -4263,18 +4392,70 @@ class NighttraceRuntime {
     for (const telegraph of this.telegraphs) {
       if (!telegraph.active) continue
       const progress = 1 - telegraph.life / telegraph.total
-      const pulse = 0.22 + progress * 0.28 + Math.sin(progress * Math.PI * 8) * 0.05
-      const color = telegraph.bossAttack ? 0xff405b : 0xffad55
+      const bossProfile = telegraph.bossAttack
+        ? bossPresentation(this.bossLevel.bossId)
+        : undefined
+      const color = telegraph.color ?? bossProfile?.primaryColor ?? HOSTILE_WARNING_COLOR
+      const secondary = bossProfile?.secondaryColor ?? HOSTILE_WARNING_COLOR
+      const shadow = bossProfile?.shadowColor ?? HOSTILE_SHADOW_COLOR
+      const harden = clamp((progress - 0.58) / 0.42, 0, 1)
+      const pulse =
+        0.16 +
+        progress * 0.22 +
+        Math.sin(progress * Math.PI * (telegraph.bossAttack ? 10 : 8)) * 0.045
+      const flashScale = this.settings.reducedFlash
+        ? bossProfile?.reducedFlashScale ?? 0.44
+        : 1
       if (telegraph.kind === 'circle') {
         this.telegraphGraphics
           .circle(telegraph.x, telegraph.y, telegraph.radius)
-          .fill({ color, alpha: pulse * 0.25 })
+          .fill({ color: shadow, alpha: 0.11 + pulse * 0.12 })
         this.telegraphGraphics
           .circle(telegraph.x, telegraph.y, telegraph.radius)
-          .stroke({ color, width: 3 + progress * 4, alpha: 0.68 })
-        this.telegraphGraphics
-          .circle(telegraph.x, telegraph.y, telegraph.radius * progress)
-          .stroke({ color: 0xfff0bd, width: 2, alpha: 0.72 })
+          .stroke({
+            color,
+            width: (telegraph.bossAttack ? 4.5 : 2.5) + harden * 3,
+            alpha: 0.48 + harden * 0.3,
+          })
+        const convergence = telegraph.radius * (1 - progress * 0.78)
+        this.drawSegmentedRing(
+          this.telegraphGraphics,
+          telegraph.x,
+          telegraph.y,
+          Math.max(8, convergence),
+          telegraph.bossAttack ? 12 + this.bossLevel.id : 8,
+          this.motionClock * (telegraph.bossAttack ? 0.8 : 0.38),
+          secondary,
+          telegraph.bossAttack ? 3.2 : 1.8,
+          (0.42 + harden * 0.42) * flashScale,
+          telegraph.bossAttack ? 0.48 : 0.56,
+        )
+        if (telegraph.bossAttack) {
+          this.drawRadialTicks(
+            this.telegraphGraphics,
+            telegraph.x,
+            telegraph.y,
+            telegraph.radius * 0.82,
+            8 + Math.min(8, this.bossLevel.id),
+            8 + harden * 12,
+            -this.motionClock * 0.32,
+            color,
+            2.2,
+            (0.24 + harden * 0.38) * flashScale,
+          )
+        }
+        if (harden > 0.02) {
+          this.telegraphGraphics
+            .circle(
+              telegraph.x,
+              telegraph.y,
+              Math.max(4, telegraph.radius * 0.11 * harden),
+            )
+            .fill({
+              color: bossProfile?.impactColor ?? HOSTILE_IMPACT_COLOR,
+              alpha: harden * 0.64 * flashScale,
+            })
+        }
       } else {
         const endX = telegraph.x + Math.cos(telegraph.angle) * telegraph.length
         const endY = telegraph.y + Math.sin(telegraph.angle) * telegraph.length
@@ -4294,8 +4475,40 @@ class NighttraceRuntime {
             ],
             true,
           )
-          .fill({ color, alpha: pulse * 0.32 })
-          .stroke({ color, width: 2, alpha: 0.65 })
+          .fill({ color: shadow, alpha: 0.14 + pulse * 0.12 })
+          .stroke({
+            color,
+            width: telegraph.bossAttack ? 3.4 : 2,
+            alpha: 0.52 + harden * 0.26,
+          })
+        this.telegraphGraphics
+          .moveTo(telegraph.x, telegraph.y)
+          .lineTo(endX, endY)
+          .stroke({
+            color: bossProfile?.impactColor ?? HOSTILE_IMPACT_COLOR,
+            width: 1.2 + harden * (telegraph.bossAttack ? 4.8 : 2.2),
+            alpha: (0.16 + harden * 0.72) * flashScale,
+          })
+        if (telegraph.bossAttack) {
+          const combCount = 3
+          for (let index = 1; index <= combCount; index += 1) {
+            const offset = (index / (combCount + 1) - 0.5) * telegraph.width * 1.46
+            this.telegraphGraphics
+              .moveTo(
+                telegraph.x - Math.sin(telegraph.angle) * offset,
+                telegraph.y + Math.cos(telegraph.angle) * offset,
+              )
+              .lineTo(
+                endX - Math.sin(telegraph.angle) * offset,
+                endY + Math.cos(telegraph.angle) * offset,
+              )
+              .stroke({
+                color: secondary,
+                width: 1.3,
+                alpha: (0.16 + harden * 0.36) * flashScale,
+              })
+          }
+        }
       }
     }
 
@@ -4478,6 +4691,22 @@ class NighttraceRuntime {
         -Math.sin(angle) * drift,
         enemy.isBoss ? 0.28 : 0.17,
       )
+      if (enemy.isBoss && style.startsWith('boss-') && style !== 'boss-intro') {
+        const normalX = -Math.sin(angle)
+        const normalY = Math.cos(angle)
+        for (const side of [-1, 1]) {
+          this.spawnMotionEcho(
+            enemy.sprite,
+            enemy.x,
+            enemy.y,
+            bossPresentation(this.bossLevel.bossId).secondaryColor,
+            0.34,
+            -Math.cos(angle) * 24 + normalX * side * 18,
+            -Math.sin(angle) * 24 + normalY * side * 18,
+            0.14,
+          )
+        }
+      }
     }
   }
 
@@ -4542,15 +4771,8 @@ class NighttraceRuntime {
   }
 
   private actorAccentColor(enemy: EnemyEntity) {
-    if (enemy.isBoss) return this.bossTint()
-    return {
-      maskling: 0xff765f,
-      shardwing: 0x8de9ff,
-      cantor: 0xb993ff,
-      railjaw: 0xffa95c,
-      chronowisp: 0x75f2ff,
-      'cinder-guard': 0xff674f,
-    }[enemy.id]
+    if (enemy.isBoss) return bossPresentation(this.bossLevel.bossId).primaryColor
+    return enemyPresentation(enemy.id).primaryColor
   }
 
   private drawEnemyMotionAccent(
@@ -4560,8 +4782,15 @@ class NighttraceRuntime {
     pose: MotionPose,
     moving: number,
     attackProgress: number,
+    activeHordeCount: number,
   ) {
     const accent = this.actorAccentColor(enemy)
+    const bossProfile = enemy.isBoss
+      ? bossPresentation(this.bossLevel.bossId)
+      : undefined
+    const hordeProfile = enemy.isBoss ? undefined : enemyPresentation(enemy.id)
+    const secondary = bossProfile?.secondaryColor ?? hordeProfile?.secondaryColor ?? accent
+    const prominence = bossProfile?.bossProminence ?? hordeProfile?.hordeProminence ?? 0.5
     const aerial =
       enemy.id === 'shardwing' ||
       enemy.id === 'cantor' ||
@@ -4579,14 +4808,64 @@ class NighttraceRuntime {
     this.motionGraphics
       .ellipse(x, y + enemy.radius * (enemy.isBoss ? 0.58 : 0.52), shadowWidth, shadowHeight)
       .fill({
-        color: 0x010307,
+        color: bossProfile?.shadowColor ?? HOSTILE_SHADOW_COLOR,
         alpha: enemy.isBoss ? 0.32 : aerial ? 0.16 : 0.22,
       })
+
+    if (enemy.isBoss && bossProfile) {
+      const authorityRadius = enemy.radius * (1.14 + enemy.phase * 0.055)
+      const sealY = y + enemy.radius * 0.16
+      const rotation = this.motionClock * (0.13 + enemy.phase * 0.015)
+      this.motionGraphics
+        .circle(x, sealY, authorityRadius * 0.72)
+        .fill({ color: bossProfile.shadowColor, alpha: 0.12 })
+      this.drawSegmentedRing(
+        this.motionGraphics,
+        x,
+        sealY,
+        authorityRadius,
+        10 + enemy.phase * 2,
+        rotation,
+        bossProfile.primaryColor,
+        2.4,
+        0.2 + enemy.phase * 0.035,
+        0.46,
+      )
+      this.drawSegmentedRing(
+        this.motionGraphics,
+        x,
+        sealY,
+        authorityRadius * 0.72,
+        8 + enemy.phase * 2,
+        -rotation * 1.35,
+        bossProfile.secondaryColor,
+        1.4,
+        0.2,
+        0.58,
+      )
+      this.drawRadialTicks(
+        this.motionGraphics,
+        x,
+        sealY,
+        authorityRadius * 1.02,
+        8 + enemy.phase * 2,
+        5 + enemy.phase,
+        -rotation * 0.72,
+        bossProfile.primaryColor,
+        1.5,
+        0.14 + enemy.phase * 0.025,
+      )
+    }
 
     if (
       !this.settings.reducedShake &&
       attackProgress < 0 &&
-      moving > 0.38
+      moving > 0.38 &&
+      (
+        enemy.isBoss ||
+        activeHordeCount <= 120 ||
+        enemy.uid % (activeHordeCount > 240 ? 3 : 2) === 0
+      )
     ) {
       const gaitSpeed = aerial ? 11.6 : enemy.id === 'railjaw' ? 6.1 : 7.8
       const stride = Math.sin(this.motionClock * gaitSpeed + enemy.uid * 1.173)
@@ -4611,7 +4890,7 @@ class NighttraceRuntime {
             .stroke({
               color: accent,
               width: enemy.isBoss ? 3.5 : 1.8,
-              alpha: footfall * (enemy.isBoss ? 0.3 : 0.2),
+              alpha: footfall * (enemy.isBoss ? 0.3 : 0.14 * prominence),
             })
         } else {
           this.motionGraphics
@@ -4624,7 +4903,7 @@ class NighttraceRuntime {
             .stroke({
               color: accent,
               width: enemy.isBoss ? 3 : 1.5,
-              alpha: footfall * (enemy.isBoss ? 0.34 : 0.2),
+              alpha: footfall * (enemy.isBoss ? 0.34 : 0.14 * prominence),
             })
         }
       }
@@ -4633,7 +4912,25 @@ class NighttraceRuntime {
     if (attackProgress < 0) return
 
     const progress = clamp(attackProgress, 0, 1)
-    const pulse = Math.sin(progress * Math.PI)
+    const impactAt = enemy.isBoss
+      ? bossImpactProgress(Math.max(0.05, enemy.attackMotionDuration - 0.24))
+      : enemy.attackMotionStyle === 'cast'
+        ? 0.58
+        : enemy.attackMotionStyle === 'slam'
+          ? 0.62
+          : 0.5
+    const envelope = sampleHostileEnvelope({
+      progress,
+      impactProgress: impactAt,
+      reducedFlash: this.settings.reducedFlash,
+      reducedFlashScale:
+        bossProfile?.reducedFlashScale ?? hordeProfile?.reducedFlashScale ?? 0.44,
+    })
+    const pulse = Math.max(
+      envelope.gather * 0.48,
+      envelope.release,
+      envelope.impact,
+    )
     const angle = enemy.attackMotionAngle
     const forwardX = Math.cos(angle)
     const forwardY = Math.sin(angle)
@@ -4644,11 +4941,46 @@ class NighttraceRuntime {
       enemy.attackMotionStyle === 'charge' ||
       enemy.attackMotionStyle === 'boss-line'
 
+    if (bossProfile) {
+      this.drawBossSignatureMotif(enemy, x, y, angle, envelope)
+    }
+
     if (directional) {
-      const reach = enemy.radius * (0.9 + progress * (enemy.isBoss ? 1.3 : 0.95))
-      const halfWidth = enemy.radius * (0.34 + pulse * 0.18)
+      const reach = enemy.radius * (
+        0.72 +
+        envelope.release * (enemy.isBoss ? 1.55 : 1.05) +
+        envelope.impact * (enemy.isBoss ? 0.62 : 0.34)
+      )
+      const halfWidth = enemy.radius * (
+        0.22 +
+        envelope.gather * 0.18 +
+        envelope.release * 0.2
+      )
       const centerX = x + forwardX * reach
       const centerY = y + forwardY * reach
+      const tailX = x - forwardX * enemy.radius * (0.18 + envelope.gather * 0.42)
+      const tailY = y - forwardY * enemy.radius * (0.18 + envelope.gather * 0.42)
+      this.motionGraphics
+        .poly(
+          [
+            tailX - sideX * halfWidth * 0.34,
+            tailY - sideY * halfWidth * 0.34,
+            centerX - sideX * halfWidth,
+            centerY - sideY * halfWidth,
+            centerX + forwardX * enemy.radius * 0.48,
+            centerY + forwardY * enemy.radius * 0.48,
+            centerX + sideX * halfWidth,
+            centerY + sideY * halfWidth,
+            tailX + sideX * halfWidth * 0.34,
+            tailY + sideY * halfWidth * 0.34,
+          ],
+          true,
+        )
+        .fill({
+          color: secondary,
+          alpha: (0.035 + envelope.release * 0.085 + envelope.impact * 0.12) *
+            prominence,
+        })
       this.motionGraphics
         .moveTo(centerX - sideX * halfWidth, centerY - sideY * halfWidth)
         .lineTo(
@@ -4657,21 +4989,63 @@ class NighttraceRuntime {
         )
         .stroke({
           color: accent,
-          width: enemy.isBoss ? 6 : 2.6,
-          alpha: (0.16 + pulse * 0.48) * (this.settings.reducedFlash ? 0.58 : 1),
+          width: enemy.isBoss ? 7.5 : 2.4,
+          alpha: (0.12 + pulse * (enemy.isBoss ? 0.58 : 0.3)) *
+            prominence *
+            (this.settings.reducedFlash ? 0.58 : 1),
         })
+      if (envelope.impact > 0.1) {
+        this.motionGraphics
+          .circle(
+            centerX + forwardX * enemy.radius * 0.34,
+            centerY + forwardY * enemy.radius * 0.34,
+            enemy.radius * (0.12 + envelope.impact * (enemy.isBoss ? 0.34 : 0.18)),
+          )
+          .fill({
+            color: bossProfile?.impactColor ?? hordeProfile?.impactColor ?? HOSTILE_IMPACT_COLOR,
+            alpha: envelope.flashScale * (enemy.isBoss ? 0.42 : 0.18),
+          })
+      }
       return
     }
 
-    const ringRadius = enemy.radius * (0.74 + progress * 0.5 + pulse * 0.16)
+    const ringRadius = enemy.radius * (
+      1.34 -
+      envelope.gather * 0.38 +
+      envelope.release * 0.26 +
+      envelope.impact * (enemy.isBoss ? 0.72 : 0.36)
+    )
+    this.motionGraphics
+      .circle(x, y + enemy.radius * 0.12, ringRadius)
+      .fill({
+        color: bossProfile?.shadowColor ?? hordeProfile?.shadowColor ?? HOSTILE_SHADOW_COLOR,
+        alpha: (0.025 + envelope.gather * 0.05 + envelope.impact * 0.08) *
+          prominence,
+      })
     this.motionGraphics
       .circle(x, y + enemy.radius * 0.12, ringRadius)
       .stroke({
         color: accent,
         width: enemy.isBoss ? 5 : 2.4,
-        alpha: (0.12 + pulse * (enemy.isBoss ? 0.5 : 0.36)) *
+        alpha: (0.08 + pulse * (enemy.isBoss ? 0.54 : 0.24)) *
+          prominence *
           (this.settings.reducedFlash ? 0.58 : 1),
       })
+    if (envelope.release > 0.04 || envelope.impact > 0.04) {
+      this.drawSegmentedRing(
+        this.motionGraphics,
+        x,
+        y + enemy.radius * 0.12,
+        ringRadius * (0.68 + envelope.impact * 0.25),
+        enemy.isBoss ? 12 + enemy.phase * 2 : 7,
+        this.motionClock * (enemy.isBoss ? -0.9 : -0.45),
+        secondary,
+        enemy.isBoss ? 3 : 1.4,
+        (envelope.release * 0.38 + envelope.flashScale * 0.46) *
+          prominence,
+        0.5,
+      )
+    }
 
     if (
       enemy.attackMotionStyle === 'boss-cross' ||
@@ -4687,8 +5061,137 @@ class NighttraceRuntime {
         .stroke({
           color: accent,
           width: enemy.isBoss ? 4 : 2,
-          alpha: pulse * (enemy.isBoss ? 0.38 : 0.26),
+          alpha: pulse * (enemy.isBoss ? 0.42 : 0.18) * prominence,
         })
+    }
+  }
+
+  private drawBossSignatureMotif(
+    enemy: EnemyEntity,
+    x: number,
+    y: number,
+    angle: number,
+    envelope: ReturnType<typeof sampleHostileEnvelope>,
+  ) {
+    const profile = bossPresentation(this.bossLevel.bossId)
+    const energy = Math.max(envelope.gather * 0.7, envelope.release, envelope.impact)
+    if (energy <= 0.025) return
+    const radius = enemy.radius * (
+      1.1 +
+      envelope.gather * 0.35 +
+      envelope.release * 0.54 +
+      envelope.impact * 0.78
+    )
+    const rotation = this.motionClock * (0.45 + enemy.phase * 0.08)
+    const alpha = energy * (this.settings.reducedFlash ? 0.48 : 0.82)
+    const centerY = y + enemy.radius * 0.08
+
+    if (
+      profile.motif === 'drowned-choir' ||
+      profile.motif === 'undertow-rings' ||
+      profile.motif === 'eclipse-corona'
+    ) {
+      const rings = 2 + Math.min(2, enemy.phase)
+      for (let index = 0; index < rings; index += 1) {
+        this.drawSegmentedRing(
+          this.motionGraphics,
+          x,
+          centerY,
+          radius * (0.58 + index * 0.22),
+          8 + index * 4 + enemy.phase,
+          (index % 2 ? -1 : 1) * rotation * (1 + index * 0.16),
+          index % 2 ? profile.secondaryColor : profile.primaryColor,
+          1.8 + index * 0.5,
+          alpha * (0.64 - index * 0.1),
+          profile.motif === 'eclipse-corona' ? 0.62 : 0.48,
+        )
+      }
+      if (profile.motif === 'eclipse-corona') {
+        this.motionGraphics
+          .circle(x, centerY, radius * 0.5)
+          .fill({ color: profile.shadowColor, alpha: alpha * 0.72 })
+          .stroke({ color: profile.primaryColor, width: 4, alpha: alpha * 0.82 })
+      }
+      return
+    }
+
+    if (
+      profile.motif === 'rail-cross' ||
+      profile.motif === 'storm-comb' ||
+      profile.motif === 'void-grid'
+    ) {
+      const spokes = profile.motif === 'storm-comb' ? 6 : 4
+      this.drawRadialTicks(
+        this.motionGraphics,
+        x,
+        centerY,
+        radius * 0.46,
+        spokes,
+        radius * (profile.motif === 'void-grid' ? 0.72 : 0.52),
+        angle + rotation * 0.3,
+        profile.primaryColor,
+        3.2,
+        alpha * 0.72,
+      )
+      this.drawDiamondGlyph(
+        this.motionGraphics,
+        x,
+        centerY,
+        radius * 0.52,
+        angle + rotation * 0.22,
+        profile.secondaryColor,
+        alpha * 0.64,
+      )
+      return
+    }
+
+    if (profile.motif === 'shard-mirror') {
+      for (const side of [-1, 1]) {
+        this.drawDiamondGlyph(
+          this.motionGraphics,
+          x + Math.cos(angle + Math.PI * 0.5) * radius * side * 0.42,
+          centerY + Math.sin(angle + Math.PI * 0.5) * radius * side * 0.42,
+          radius * 0.34,
+          rotation * side,
+          side > 0 ? profile.primaryColor : profile.secondaryColor,
+          alpha * 0.74,
+          envelope.impact > 0.2,
+        )
+      }
+      return
+    }
+
+    if (profile.motif === 'clock-teeth' || profile.motif === 'furnace-cracks') {
+      this.drawJaggedRing(
+        this.motionGraphics,
+        x,
+        centerY,
+        radius * 0.84,
+        18 + enemy.phase * 4,
+        profile.motif === 'clock-teeth' ? rotation : -rotation * 0.35,
+        this.bossLevel.id * 97 + enemy.phase * 13,
+        profile.motif === 'furnace-cracks' ? 9 : 4,
+        profile.primaryColor,
+        profile.motif === 'furnace-cracks' ? 4.5 : 2.8,
+        alpha * 0.78,
+      )
+      return
+    }
+
+    const antlerSpread = radius * (0.5 + envelope.release * 0.4)
+    for (const side of [-1, 1]) {
+      const rayAngle = angle + side * 0.42
+      this.motionGraphics
+        .moveTo(x, centerY)
+        .lineTo(
+          x + Math.cos(rayAngle) * antlerSpread,
+          centerY + Math.sin(rayAngle) * antlerSpread,
+        )
+        .lineTo(
+          x + Math.cos(rayAngle + side * 0.24) * radius,
+          centerY + Math.sin(rayAngle + side * 0.24) * radius,
+        )
+        .stroke({ color: profile.primaryColor, width: 4, alpha: alpha * 0.78 })
     }
   }
 
@@ -5039,9 +5542,7 @@ class NighttraceRuntime {
   }
 
   private bossTint() {
-    if (this.level.id <= 6) return 0xffffff
-    const accent = Number.parseInt(this.level.accent.replace('#', ''), 16)
-    return Number.isFinite(accent) ? accent : 0xffffff
+    return 0xffffff
   }
 
   private levelUp() {
@@ -5074,13 +5575,16 @@ class NighttraceRuntime {
     const remaining = Math.max(0, this.level.duration - this.elapsed)
     const boss = this.boss?.active
       ? {
-          name: this.level.bossName,
+          name: this.bossLevel.bossName,
           hp: Math.max(0, this.boss.hp),
           maxHp: this.boss.maxHp,
           phase: this.boss.phase,
         }
       : undefined
     return {
+      runMode: this.runConfig.mode,
+      invincible: this.runConfig.invincible,
+      awaitingStart: this.awaitingStart,
       hp: this.player.hp,
       maxHp: this.player.maxHp,
       shield: this.player.shield,
@@ -5156,6 +5660,7 @@ class NighttraceRuntime {
 const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCanvas(
   {
     level,
+    runConfig,
     settings,
     unlockedWeapons,
     persistentUpgrades,
@@ -5171,6 +5676,7 @@ const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCa
   const callbacksRef = useRef({ onSnapshot, onComplete, onExit })
   const initialConfigRef = useRef({
     level,
+    runConfig,
     settings,
     unlockedWeapons,
     persistentUpgrades,
@@ -5180,6 +5686,7 @@ const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCa
   useImperativeHandle(
     ref,
     () => ({
+      beginEncounter: () => void runtimeRef.current?.beginEncounter(),
       selectUpgrade: (optionId) => runtimeRef.current?.selectUpgrade(optionId),
       rerollUpgrade: () => runtimeRef.current?.rerollUpgrade(),
       togglePause: () => runtimeRef.current?.togglePause(),
@@ -5197,6 +5704,7 @@ const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCa
     const runtime = new NighttraceRuntime(
       host,
       initial.level,
+      initial.runConfig,
       initial.settings,
       initial.unlockedWeapons,
       initial.persistentUpgrades,

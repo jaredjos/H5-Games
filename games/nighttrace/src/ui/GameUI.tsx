@@ -29,6 +29,7 @@ import type {
   LevelDefinition,
   ModuleId,
   ModuleDefinition,
+  RunMode,
   TraceModId,
   TraceModDefinition,
   UpgradeOption,
@@ -271,18 +272,25 @@ export function UpgradeOverlay({
 }
 
 function VitalityHud({ snapshot }: { snapshot: GameSnapshot }) {
+  const hasNoVitalityLimit = snapshot.runMode === 'combat-lab'
+
   return (
-    <div className="vitality-hud">
+    <div
+      className="vitality-hud"
+      aria-label={hasNoVitalityLimit ? 'Infinite vitality, no damage limit' : 'Vitality and shield'}
+    >
       <div className="vitality-crest"><StarMark small /></div>
       <div className="vitality-bars">
         <div className="health-line">
-          <span style={{ width: `${clampPercent(snapshot.hp, snapshot.maxHp)}%` }} />
-          <strong>{Math.ceil(snapshot.hp)} / {snapshot.maxHp}</strong>
+          <span style={{ width: hasNoVitalityLimit ? '100%' : `${clampPercent(snapshot.hp, snapshot.maxHp)}%` }} />
+          <strong>{hasNoVitalityLimit ? '∞ VITALITY' : `${Math.ceil(snapshot.hp)} / ${snapshot.maxHp}`}</strong>
         </div>
         <div className="shield-line">
           <Shield size={14} />
-          <span><i style={{ width: `${clampPercent(snapshot.shield, snapshot.maxShield)}%` }} /></span>
-          <strong>{Math.ceil(snapshot.shield)} / {snapshot.maxShield}</strong>
+          <span>
+            <i style={{ width: hasNoVitalityLimit ? '100%' : `${clampPercent(snapshot.shield, snapshot.maxShield)}%` }} />
+          </span>
+          <strong>{hasNoVitalityLimit ? 'NO LIMIT' : `${Math.ceil(snapshot.shield)} / ${snapshot.maxShield}`}</strong>
         </div>
       </div>
     </div>
@@ -396,6 +404,68 @@ function BossIntro({
   ) : null
 }
 
+const encounterGateCopy: Record<RunMode, {
+  eyebrow: string
+  fallbackTitle: string
+  description: string
+  button: string
+}> = {
+  campaign: {
+    eyebrow: 'Encounter ready',
+    fallbackTitle: 'Hold the Light',
+    description: 'The sector waits beyond the veil. Enter when you are ready.',
+    button: 'Begin Encounter',
+  },
+  'boss-trial': {
+    eyebrow: 'Boss Trial',
+    fallbackTitle: 'Sovereign Trial',
+    description: 'One sovereign. One life. Cross the threshold when you are ready.',
+    button: 'Begin Trial',
+  },
+  'combat-lab': {
+    eyebrow: 'Combat Lab',
+    fallbackTitle: 'Live Calibration',
+    description: 'Invulnerability is active. Test the build without a time or vitality limit.',
+    button: 'Begin Test',
+  },
+}
+
+export function EncounterGate({
+  mode,
+  bossName,
+  onBegin,
+}: {
+  mode: RunMode
+  bossName?: string
+  onBegin: () => void
+}) {
+  const dialogRef = useRef<HTMLElement>(null)
+  const copy = encounterGateCopy[mode]
+  useModalFocusTrap(dialogRef)
+
+  return (
+    <section
+      ref={dialogRef}
+      className="pause-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="encounter-gate-title"
+      aria-describedby="encounter-gate-description"
+      tabIndex={-1}
+    >
+      <div className="pause-overlay__veil" />
+      <PanelFrame className="pause-panel">
+        <StarMark />
+        <small>{copy.eyebrow}</small>
+        <h1 id="encounter-gate-title">{bossName ?? copy.fallbackTitle}</h1>
+        <OrnamentRule />
+        <p id="encounter-gate-description">{copy.description}</p>
+        <CrestButton onClick={onBegin}><Play size={17} /> {copy.button}</CrestButton>
+      </PanelFrame>
+    </section>
+  )
+}
+
 export function GameHud({
   snapshot,
   level,
@@ -413,30 +483,52 @@ export function GameHud({
   onPause: () => void
   onPulse: () => void
 }) {
+  const isCampaign = snapshot.runMode === 'campaign'
+  const isCombatLab = snapshot.runMode === 'combat-lab'
   const xpPercent = clampPercent(snapshot.xp, snapshot.xpToNext)
   const remaining = Math.max(0, snapshot.duration - snapshot.elapsed)
+  const displayTime = isCampaign ? remaining : snapshot.elapsed
+  const timerLabel = isCampaign
+    ? snapshot.nextEvent
+    : isCombatLab
+      ? 'Test elapsed'
+      : 'Encounter time'
+  const objectiveLabel = isCampaign
+    ? `Sector ${String(level.id).padStart(2, '0')}`
+    : isCombatLab
+      ? 'Combat Lab'
+      : 'Boss Trial'
+  const objectiveDetail = isCampaign
+    ? 'Hold the light'
+    : isCombatLab
+      ? 'No-limit calibration'
+      : snapshot.boss?.name ?? level.bossName
+
   return (
     <div className="game-hud" aria-label="Game status">
       <div className="xp-rail">
-        <span>XP</span>
-        <i><b style={{ width: `${xpPercent}%` }} /></i>
-        <strong>Lv. {snapshot.level}</strong>
+        <span>{isCampaign ? 'XP' : isCombatLab ? 'LAB' : 'TRIAL'}</span>
+        <i><b style={{ width: `${isCampaign ? xpPercent : 100}%` }} /></i>
+        <strong>{isCampaign ? `Lv. ${snapshot.level}` : isCombatLab ? 'No limits' : 'Sovereign'}</strong>
       </div>
       <VitalityHud snapshot={snapshot} />
       <div className="timer-hud">
-        <strong>{formatTime(remaining)}</strong>
-        <span>{snapshot.nextEvent}</span>
+        <strong>{formatTime(displayTime)}</strong>
+        <span>{timerLabel}</span>
       </div>
       <div className="objective-hud">
-        <span>Sector {String(level.id).padStart(2, '0')}</span>
-        <strong>Hold the light</strong>
+        <span>{objectiveLabel}</span>
+        <strong>{objectiveDetail}</strong>
         <StarMark small />
       </div>
-      <button className="pause-control" onClick={onPause} aria-label="Pause game">
+      <button className="pause-control" onClick={onPause} aria-label="Pause encounter">
         <Pause size={19} />
       </button>
       <BossHud snapshot={snapshot} />
-      <BossIntro bossName={snapshot.boss?.name} reducedFlash={settings.reducedFlash} />
+      <BossIntro
+        bossName={snapshot.awaitingStart ? undefined : snapshot.boss?.name}
+        reducedFlash={settings.reducedFlash}
+      />
       <div className="run-metrics">
         <span><Flame size={15} /> {snapshot.kills.toLocaleString()}</span>
         <span><Waves size={15} /> {snapshot.closedLoops} loops</span>
@@ -482,16 +574,16 @@ export function PauseOverlay({
       <div className="pause-overlay__veil" />
       <PanelFrame className="pause-panel">
         <StarMark />
-        <small>The wake is held</small>
+        <small>The encounter is held</small>
         <h1 id="pause-title">Paused</h1>
         <OrnamentRule />
         <CrestButton onClick={onResume}><Play size={17} /> Resume</CrestButton>
-        <button className="pause-action" onClick={onRestart}><RotateCcw size={17} /> Restart sector</button>
+        <button className="pause-action" onClick={onRestart}><RotateCcw size={17} /> Restart encounter</button>
         <button className="pause-action" onClick={onToggleMute}>
           {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
           {muted ? 'Restore sound' : 'Mute sound'}
         </button>
-        <button className="pause-action pause-action--exit" onClick={onExit}><ArrowLeft size={17} /> Leave the night</button>
+        <button className="pause-action pause-action--exit" onClick={onExit}><ArrowLeft size={17} /> Leave encounter</button>
         <p><kbd>ESC</kbd> to return</p>
       </PanelFrame>
     </section>

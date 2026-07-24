@@ -4,25 +4,36 @@ import type { GameCanvasHandle } from './game/GameCanvas'
 import { LEVELS, MODULES, TRACE_MODS, WEAPONS, formatTime, getLevel } from './game/content'
 import {
   SAVE_KEY,
+  applyBossTrialReward,
   applyPersistentReward,
   getMasteryTargets,
   loadSave,
   resetSave,
   saveSave,
 } from './game/save'
+import {
+  DEFAULT_COMBAT_LAB_CONFIG,
+  buildBossTrialRunConfig,
+  buildCombatLabRunConfig,
+  isBossTrialUnlocked,
+  normalizeCombatLabConfig,
+} from './game/modes'
 import { currentLocalWeaponShowcase } from './game/showcase'
 import type {
   GameSettings,
   GameSnapshot,
+  CombatLabConfig,
   LevelDefinition,
   ModuleDefinition,
   RunResult,
+  RunConfig,
   SaveData,
   ScreenId,
   TraceModDefinition,
   WeaponDefinition,
 } from './shared/types'
 import {
+  EncounterGate,
   GameHud,
   GameLoading,
   MobileTouchControls,
@@ -31,7 +42,9 @@ import {
 } from './ui/GameUI'
 import {
   AstrariumScreen,
+  BossTrialsScreen,
   CampaignScreen,
+  CombatLabScreen,
   CodexScreen,
   ResultsScreen,
   SettingsScreen,
@@ -44,10 +57,30 @@ const MODULE_LIST = Object.values(MODULES) as ModuleDefinition[]
 const TRACE_MOD_LIST = Object.values(TRACE_MODS) as TraceModDefinition[]
 const GameCanvas = lazy(() => import('./game/GameCanvas'))
 
-type ShellScreen = 'campaign' | 'astrarium' | 'codex' | 'settings'
+type ShellScreen = Exclude<ScreenId, 'title' | 'game' | 'results'>
 
 function isShellScreen(screen: ScreenId): screen is ShellScreen {
-  return screen === 'campaign' || screen === 'astrarium' || screen === 'codex' || screen === 'settings'
+  return (
+    screen === 'campaign' ||
+    screen === 'boss-trials' ||
+    screen === 'combat-lab' ||
+    screen === 'astrarium' ||
+    screen === 'codex' ||
+    screen === 'settings'
+  )
+}
+
+function buildCampaignRunConfig(levelId: number): RunConfig {
+  return {
+    mode: 'campaign',
+    arenaLevelId: levelId,
+    bossLevelId: levelId,
+    bossOnly: false,
+    invincible: false,
+    fixedLoadout: false,
+    playerLevel: 1,
+    bossHealthMultiplier: 1,
+  }
 }
 
 function getNodeCost(node: AstrariumNodeDefinition, rank: number) {
@@ -101,6 +134,11 @@ export default function App() {
   const [screen, setScreen] = useState<ScreenId>(showcase ? 'game' : 'title')
   const [selectedLevelId, setSelectedLevelId] = useState(() =>
     showcase ? 1 : Math.max(1, Math.min(LEVELS.length, save.unlockedLevel)))
+  const [selectedTrialLevelId, setSelectedTrialLevelId] = useState(() =>
+    Math.min(LEVELS.length, save.bossTrialClears + 1))
+  const [combatLabConfig, setCombatLabConfig] = useState<CombatLabConfig>(() =>
+    normalizeCombatLabConfig(DEFAULT_COMBAT_LAB_CONFIG))
+  const [activeRun, setActiveRun] = useState<RunConfig>(() => buildCampaignRunConfig(1))
   const [snapshot, setSnapshot] = useState<GameSnapshot>()
   const [result, setResult] = useState<RunResult>()
   const [resultRewards, setResultRewards] = useState<{
@@ -115,7 +153,8 @@ export default function App() {
   const lastAudibleVolume = useRef(save.settings.masterVolume || 0.8)
   const isTouchDevicePortrait = useNarrowPortrait()
 
-  const currentLevel = useMemo(() => getLevel(selectedLevelId), [selectedLevelId])
+  const currentLevel = useMemo(() => getLevel(activeRun.arenaLevelId), [activeRun.arenaLevelId])
+  const currentBossLevel = useMemo(() => getLevel(activeRun.bossLevelId), [activeRun.bossLevelId])
   const reducedMotion = save.settings.reducedShake
   const muted = save.settings.masterVolume === 0
   const rerollUnlocked = (save.upgrades['bright-draft'] ?? 0) > 0
@@ -131,6 +170,8 @@ export default function App() {
       const next = safeLoadSave()
       setSave(next)
       setSelectedLevelId((levelId) => Math.max(1, Math.min(levelId, next.unlockedLevel)))
+      setSelectedTrialLevelId((levelId) =>
+        Math.max(1, Math.min(levelId, Math.min(LEVELS.length, next.bossTrialClears + 1))))
     }
 
     window.addEventListener('storage', refreshSaveFromAnotherWindow)
@@ -195,44 +236,87 @@ export default function App() {
     }
   }, [])
 
-  const startLevel = useCallback((levelId: number) => {
+  const launchRun = useCallback((runConfig: RunConfig) => {
     void requestLandscapeMode()
-    const safeLevelId = Math.max(1, Math.min(save.unlockedLevel, levelId))
-    setSelectedLevelId(safeLevelId)
+    setActiveRun(runConfig)
     setSnapshot(undefined)
     setResult(undefined)
     setResultRewards({ mastery: [] })
-    setRerollAvailable(rerollUnlocked)
+    setRerollAvailable(runConfig.mode === 'campaign' && rerollUnlocked)
     completionTokenRef.current = ''
     setRunKey((value) => value + 1)
     setScreen('game')
-  }, [requestLandscapeMode, rerollUnlocked, save.unlockedLevel])
+  }, [requestLandscapeMode, rerollUnlocked])
+
+  const startLevel = useCallback((levelId: number) => {
+    const safeLevelId = Math.max(1, Math.min(save.unlockedLevel, levelId))
+    setSelectedLevelId(safeLevelId)
+    launchRun(buildCampaignRunConfig(safeLevelId))
+  }, [launchRun, save.unlockedLevel])
+
+  const startCombatLab = useCallback((config: CombatLabConfig) => {
+    const normalized = normalizeCombatLabConfig(config)
+    setCombatLabConfig(normalized)
+    launchRun(buildCombatLabRunConfig(normalized))
+  }, [launchRun])
+
+  const startBossTrial = useCallback((levelId: number) => {
+    if (!isBossTrialUnlocked(levelId, save.bossTrialClears)) {
+      announce('Defeat the previous sovereign to open this trial')
+      return
+    }
+    setSelectedTrialLevelId(levelId)
+    launchRun(buildBossTrialRunConfig(levelId))
+  }, [announce, launchRun, save.bossTrialClears])
 
   const leaveGame = useCallback(() => {
     setSnapshot(undefined)
-    setScreen('campaign')
-  }, [])
+    setScreen(
+      activeRun.mode === 'combat-lab'
+        ? 'combat-lab'
+        : activeRun.mode === 'boss-trial'
+          ? 'boss-trials'
+          : 'campaign',
+    )
+  }, [activeRun.mode])
 
   const restartLevel = useCallback(() => {
     setSnapshot(undefined)
-    setRerollAvailable(rerollUnlocked)
+    setRerollAvailable(activeRun.mode === 'campaign' && rerollUnlocked)
     completionTokenRef.current = ''
     setRunKey((value) => value + 1)
-  }, [rerollUnlocked])
+    setScreen('game')
+  }, [activeRun.mode, rerollUnlocked])
 
   const completeRun = useCallback((runResult: RunResult) => {
     const completionToken = String(runKey)
     if (completionTokenRef.current === completionToken) return
     completionTokenRef.current = completionToken
-    const progressedSave = applyPersistentReward(save, runResult)
+    const progressedSave =
+      runResult.runMode === 'campaign'
+        ? applyPersistentReward(save, runResult)
+        : runResult.runMode === 'boss-trial'
+          ? applyBossTrialReward(save, runResult)
+          : save
     const awardedShards = Math.max(0, progressedSave.dawnShards - save.dawnShards)
-    const previousMastery = new Set(save.mastery[runResult.levelId] ?? [])
-    const newlyEarnedMastery = (progressedSave.mastery[runResult.levelId] ?? []).filter((seal) => !previousMastery.has(seal))
-    const unlockedWeaponId = progressedSave.unlockedWeapons.find((id) => !save.unlockedWeapons.includes(id))
-    persist(progressedSave)
+    const previousMastery = new Set(
+      runResult.runMode === 'campaign' ? save.mastery[runResult.levelId] ?? [] : [],
+    )
+    const newlyEarnedMastery =
+      runResult.runMode === 'campaign'
+        ? (progressedSave.mastery[runResult.levelId] ?? []).filter(
+            (seal) => !previousMastery.has(seal),
+          )
+        : []
+    const unlockedWeaponId =
+      runResult.runMode === 'campaign'
+        ? progressedSave.unlockedWeapons.find((id) => !save.unlockedWeapons.includes(id))
+        : undefined
+    if (runResult.runMode !== 'combat-lab') persist(progressedSave)
     setResult({ ...runResult, dawnShards: awardedShards })
     setResultRewards({ mastery: newlyEarnedMastery, unlockedWeaponId })
-    setSelectedLevelId(runResult.levelId)
+    if (runResult.runMode === 'campaign') setSelectedLevelId(runResult.levelId)
+    if (runResult.runMode === 'boss-trial') setSelectedTrialLevelId(runResult.levelId)
     setSnapshot(undefined)
     setScreen('results')
   }, [persist, runKey, save])
@@ -253,6 +337,10 @@ export default function App() {
 
   const activatePulse = useCallback(() => {
     gameRef.current?.activatePulse()
+  }, [])
+
+  const beginEncounter = useCallback(() => {
+    gameRef.current?.beginEncounter()
   }, [])
 
   useEffect(() => {
@@ -325,21 +413,40 @@ export default function App() {
     saveSave(settingsPreserved)
     setSave(settingsPreserved)
     setSelectedLevelId(1)
+    setSelectedTrialLevelId(1)
+    setCombatLabConfig(normalizeCombatLabConfig(DEFAULT_COMBAT_LAB_CONFIG))
+    setActiveRun(buildCampaignRunConfig(1))
     setSnapshot(undefined)
     setResult(undefined)
     setScreen('title')
     announce('The archive has been cleared')
   }, [announce, save.settings])
 
-  const nextLevel = result && result.victory && result.levelId < LEVELS.length
+  const nextLevel = result && result.runMode === 'campaign' && result.victory && result.levelId < LEVELS.length
+    ? LEVELS[result.levelId]
+    : undefined
+  const nextTrial = result &&
+    result.runMode === 'boss-trial' &&
+    result.victory &&
+    result.levelId < LEVELS.length &&
+    save.bossTrialClears >= result.levelId
     ? LEVELS[result.levelId]
     : undefined
   const resultLevel: LevelDefinition | undefined = result ? getLevel(result.levelId) : undefined
-  const nextGoal = nextLevel
-    ? `Relight ${nextLevel.name}`
-    : result?.victory
-      ? 'Complete the remaining mastery seals'
-      : `Return to ${resultLevel?.name ?? 'the unfinished sector'}`
+  const nextGoal =
+    result?.runMode === 'combat-lab'
+      ? 'Reconfigure the simulation or repeat this encounter'
+      : result?.runMode === 'boss-trial'
+        ? nextTrial
+          ? `Challenge ${nextTrial.bossName}`
+          : result.victory
+            ? 'Replay cleared sovereigns or perfect the full ladder'
+            : `Return to ${resultLevel?.bossName ?? 'the unfinished trial'}`
+        : nextLevel
+          ? `Relight ${nextLevel.name}`
+          : result?.victory
+            ? 'Complete the remaining mastery seals'
+            : `Return to ${resultLevel?.name ?? 'the unfinished sector'}`
 
   let content: React.ReactNode
 
@@ -350,6 +457,8 @@ export default function App() {
         reducedMotion={reducedMotion}
         muted={muted}
         onBegin={() => setScreen('campaign')}
+        onBossTrials={() => setScreen('boss-trials')}
+        onCombatLab={() => setScreen('combat-lab')}
         onCodex={() => setScreen('codex')}
         onSettings={() => setScreen('settings')}
         onToggleMute={toggleMute}
@@ -366,6 +475,27 @@ export default function App() {
         onNavigate={navigate}
         formatTime={formatTime}
         masteryTargets={getMasteryTargets(selectedLevelId)}
+      />
+    )
+  } else if (screen === 'boss-trials') {
+    content = (
+      <BossTrialsScreen
+        save={save}
+        selectedLevelId={selectedTrialLevelId}
+        onSelectLevel={setSelectedTrialLevelId}
+        onStart={startBossTrial}
+        onNavigate={navigate}
+      />
+    )
+  } else if (screen === 'combat-lab') {
+    content = (
+      <CombatLabScreen
+        save={save}
+        config={combatLabConfig}
+        onConfigChange={(config) =>
+          setCombatLabConfig(normalizeCombatLabConfig(config))}
+        onLaunch={startCombatLab}
+        onNavigate={navigate}
       />
     )
   } else if (screen === 'astrarium') {
@@ -401,9 +531,10 @@ export default function App() {
       <main className={`game-screen${save.settings.reducedFlash ? ' reduced-flash' : ''}`}>
         <Suspense fallback={<GameLoading levelName={currentLevel.name} />}>
           <GameCanvas
-            key={`${currentLevel.id}-${runKey}`}
+            key={`${activeRun.mode}-${currentLevel.id}-${currentBossLevel.id}-${runKey}`}
             ref={gameRef}
             level={currentLevel}
+            runConfig={activeRun}
             settings={save.settings}
             unlockedWeapons={save.unlockedWeapons}
             persistentUpgrades={save.upgrades}
@@ -417,8 +548,20 @@ export default function App() {
           <>
             <div
               className="game-interface"
-              aria-hidden={snapshot.paused || Boolean(snapshot.upgradeOptions?.length) ? true : undefined}
-              inert={snapshot.paused || Boolean(snapshot.upgradeOptions?.length) ? true : undefined}
+              aria-hidden={
+                snapshot.paused ||
+                snapshot.awaitingStart ||
+                Boolean(snapshot.upgradeOptions?.length)
+                  ? true
+                  : undefined
+              }
+              inert={
+                snapshot.paused ||
+                snapshot.awaitingStart ||
+                Boolean(snapshot.upgradeOptions?.length)
+                  ? true
+                  : undefined
+              }
             >
               <GameHud
                 snapshot={snapshot}
@@ -448,7 +591,17 @@ export default function App() {
                 onReroll={rerollUpgrade}
               />
             ) : null}
-            {snapshot.paused && !isTouchDevicePortrait && !snapshot.upgradeOptions?.length ? (
+            {snapshot.awaitingStart && !isTouchDevicePortrait ? (
+              <EncounterGate
+                mode={snapshot.runMode}
+                bossName={currentBossLevel.bossName}
+                onBegin={beginEncounter}
+              />
+            ) : null}
+            {snapshot.paused &&
+            !snapshot.awaitingStart &&
+            !isTouchDevicePortrait &&
+            !snapshot.upgradeOptions?.length ? (
               <PauseOverlay
                 muted={muted}
                 onResume={togglePause}
@@ -475,9 +628,22 @@ export default function App() {
         unlockedWeapon={resultRewards.unlockedWeaponId
           ? WEAPON_LIST.find((weapon) => weapon.id === resultRewards.unlockedWeaponId)
           : undefined}
-        onCampaign={() => setScreen('campaign')}
-        onRetry={() => startLevel(result.levelId)}
-        onNext={nextLevel ? () => startLevel(nextLevel.id) : undefined}
+        onReturn={() =>
+          setScreen(
+            result.runMode === 'combat-lab'
+              ? 'combat-lab'
+              : result.runMode === 'boss-trial'
+                ? 'boss-trials'
+                : 'campaign',
+          )}
+        onRetry={restartLevel}
+        onNext={
+          nextLevel
+            ? () => startLevel(nextLevel.id)
+            : nextTrial
+              ? () => startBossTrial(nextTrial.id)
+              : undefined
+        }
       />
     )
   } else {

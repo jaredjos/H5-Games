@@ -1,4 +1,15 @@
-export type ScreenId = 'title' | 'campaign' | 'astrarium' | 'codex' | 'settings' | 'game' | 'results'
+export type ScreenId =
+  | 'title'
+  | 'campaign'
+  | 'boss-trials'
+  | 'combat-lab'
+  | 'astrarium'
+  | 'codex'
+  | 'settings'
+  | 'game'
+  | 'results'
+
+export type RunMode = 'campaign' | 'boss-trial' | 'combat-lab'
 
 export type WeaponId =
   | 'helio-lance'
@@ -103,6 +114,33 @@ export interface OwnedModule {
   rank: number
 }
 
+export interface StartingLoadout {
+  weapons: OwnedWeapon[]
+  modules: OwnedModule[]
+  traceMods: TraceModId[]
+}
+
+export interface CombatLabConfig {
+  arenaLevelId: number
+  bossLevelId: number
+  encounter: 'boss' | 'sector'
+  playerLevel: number
+  bossHealthMultiplier: number
+  loadout: StartingLoadout
+}
+
+export interface RunConfig {
+  mode: RunMode
+  arenaLevelId: number
+  bossLevelId: number
+  bossOnly: boolean
+  invincible: boolean
+  fixedLoadout: boolean
+  playerLevel: number
+  bossHealthMultiplier: number
+  startingLoadout?: StartingLoadout
+}
+
 export interface UpgradeOption {
   id: string
   type: 'weapon' | 'module' | 'trace' | 'heal'
@@ -125,6 +163,9 @@ export interface BossSnapshot {
 }
 
 export interface GameSnapshot {
+  runMode: RunMode
+  invincible: boolean
+  awaitingStart: boolean
   hp: number
   maxHp: number
   shield: number
@@ -150,6 +191,7 @@ export interface GameSnapshot {
 }
 
 export interface RunResult {
+  runMode: RunMode
   victory: boolean
   levelId: number
   survivalTime: number
@@ -161,8 +203,9 @@ export interface RunResult {
 }
 
 export interface SaveData {
-  version: 2
+  version: 3
   unlockedLevel: number
+  bossTrialClears: number
   completedLevels: number[]
   mastery: Record<number, Array<'clear' | 'trace' | 'aegis'>>
   dawnShards: number

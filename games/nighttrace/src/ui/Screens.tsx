@@ -4,11 +4,15 @@ import {
   BookOpen,
   Check,
   ChevronRight,
+  Crown,
   Flame,
+  FlaskConical,
   Gauge,
   Headphones,
+  LockKeyhole,
   RotateCcw,
   Shield,
+  SlidersHorizontal,
   Sparkles,
   Swords,
   Target,
@@ -18,13 +22,44 @@ import {
   Zap,
 } from 'lucide-react'
 import { appAssetUrl } from '../assetUrl'
+import {
+  LEVELS,
+  MODULES,
+  TRACE_MODS,
+  WEAPONS,
+} from '../game/content'
+import {
+  BOSS_TRIAL_PLAYER_LEVELS,
+  COMBAT_LAB_ARENAS,
+  COMBAT_LAB_BOSSES,
+  COMBAT_LAB_BOSS_HEALTH_MAX,
+  COMBAT_LAB_BOSS_HEALTH_MIN,
+  COMBAT_LAB_PLAYER_LEVEL_MAX,
+  COMBAT_LAB_PLAYER_LEVEL_MIN,
+  COMBAT_LAB_PRESETS,
+  getBossTrialLoadout,
+  getBossTrialUnlockedLevel,
+  getCombatLabPresetLoadout,
+  isBossTrialUnlocked,
+  normalizeCombatLabConfig,
+  normalizeStartingLoadout,
+  resolveArenaLevel,
+  resolveBossLevel,
+  type CombatLabPresetId,
+} from '../game/modes'
 import type {
+  CombatLabConfig,
   GameSettings,
   LevelDefinition,
+  ModuleId,
   ModuleDefinition,
   RunResult,
   SaveData,
+  ScreenId,
+  StartingLoadout,
+  TraceModId,
   TraceModDefinition,
+  WeaponId,
   WeaponDefinition,
 } from '../shared/types'
 import {
@@ -47,10 +82,12 @@ import {
   WeaponGlyph,
 } from './Primitives'
 
+type ShellScreenId = Exclude<ScreenId, 'title' | 'game' | 'results'>
+
 interface ScreenHeaderProps {
-  active: 'campaign' | 'astrarium' | 'codex' | 'settings'
+  active: ShellScreenId
   save: SaveData
-  onNavigate: (screen: 'campaign' | 'astrarium' | 'codex' | 'settings') => void
+  onNavigate: (screen: ShellScreenId) => void
 }
 
 function ScreenHeader({ active, save, onNavigate }: ScreenHeaderProps) {
@@ -62,6 +99,8 @@ export function TitleScreen({
   reducedMotion,
   muted,
   onBegin,
+  onBossTrials,
+  onCombatLab,
   onCodex,
   onSettings,
   onToggleMute,
@@ -70,6 +109,8 @@ export function TitleScreen({
   reducedMotion: boolean
   muted: boolean
   onBegin: () => void
+  onBossTrials: () => void
+  onCombatLab: () => void
   onCodex: () => void
   onSettings: () => void
   onToggleMute: () => void
@@ -101,6 +142,14 @@ export function TitleScreen({
         </p>
         <div className="title-actions">
           <CrestButton onClick={onBegin}>{hasProgress ? 'Continue the Wake' : 'Begin the Wake'}</CrestButton>
+          <CrestButton tone="gold" onClick={onBossTrials}>
+            <Crown size={17} />
+            Boss Trials
+          </CrestButton>
+          <button className="text-action" onClick={onCombatLab}>
+            <FlaskConical size={17} />
+            Combat Lab
+          </button>
           <button className="text-action" onClick={onCodex}>
             <BookOpen size={17} />
             Open Codex
@@ -303,6 +352,508 @@ export function CampaignScreen({
             </div>
           </div>
         </PanelFrame>
+      </section>
+    </main>
+  )
+}
+
+export function BossTrialsScreen({
+  save,
+  selectedLevelId,
+  onSelectLevel,
+  onStart,
+  onNavigate,
+}: {
+  save: SaveData
+  selectedLevelId: number
+  onSelectLevel: (levelId: number) => void
+  onStart: (levelId: number) => void
+  onNavigate: ScreenHeaderProps['onNavigate']
+}) {
+  const clears = save.bossTrialClears
+  const unlockedLevel = getBossTrialUnlockedLevel(clears)
+  const selected = LEVELS.find((level) => level.id === selectedLevelId)
+    ?? LEVELS[unlockedLevel - 1]
+    ?? LEVELS[0]
+  const selectedBoss = BOSS_CODEX.find((boss) => boss.id === selected.bossId)
+  const loadout = getBossTrialLoadout(selected.id)
+  const canLaunch = isBossTrialUnlocked(selected.id, clears)
+  const allTrialsCleared = clears >= LEVELS.length
+
+  return (
+    <main className="shell-screen boss-trials-screen">
+      <ScreenHeader active="boss-trials" save={save} onNavigate={onNavigate} />
+      <section className="boss-trials-layout">
+        <header className="boss-trials-heading">
+          <span className="section-number">V</span>
+          <div>
+            <span className="boss-trials-heading__kicker"><Crown size={15} /> Sovereign ladder</span>
+            <h1>Boss Trials</h1>
+            <p>Ten sovereigns. Curated power. No horde between you and the throne.</p>
+          </div>
+          <div className="boss-trials-progress" aria-label={`${Math.min(clears, LEVELS.length)} of ${LEVELS.length} trials cleared`}>
+            <strong>{Math.min(clears, LEVELS.length)}</strong>
+            <span>/ {LEVELS.length} crowns broken</span>
+            <div>
+              {LEVELS.map((level) => (
+                <Diamond key={level.id} active={level.id <= clears} />
+              ))}
+            </div>
+          </div>
+        </header>
+
+        <div className="boss-trials-body">
+          <div className="boss-trial-ladder" aria-label="Boss trial ladder">
+            {LEVELS.map((level) => {
+              const cleared = level.id <= clears
+              const unlocked = isBossTrialUnlocked(level.id, clears)
+              const current = !allTrialsCleared && level.id === unlockedLevel
+              const trialSelected = level.id === selected.id
+              const boss = BOSS_CODEX.find((entry) => entry.id === level.bossId)
+              return (
+                <button
+                  key={level.id}
+                  className={[
+                    'boss-trial-card',
+                    cleared ? 'is-cleared' : '',
+                    current ? 'is-current' : '',
+                    unlocked ? '' : 'is-locked',
+                    trialSelected ? 'is-selected' : '',
+                  ].join(' ')}
+                  onClick={() => onSelectLevel(level.id)}
+                  aria-pressed={trialSelected}
+                  aria-label={`Trial ${level.id}: ${level.bossName}${unlocked ? '' : ', locked'}`}
+                >
+                  <span className="boss-trial-card__number">{String(level.id).padStart(2, '0')}</span>
+                  <span className="boss-trial-card__portrait">
+                    <AtlasSprite atlas="boss" frame={level.bossFrame} columns={3} rows={2} />
+                  </span>
+                  <span className="boss-trial-card__copy">
+                    <small>{cleared ? 'Crown broken' : current ? 'Current trial' : unlocked ? 'Open trial' : 'Shrouded'}</small>
+                    <strong>{level.bossName}</strong>
+                    <em>{boss?.epithet ?? level.name}</em>
+                  </span>
+                  <span className="boss-trial-card__state" aria-hidden="true">
+                    {cleared ? <Check size={18} /> : unlocked ? <ChevronRight size={18} /> : <LockKeyhole size={16} />}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          <PanelFrame className="boss-trial-detail">
+            <div
+              className="boss-trial-detail__hero"
+              style={{ '--boss-accent': selected.accent } as React.CSSProperties}
+            >
+              <div className="boss-trial-detail__portrait" aria-hidden="true">
+                <AtlasSprite atlas="boss" frame={selected.bossFrame} columns={3} rows={2} />
+                <span />
+              </div>
+              <div className="boss-trial-detail__identity">
+                <small>Trial {String(selected.id).padStart(2, '0')} · Sovereign</small>
+                <h2>{selected.bossName}</h2>
+                <p>{selectedBoss?.epithet ?? selected.description}</p>
+              </div>
+            </div>
+            <OrnamentRule />
+
+            <div className="boss-trial-detail__facts">
+              <span><Gauge size={16} /> Bearer level {BOSS_TRIAL_PLAYER_LEVELS[selected.id - 1]}</span>
+              <span><Swords size={16} /> Threat {selected.difficulty}</span>
+              <span><Shield size={16} /> Fixed arsenal</span>
+            </div>
+
+            <section className="boss-trial-signature">
+              <small>Threat signature</small>
+              <ul>
+                {selected.hazards.slice(0, 2).map((hazard) => (
+                  <li key={hazard}><Flame size={15} /> {hazard}</li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="boss-trial-loadout">
+              <div className="boss-trial-loadout__heading">
+                <div>
+                  <small>Curated loadout</small>
+                  <strong>Power chosen for this duel</strong>
+                </div>
+                <span>{loadout.weapons.length} weapons · {loadout.modules.length} modules</span>
+              </div>
+              <div className="boss-trial-loadout__weapons">
+                {loadout.weapons.map((weapon) => {
+                  const definition = WEAPONS[weapon.id]
+                  return (
+                    <div key={weapon.id} className={`boss-trial-weapon${weapon.awakened ? ' is-awakened' : ''}`}>
+                      <WeaponGlyph id={weapon.id} size={22} />
+                      <span>
+                        <strong>{weapon.awakened ? definition.awakening : definition.name}</strong>
+                        <small>{weapon.awakened ? 'Awakened' : `Rank ${weapon.rank}`}</small>
+                      </span>
+                      <RankPips rank={weapon.rank} max={5} />
+                    </div>
+                  )
+                })}
+              </div>
+              {loadout.modules.length > 0 ? (
+                <div className="boss-trial-loadout__modules">
+                  {loadout.modules.map((module) => (
+                    <span key={module.id}>
+                      <Diamond active />
+                      {MODULES[module.id].name}
+                      <b>{'I'.repeat(module.rank)}</b>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="boss-trial-loadout__empty">No supporting modules. Precision is the only advantage.</p>
+              )}
+              {loadout.traceMods.length > 0 ? (
+                <div className="boss-trial-loadout__traces">
+                  {loadout.traceMods.map((id) => <span key={id}>{TRACE_MODS[id].name}</span>)}
+                </div>
+              ) : null}
+            </section>
+
+            <CrestButton disabled={!canLaunch} onClick={() => onStart(selected.id)}>
+              {canLaunch
+                ? selected.id <= clears
+                  ? 'Challenge Again'
+                  : 'Enter the Trial'
+                : `Break Crown ${String(unlockedLevel).padStart(2, '0')} First`}
+            </CrestButton>
+            <p className="boss-trial-detail__note">
+              {allTrialsCleared
+                ? 'The entire sovereign ladder is open for rematches.'
+                : canLaunch
+                  ? 'Victory opens the next crown. Defeat costs no campaign progress.'
+                  : `Trial ${String(unlockedLevel).padStart(2, '0')} is the next unbeaten crown.`}
+            </p>
+          </PanelFrame>
+        </div>
+      </section>
+    </main>
+  )
+}
+
+const COMBAT_LAB_TRACE_LIMIT = 3
+
+function setLoadoutWeaponRank(loadout: StartingLoadout, id: WeaponId, rank: number) {
+  const weapons = loadout.weapons.filter((weapon) => weapon.id !== id)
+  const existing = loadout.weapons.find((weapon) => weapon.id === id)
+  if (rank > 0) {
+    weapons.push({
+      ...existing,
+      id,
+      rank,
+      awakened: rank === 5 ? existing?.awakened : undefined,
+    })
+  }
+  return normalizeStartingLoadout({ ...loadout, weapons })
+}
+
+function setLoadoutModuleRank(loadout: StartingLoadout, id: ModuleId, rank: number) {
+  const modules = loadout.modules.filter((module) => module.id !== id)
+  if (rank > 0) modules.push({ id, rank })
+  return normalizeStartingLoadout({ ...loadout, modules })
+}
+
+function setWeaponAwakened(loadout: StartingLoadout, id: WeaponId, awakened: boolean) {
+  return normalizeStartingLoadout({
+    ...loadout,
+    weapons: loadout.weapons.map((weapon) => (
+      weapon.id === id ? { ...weapon, awakened } : weapon
+    )),
+  })
+}
+
+export function CombatLabScreen({
+  save,
+  config,
+  onConfigChange,
+  onLaunch,
+  onNavigate,
+}: {
+  save: SaveData
+  config: CombatLabConfig
+  onConfigChange: (config: CombatLabConfig) => void
+  onLaunch: (config: CombatLabConfig) => void
+  onNavigate: ScreenHeaderProps['onNavigate']
+}) {
+  const normalized = useMemo(() => normalizeCombatLabConfig(config), [config])
+  const [presetWeaponId, setPresetWeaponId] = useState<WeaponId>(normalized.loadout.weapons[0]?.id ?? 'helio-lance')
+  const [activePreset, setActivePreset] = useState<CombatLabPresetId | undefined>()
+  const arena = resolveArenaLevel(normalized.arenaLevelId)
+  const boss = resolveBossLevel(normalized.bossLevelId)
+  const bossCodex = BOSS_CODEX.find((entry) => entry.id === boss.bossId)
+
+  const updateConfig = (patch: Partial<CombatLabConfig>) => {
+    onConfigChange(normalizeCombatLabConfig({ ...normalized, ...patch }))
+  }
+  const updateLoadout = (loadout: StartingLoadout) => {
+    setActivePreset(undefined)
+    updateConfig({ loadout: normalizeStartingLoadout(loadout) })
+  }
+  const applyPreset = (presetId: CombatLabPresetId) => {
+    setActivePreset(presetId)
+    updateConfig({ loadout: getCombatLabPresetLoadout(presetId, presetWeaponId) })
+  }
+  const toggleTraceMod = (id: TraceModId) => {
+    const selected = normalized.loadout.traceMods.includes(id)
+    if (!selected && normalized.loadout.traceMods.length >= COMBAT_LAB_TRACE_LIMIT) return
+    updateLoadout({
+      ...normalized.loadout,
+      traceMods: selected
+        ? normalized.loadout.traceMods.filter((traceId) => traceId !== id)
+        : [...normalized.loadout.traceMods, id],
+    })
+  }
+
+  return (
+    <main className="shell-screen combat-lab-screen">
+      <ScreenHeader active="combat-lab" save={save} onNavigate={onNavigate} />
+      <section className="combat-lab-layout">
+        <header className="combat-lab-heading">
+          <span className="section-number">VI</span>
+          <div>
+            <span className="combat-lab-heading__kicker"><FlaskConical size={15} /> Unbound simulation</span>
+            <h1>Combat Lab</h1>
+            <p>Isolate a sovereign, bend the arena, and measure every recovered pattern at full clarity.</p>
+          </div>
+          <span className="combat-lab-heading__safety"><Shield size={15} /> Invincibility protocol active</span>
+        </header>
+
+        <div className="combat-lab-body">
+          <div className="combat-lab-controls">
+            <PanelFrame title="Encounter matrix">
+              <div className="combat-lab-encounter" role="radiogroup" aria-label="Encounter type">
+                <button
+                  className={normalized.encounter === 'boss' ? 'is-selected' : ''}
+                  role="radio"
+                  aria-checked={normalized.encounter === 'boss'}
+                  onClick={() => updateConfig({ encounter: 'boss' })}
+                >
+                  <Crown size={18} />
+                  <span><strong>Boss isolate</strong><small>Begin at the sovereign</small></span>
+                </button>
+                <button
+                  className={normalized.encounter === 'sector' ? 'is-selected' : ''}
+                  role="radio"
+                  aria-checked={normalized.encounter === 'sector'}
+                  onClick={() => updateConfig({ encounter: 'sector' })}
+                >
+                  <Waves size={18} />
+                  <span><strong>Full sector</strong><small>Horde, events, sovereign</small></span>
+                </button>
+              </div>
+              <div className="combat-lab-selectors">
+                <label>
+                  <span>Arena architecture</span>
+                  <select
+                    value={normalized.arenaLevelId}
+                    onChange={(event) => updateConfig({ arenaLevelId: Number(event.currentTarget.value) })}
+                  >
+                    {COMBAT_LAB_ARENAS.map((option) => (
+                      <option key={option.levelId} value={option.levelId}>
+                        {String(option.levelId).padStart(2, '0')} · {option.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Sovereign pattern</span>
+                  <select
+                    value={normalized.bossLevelId}
+                    onChange={(event) => updateConfig({ bossLevelId: Number(event.currentTarget.value) })}
+                  >
+                    {COMBAT_LAB_BOSSES.map((option) => (
+                      <option key={option.levelId} value={option.levelId}>
+                        {String(option.levelId).padStart(2, '0')} · {option.bossName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="combat-lab-tuning">
+                <label>
+                  <span><Gauge size={15} /> Bearer level <strong>{normalized.playerLevel}</strong></span>
+                  <input
+                    type="range"
+                    min={COMBAT_LAB_PLAYER_LEVEL_MIN}
+                    max={COMBAT_LAB_PLAYER_LEVEL_MAX}
+                    value={normalized.playerLevel}
+                    onChange={(event) => updateConfig({ playerLevel: Number(event.currentTarget.value) })}
+                  />
+                </label>
+                <label>
+                  <span><Shield size={15} /> Boss vitality <strong>{normalized.bossHealthMultiplier.toFixed(2)}×</strong></span>
+                  <input
+                    type="range"
+                    min={COMBAT_LAB_BOSS_HEALTH_MIN}
+                    max={COMBAT_LAB_BOSS_HEALTH_MAX}
+                    step={0.25}
+                    value={normalized.bossHealthMultiplier}
+                    onChange={(event) => updateConfig({ bossHealthMultiplier: Number(event.currentTarget.value) })}
+                  />
+                </label>
+              </div>
+            </PanelFrame>
+
+            <PanelFrame title="Calibration presets">
+              <div className="combat-lab-preset-source">
+                <label htmlFor="combat-lab-preset-weapon">Pattern</label>
+                <select
+                  id="combat-lab-preset-weapon"
+                  value={presetWeaponId}
+                  onChange={(event) => {
+                    setPresetWeaponId(event.currentTarget.value as WeaponId)
+                    setActivePreset(undefined)
+                  }}
+                >
+                  {Object.values(WEAPONS).map((weapon) => (
+                    <option key={weapon.id} value={weapon.id}>{weapon.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="combat-lab-presets">
+                {COMBAT_LAB_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    className={activePreset === preset.id ? 'is-selected' : ''}
+                    onClick={() => applyPreset(preset.id)}
+                    aria-pressed={activePreset === preset.id}
+                  >
+                    <span>{preset.label}</span>
+                    <small>{preset.description}</small>
+                  </button>
+                ))}
+              </div>
+            </PanelFrame>
+          </div>
+
+          <PanelFrame className="combat-lab-arsenal">
+            <div className="combat-lab-arsenal__heading">
+              <div>
+                <small><SlidersHorizontal size={14} /> Manual calibration</small>
+                <h2>Arsenal matrix</h2>
+              </div>
+              <span>Rank 0 removes a pattern</span>
+            </div>
+            <div className="combat-lab-weapon-list">
+              {Object.values(WEAPONS).map((weapon) => {
+                const owned = normalized.loadout.weapons.find((entry) => entry.id === weapon.id)
+                const pairedModule = normalized.loadout.modules.find((entry) => entry.id === weapon.moduleId)
+                const canAwaken = owned?.rank === 5 && Boolean(pairedModule)
+                return (
+                  <div key={weapon.id} className={`combat-lab-weapon${owned ? ' is-equipped' : ''}${owned?.awakened ? ' is-awakened' : ''}`}>
+                    <div className="combat-lab-weapon__identity">
+                      <WeaponGlyph id={weapon.id} size={23} />
+                      <span>
+                        <strong>{owned?.awakened ? weapon.awakening : weapon.name}</strong>
+                        <small>{MODULES[weapon.moduleId].name} pairing</small>
+                      </span>
+                    </div>
+                    <label>
+                      <span>Weapon rank <strong>{owned?.rank ?? 0}</strong></span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={5}
+                        value={owned?.rank ?? 0}
+                        onChange={(event) => updateLoadout(setLoadoutWeaponRank(
+                          normalized.loadout,
+                          weapon.id,
+                          Number(event.currentTarget.value),
+                        ))}
+                      />
+                    </label>
+                    <label>
+                      <span>Module rank <strong>{pairedModule?.rank ?? 0}</strong></span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={3}
+                        value={pairedModule?.rank ?? 0}
+                        onChange={(event) => updateLoadout(setLoadoutModuleRank(
+                          normalized.loadout,
+                          weapon.moduleId,
+                          Number(event.currentTarget.value),
+                        ))}
+                      />
+                    </label>
+                    <button
+                      className={`combat-lab-awakening${owned?.awakened ? ' is-active' : ''}`}
+                      disabled={!canAwaken}
+                      onClick={() => updateLoadout(setWeaponAwakened(
+                        normalized.loadout,
+                        weapon.id,
+                        !owned?.awakened,
+                      ))}
+                      aria-pressed={Boolean(owned?.awakened)}
+                      title={canAwaken ? weapon.awakening : 'Requires Rank V and its paired module'}
+                    >
+                      <Sparkles size={15} />
+                      {owned?.awakened ? 'Awakened' : 'Awaken'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="combat-lab-traces">
+              <div className="combat-lab-traces__heading">
+                <span><Zap size={16} /> Trace modifications</span>
+                <strong>{normalized.loadout.traceMods.length} / {COMBAT_LAB_TRACE_LIMIT}</strong>
+              </div>
+              <div className="combat-lab-traces__grid">
+                {Object.values(TRACE_MODS).map((trace) => {
+                  const selected = normalized.loadout.traceMods.includes(trace.id)
+                  const disabled = !selected && normalized.loadout.traceMods.length >= COMBAT_LAB_TRACE_LIMIT
+                  return (
+                    <button
+                      key={trace.id}
+                      className={selected ? 'is-selected' : ''}
+                      disabled={disabled}
+                      onClick={() => toggleTraceMod(trace.id)}
+                      aria-pressed={selected}
+                    >
+                      <Diamond active={selected} />
+                      <span><strong>{trace.name}</strong><small>{trace.description}</small></span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </PanelFrame>
+
+          <PanelFrame className="combat-lab-preview">
+            <div
+              className="combat-lab-preview__arena"
+              style={{ '--arena-accent': arena.accent, '--boss-accent': boss.accent } as React.CSSProperties}
+            >
+              <div className="combat-lab-preview__boss" aria-hidden="true">
+                <AtlasSprite atlas="boss" frame={boss.bossFrame} columns={3} rows={2} />
+              </div>
+              <small>{normalized.encounter === 'boss' ? 'Isolated target' : 'Terminal sovereign'}</small>
+              <h2>{boss.bossName}</h2>
+              <p>{bossCodex?.epithet ?? boss.description}</p>
+              <span className="combat-lab-preview__arena-name">{arena.name} simulation</span>
+            </div>
+            <div className="combat-lab-preview__summary">
+              <span><Target size={16} /> {normalized.encounter === 'boss' ? 'Boss only' : 'Full sector'}</span>
+              <span><Gauge size={16} /> Level {normalized.playerLevel}</span>
+              <span><Shield size={16} /> {normalized.bossHealthMultiplier.toFixed(2)}× boss HP</span>
+              <span><Swords size={16} /> {normalized.loadout.weapons.length} active patterns</span>
+            </div>
+            <CrestButton onClick={() => onLaunch(normalized)}>
+              Launch Simulation
+            </CrestButton>
+            <p className="combat-lab-preview__note">
+              Damage is recorded. Death, rewards, and campaign progression are disabled.
+            </p>
+          </PanelFrame>
+        </div>
       </section>
     </main>
   )
@@ -752,9 +1303,10 @@ export function ResultsScreen({
   weaponDefinitions,
   settings,
   nextGoal,
-  earnedMastery,
+  earnedMastery = [],
   unlockedWeapon,
   onCampaign,
+  onReturn,
   onRetry,
   onNext,
 }: {
@@ -763,18 +1315,55 @@ export function ResultsScreen({
   weaponDefinitions: WeaponDefinition[]
   settings: GameSettings
   nextGoal: string
-  earnedMastery: Array<'clear' | 'trace' | 'aegis'>
+  earnedMastery?: Array<'clear' | 'trace' | 'aegis'>
   unlockedWeapon?: WeaponDefinition
-  onCampaign: () => void
+  onCampaign?: () => void
+  onReturn?: () => void
   onRetry: () => void
   onNext?: () => void
 }) {
+  const runMode = result.runMode ?? 'campaign'
+  const isCampaign = runMode === 'campaign'
+  const isBossTrial = runMode === 'boss-trial'
+  const isCombatLab = runMode === 'combat-lab'
   const kills = useCountUp(result.kills, settings.reducedShake)
   const shards = useCountUp(result.dawnShards, settings.reducedShake, 1000)
+  const totalDamageTarget = result.weaponDamage.reduce((sum, entry) => sum + entry.damage, 0)
+  const totalDamage = useCountUp(totalDamageTarget, settings.reducedShake, 900)
   const maxDamage = Math.max(1, ...result.weaponDamage.map((entry) => entry.damage))
+  const returnAction = onReturn ?? onCampaign
+  const returnLabel = isCampaign ? 'Campaign' : isBossTrial ? 'Boss Trials' : 'Combat Lab'
+  const retryLabel = isCampaign ? 'Retry Sector' : isBossTrial ? 'Retry Trial' : 'Repeat Test'
+  const nextLabel = isBossTrial ? 'Next Sovereign' : 'Next Sector'
+  const goalLabel = isCampaign ? 'Next light' : isBossTrial ? 'Next trial' : 'Lab note'
+  const eyebrow = isCampaign
+    ? result.victory
+      ? `Sector ${String(level.id).padStart(2, '0')} relit`
+      : 'The light returns to its bearer'
+    : isBossTrial
+      ? result.victory
+        ? `Trial ${String(level.id).padStart(2, '0')} conquered`
+        : 'The sovereign keeps its crown'
+      : result.victory
+        ? 'Simulation cycle complete'
+        : 'Simulation safely terminated'
+  const heading = isCampaign
+    ? result.victory ? 'Dawn Answers' : 'Night Prevails'
+    : isBossTrial
+      ? result.victory ? 'Sovereign Broken' : 'Trial Severed'
+      : result.victory ? 'Pattern Recorded' : 'Simulation Ended'
+  const summary = isCampaign
+    ? result.victory
+      ? `${level.name} carries light again.`
+      : `The path through ${level.name} remains unfinished.`
+    : isBossTrial
+      ? result.victory
+        ? `${level.bossName} yields the crown.`
+        : `${level.bossName} remains unbeaten. Recalibrate, then return.`
+      : `${level.bossName} was measured inside the ${level.name} architecture.`
 
   return (
-    <main className={`results-screen${result.victory ? ' is-victory' : ' is-defeat'}`}>
+    <main className={`results-screen results-screen--${runMode}${result.victory ? ' is-victory' : ' is-defeat'}`}>
       <div className="results-screen__world" aria-hidden="true" />
       <div className="results-screen__flare" aria-hidden="true" />
       <section className="results-summary">
@@ -782,22 +1371,51 @@ export function ResultsScreen({
           <StarMark />
           <span />
         </div>
-        <small>{result.victory ? `Sector ${String(level.id).padStart(2, '0')} relit` : 'The light returns to its bearer'}</small>
-        <h1>{result.victory ? 'Dawn Answers' : 'Night Prevails'}</h1>
-        <p>{result.victory ? `${level.name} carries light again.` : `The path through ${level.name} remains unfinished.`}</p>
+        <small>{eyebrow}</small>
+        <h1>{heading}</h1>
+        <p>{summary}</p>
         <OrnamentRule />
         <div className="result-stats">
-          <div><strong>{kills.toLocaleString()}</strong><span>Nightborn ended</span></div>
-          <div><strong>{result.closedLoops}</strong><span>Circuits closed</span></div>
-          <div><strong>{result.largestChain}</strong><span>Largest chain</span></div>
-          <div><strong>{Math.floor(result.survivalTime / 60)}:{String(Math.floor(result.survivalTime % 60)).padStart(2, '0')}</strong><span>Time held</span></div>
+          {isCampaign ? (
+            <>
+              <div><strong>{kills.toLocaleString()}</strong><span>Nightborn ended</span></div>
+              <div><strong>{result.closedLoops}</strong><span>Circuits closed</span></div>
+              <div><strong>{result.largestChain}</strong><span>Largest chain</span></div>
+              <div><strong>{Math.floor(result.survivalTime / 60)}:{String(Math.floor(result.survivalTime % 60)).padStart(2, '0')}</strong><span>Time held</span></div>
+            </>
+          ) : (
+            <>
+              <div><strong>{totalDamage.toLocaleString()}</strong><span>{isBossTrial ? 'Damage dealt' : 'Damage recorded'}</span></div>
+              <div><strong>{kills.toLocaleString()}</strong><span>{isBossTrial ? 'Threats ended' : 'Targets ended'}</span></div>
+              <div><strong>{result.closedLoops}</strong><span>Circuits closed</span></div>
+              <div><strong>{Math.floor(result.survivalTime / 60)}:{String(Math.floor(result.survivalTime % 60)).padStart(2, '0')}</strong><span>{isBossTrial ? 'Duel time' : 'Sample time'}</span></div>
+            </>
+          )}
         </div>
-        <div className="result-reward">
-          <Sparkles size={23} />
-          <span>Dawn Shards recovered</span>
-          <strong>+{shards}</strong>
-        </div>
-        {earnedMastery.length > 0 || unlockedWeapon ? (
+        {isCampaign ? (
+          <div className="result-reward">
+            <Sparkles size={23} />
+            <span>Dawn Shards recovered</span>
+            <strong>+{shards}</strong>
+          </div>
+        ) : isBossTrial ? (
+          <div className="result-reward result-reward--trial">
+            <Crown size={23} />
+            <span>
+              {result.victory
+                ? `Sovereign crown ${String(level.id).padStart(2, '0')} broken`
+                : 'No crown recovered'}
+            </span>
+            <strong>{result.victory ? `+${shards}` : '—'}</strong>
+          </div>
+        ) : (
+          <div className="result-reward result-reward--lab">
+            <FlaskConical size={23} />
+            <span>Campaign rewards disabled</span>
+            <strong>LAB</strong>
+          </div>
+        )}
+        {isCampaign && (earnedMastery.length > 0 || unlockedWeapon) ? (
           <div className="result-unlocks" aria-label="New rewards">
             {earnedMastery.map((seal) => (
               <span key={seal}>
@@ -835,14 +1453,16 @@ export function ResultsScreen({
         <div className="next-goal">
           <Target size={20} />
           <div>
-            <small>Next light</small>
+            <small>{goalLabel}</small>
             <strong>{nextGoal}</strong>
           </div>
         </div>
         <div className="results-actions">
-          <button className="text-action" onClick={onCampaign}><ArrowLeft size={17} /> Campaign</button>
-          <CrestButton tone="quiet" compact onClick={onRetry}>Retry Sector</CrestButton>
-          {onNext ? <CrestButton compact onClick={onNext}>Next Sector</CrestButton> : null}
+          {returnAction ? (
+            <button className="text-action" onClick={returnAction}><ArrowLeft size={17} /> {returnLabel}</button>
+          ) : null}
+          <CrestButton tone="quiet" compact onClick={onRetry}>{retryLabel}</CrestButton>
+          {!isCombatLab && onNext ? <CrestButton compact onClick={onNext}>{nextLabel}</CrestButton> : null}
         </div>
       </PanelFrame>
     </main>

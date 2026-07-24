@@ -1,7 +1,7 @@
 import type { RunResult, SaveData, TraceModId, WeaponId } from '../shared/types'
 import { LEVELS, WEAPONS, getLevel } from './content'
 
-export const SAVE_VERSION = 2
+export const SAVE_VERSION = 3
 export const SAVE_KEY = 'nighttrace.save.v1'
 
 export type MasteryId = 'clear' | 'trace' | 'aegis'
@@ -43,6 +43,7 @@ const DEFAULT_SETTINGS: SaveData['settings'] = {
 export const DEFAULT_SAVE: SaveData = {
   version: SAVE_VERSION,
   unlockedLevel: 1,
+  bossTrialClears: 0,
   completedLevels: [],
   mastery: {},
   dawnShards: 0,
@@ -219,6 +220,7 @@ export function migrateSave(value: unknown): SaveData {
   return {
     version: SAVE_VERSION,
     unlockedLevel,
+    bossTrialClears: clamp(nonNegativeInteger(source.bossTrialClears), 0, LEVELS.length),
     completedLevels,
     mastery: normalizeMastery(source.mastery ?? source.stars),
     dawnShards: nonNegativeInteger(source.dawnShards ?? source.shards ?? source.currency),
@@ -286,7 +288,7 @@ export function getMasteryTargets(levelId: number): MasteryTargets {
 }
 
 export function getEarnedMastery(result: RunResult): MasteryId[] {
-  if (!result.victory) return []
+  if (result.runMode !== 'campaign' || !result.victory) return []
   const targets = getMasteryTargets(result.levelId)
   const earned: MasteryId[] = ['clear']
   if (result.closedLoops >= targets.traceLoops) earned.push('trace')
@@ -345,6 +347,7 @@ export function calculateRunReward(result: RunResult, previousSave?: SaveData): 
  */
 export function applyPersistentReward(save: SaveData, result: RunResult): SaveData {
   const current = migrateSave(save)
+  if (result.runMode !== 'campaign') return current
   const reward = calculateRunReward(result, current)
   const next = cloneSave(current)
   next.dawnShards += reward.dawnShards
@@ -365,6 +368,46 @@ export function applyPersistentReward(save: SaveData, result: RunResult): SaveDa
   for (const masteryId of reward.earnedMastery) mastery.add(masteryId)
   next.mastery = { ...next.mastery, [level.id]: MASTERY_IDS.filter((masteryId) => mastery.has(masteryId)) }
 
+  return next
+}
+
+function bossTrialLevelId(value: number): number | undefined {
+  if (!Number.isInteger(value) || value < 1 || value > LEVELS.length) return undefined
+  return value
+}
+
+function isStrictNextBossTrial(currentClears: number, trialLevelId: number) {
+  return currentClears < LEVELS.length && trialLevelId === currentClears + 1
+}
+
+function bossTrialShardReward(trialLevelId: number, firstClear: boolean) {
+  return firstClear
+    ? 12 + trialLevelId * 3
+    : 3 + trialLevelId
+}
+
+/**
+ * Applies the isolated Boss Trials progression track.
+ *
+ * Only a victory in the next uncleared trial can advance the track. Victories
+ * in already-cleared trials earn a smaller replay stipend, while skipped,
+ * invalid, failed, campaign, and Combat Lab runs cannot change trial progress.
+ * Campaign unlocks, mastery, and weapon ownership are intentionally untouched.
+ */
+export function applyBossTrialReward(save: SaveData, result: RunResult): SaveData {
+  const current = migrateSave(save)
+  if (result.runMode !== 'boss-trial' || !result.victory) return current
+
+  const trialLevelId = bossTrialLevelId(result.levelId)
+  if (trialLevelId === undefined) return current
+
+  const firstClear = isStrictNextBossTrial(current.bossTrialClears, trialLevelId)
+  const replay = trialLevelId <= current.bossTrialClears
+  if (!firstClear && !replay) return current
+
+  const next = cloneSave(current)
+  if (firstClear) next.bossTrialClears = trialLevelId
+  next.dawnShards += bossTrialShardReward(trialLevelId, firstClear)
   return next
 }
 

@@ -1,4 +1,4 @@
-NIGHTTRACE v1.4.0 runtime documentation
+NIGHTTRACE v1.5.0 runtime documentation
 
 NIGHTTRACE_Combat_Systems_Codex.pdf
   23-page combat reference with real runtime weapon frames, support relics,

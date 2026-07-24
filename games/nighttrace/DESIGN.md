@@ -34,12 +34,27 @@ Runs are deliberately compressed: the campaign begins at 4:00 and grows to 7:30.
 - The Astrarium has ten prerequisite-linked nodes with rank caps and a full-cost refund.
 - The versioned browser save records relit sectors, mastery, Dawn Shards, weapon patterns, Astrarium ranks, and settings. It uses local storage only.
 
+Boss Trials is an isolated sequential progression track: boss 1 starts open,
+and only defeating the next unbeaten boss opens another. Its curated builds and
+small shard stipends do not mutate campaign sectors, mastery, or weapon unlocks.
+
+Combat Lab is intentionally non-progression. It can combine any of the ten
+arenas, ten bosses, eight weapons, eight paired modules, awakenings, and up to
+three Trace Mods. The player can run a boss isolate or full sector with
+unlimited vitality; no Lab result writes rewards or progression.
+
 ## Visual language
 
 - Obsidian and navy terrain with wet reflections and shattered ivory architecture.
 - Cyan for player energy and XP, solar gold for rewards, coral for danger, violet for shadow.
 - Painterly 2.5D assets with angular glass-and-brass code-native UI.
 - Enemy silhouettes remain readable beneath allied VFX; saturated coral is reserved for threats.
+- Horde motion accents are low-alpha and LOD-capped; boss specials may dominate
+  the frame through crimson/violet seals, segmented rings, streak echoes, and
+  impact cores.
+- Hostile attacks use a deterministic gather → release → aftershock envelope.
+  HyperFrames motion rules inform the timing language; native PixiJS owns the
+  interactive runtime.
 
 ## Accessibility and performance
 

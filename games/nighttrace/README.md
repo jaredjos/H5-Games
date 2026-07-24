@@ -15,6 +15,7 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.3.0` — re-authored encounter pacing with a readable one-minute warmup, accelerating mid/late hordes, progression-gated specialists, steeper late upgrade costs, and build-aware sovereign durability
 - `v1.3.1` — runtime-captured upgrade documentation plus stronger, species-specific horde locomotion, attack anticipation/release poses, sovereign motion profiles, responsive shadows, footfalls, hover trails, and compact attack accents
 - `v1.4.0` — a complete eight-weapon visual overhaul with stage-aware silhouettes, cast gates, impact punctuation, mastery density, awakened signatures, deterministic 32-state capture evidence, and landscape-phone validation
+- `v1.5.0` — public Combat Lab and Boss Trials modes, isolated ten-boss progression, configurable no-limit testing, hostile-palette horde/boss motion graphics, mode-aware HUD/results, and expanded desktop/mobile validation
 
 ## Runtime guide and visual evidence
 
@@ -106,6 +107,17 @@ accents make these poses readable without changing collision radii or balance.
 Reduced-motion mode keeps gameplay telegraphs while softening nonessential
 sway, recoil, and afterimages.
 
+The hostile presentation layer now follows a three-beat motion contract:
+gather, decisive release, and short aftershock. Hordes use low-opacity,
+LOD-capped footfalls, wing trails, strike fields, and species palettes so they
+remain subordinate to the player arsenal. Sovereigns add signature seals,
+segmented ritual rings, directional streak echoes, phase authority marks, and
+high-contrast impact punctuation. Their crimson, bruised violet, bile, ember,
+and shadow colors are intentionally separate from the bearer’s cyan, solar
+gold, and prismatic weapon palette. The motion language was designed with
+HyperFrames guidance, while all interactive rendering remains deterministic
+native PixiJS for seek-safe gameplay and performance.
+
 Each weapon now has a full four-stage visual identity. Helio Lance builds from
 a focused solar rail into a crowned spear gate; Crescent Array grows into an
 eclipsed orbit wheel; Arc Choir forms cathedral-like lightning geometry; Rift
@@ -121,6 +133,40 @@ phase changes and attacks receive restrained stingers, and every run ends on a
 dedicated victory or defeat cue that finishes before the results screen appears.
 The music slider starts at 50%, while the ambient and boss music buses are mixed
 at approximately twice the former default output.
+
+## Game modes
+
+### Campaign
+
+The original ten-sector campaign is unchanged: horde survival, three-card
+drafts, mastery seals, first-clear weapon unlocks, Dawn Shards, and Astrarium
+progression all remain on their existing track.
+
+### Boss Trials
+
+Boss Trials is a separate, non-test ladder. Gloam Stag is open first; each
+victory unlocks exactly the next sovereign, through all ten bosses. Every trial
+uses a curated level and loadout, one real life bar, boss-only combat, and a
+dedicated crown-clear counter. Trial victories award a modest Dawn Shard
+stipend, but never unlock campaign sectors, weapons, or mastery seals. Cleared
+bosses remain available for rematches.
+
+### Combat Lab
+
+Combat Lab is the public no-limit test mode. It provides:
+
+- unlimited vitality with hit feedback preserved
+- independent selection of any of the ten arenas and ten bosses
+- boss-only isolation or a complete horde-to-boss sector
+- bearer level and 0.25×–4× boss-vitality controls
+- Solo, Combined, Mastered, and Final presets for every weapon
+- manual rank controls for all eight weapons and eight paired modules
+- awakening toggles plus any three Trace Mods
+- fixed selected builds with rewards and all progression writes disabled
+
+Boss-only Lab and Trial encounters wait behind an explicit **Begin** gate so
+mobile browsers can unlock music and effects from the player’s touch gesture.
+The pause and results screens return to the mode that launched the encounter.
 
 ## Campaign
 
@@ -172,7 +218,13 @@ Victories relight the next sector, recover weapon patterns, and can earn three m
 
 Dawn Shards fund the ten-node Astrarium, a prerequisite-linked constellation of persistent upgrades. Nodes have explicit rank caps, and **Refund all** returns the full shard investment so a build can be reconfigured freely.
 
-Campaign progress, mastery, weapon unlocks, Astrarium ranks, and settings are stored locally in the browser under the versioned `nighttrace.save.v1` save. There is no account or remote backend. **Erase progress** clears campaign progression while preserving the current accessibility and audio settings.
+Campaign progress, Boss Trial crowns, mastery, weapon unlocks, Astrarium ranks,
+and settings are stored locally in the browser under the versioned
+`nighttrace.save.v1` save. The schema is now version 3 and migrates older saves
+in place; the storage key remains stable. Combat Lab never writes progression.
+There is no account or remote backend. **Erase progress** clears campaign and
+trial progression while preserving the current accessibility and audio
+settings.
 
 ## Accessibility
 
