@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.5.1`
+- Current web release: `v1.5.2`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -21,7 +21,7 @@ pnpm build
 pnpm verify:build
 ```
 
-The release is acceptable only when all nine test files and all 99 unit tests
+The release is acceptable only when all nine test files and all 103 unit tests
 pass, lint exits cleanly, the subpath verifier passes, no production source
 maps are emitted, and Vite produces `dist/index.html`.
 
@@ -44,6 +44,17 @@ The v1.5.1 area-power clarity gate additionally requires:
 - all four states remain visually distinct in deterministic 1440x900 captures
 - both Final states remain readable in the 844x390 landscape combat viewport
 - dense Halo casts refresh the hit accent without rewinding the crown animation
+
+The v1.5.2 sovereign-animation gate additionally requires:
+
+- all ten bosses have distinct immutable motion profiles
+- each profile produces readable idle and locomotion silhouettes
+- normal contact attacks visibly pass through wind-up, release, and recovery
+- each level-specific special produces a distinct body pose and hostile VFX accent
+- dynamic anchors, squash/stretch, lean, recoil, and afterimages remain bounded
+- reduced-motion mode preserves every required gameplay telegraph
+- representative first- and final-boss encounters animate in live PixiJS combat
+- the live browser console remains free of warnings and errors
 
 ## Release archives
 
@@ -74,6 +85,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.4.0`: complete eight-weapon VFX overhaul and refreshed runtime evidence.
 - `v1.5.0`: public Combat Lab, progressive Boss Trials, hostile motion/VFX hierarchy, and expanded mobile QA.
 - `v1.5.1`: non-concentric Ash Halo / Null Bell clarity rework, rapid-fire motion continuity, and refreshed runtime proofs.
+- `v1.5.2`: ten-signature sovereign choreography with distinct idle, locomotion, melee, and level-specific special-action VFX.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

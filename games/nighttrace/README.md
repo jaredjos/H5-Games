@@ -17,6 +17,7 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.4.0` — a complete eight-weapon visual overhaul with stage-aware silhouettes, cast gates, impact punctuation, mastery density, awakened signatures, deterministic 32-state capture evidence, and landscape-phone validation
 - `v1.5.0` — public Combat Lab and Boss Trials modes, isolated ten-boss progression, configurable no-limit testing, hostile-palette horde/boss motion graphics, mode-aware HUD/results, and expanded desktop/mobile validation
 - `v1.5.1` — Ash Halo and Null Bell clarity rework: non-concentric Cinder Crown and Shattered Toll silhouettes, continuous rapid-fire motion, a distinct Final Bell silence cross, refreshed runtime proofs, and desktop/mobile validation
+- `v1.5.2` — a complete ten-boss animation pass with sovereign-specific idle and locomotion signatures, normal melee wind-up/release/recovery, dynamic pivots and afterimages, plus distinct level-specific special-action VFX
 
 ## Runtime guide and visual evidence
 
@@ -99,8 +100,11 @@ recoil, and a six-pose solar-ready sequence for radial casts and Trace Pulse.
 The pose controller locks every drawing to one foot baseline, mirrors around the
 body root, and freezes with the fixed-step simulation whenever play is paused.
 Every Nightborn species and all ten sovereign bosses use dedicated procedural
-motion profiles for locomotion, anticipation, attack release, impacts,
-entrances, phase changes, and defeats. Grounded creatures step and squash;
+motion profiles for idle breathing, locomotion, anticipation, attack release,
+impacts, entrances, phase changes, and defeats. Every sovereign now has a
+unique motion signature, dynamic pivot/origin shifts, a real normal-contact
+wind-up/release/recovery sequence, and bespoke body choreography for its
+level-specific special. Grounded creatures step and squash;
 fliers flutter or drift; chargers recoil before committing; casters gather
 before release; and bosses preserve a distinct silhouette for each signature.
 Responsive shadows, footfalls, hover trails, and compact actor-bound attack

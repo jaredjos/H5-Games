@@ -42,6 +42,7 @@ import { NighttraceAudio } from './audio'
 import {
   HERO_FIRE_DURATION,
   HERO_FIRE_RELEASE_TIME,
+  bossAnimationProfile,
   heroChargeFrameAt,
   heroFireFrameAt,
   heroPulseRecoveryFrameAt,
@@ -1152,6 +1153,10 @@ class NighttraceRuntime {
             id: enemy.id,
             uid: enemy.uid,
           })
+      enemy.sprite.anchor.set(
+        0.5 + pose.pivotX,
+        (enemy.isBoss ? 0.62 : 0.6) + pose.pivotY,
+      )
       this.drawEnemyMotionAccent(
         enemy,
         renderX,
@@ -1710,7 +1715,13 @@ class NighttraceRuntime {
       enemy.y = clamp(enemy.y + enemy.vy * delta, 34, WORLD_HEIGHT - 34)
 
       if (distance <= enemy.radius + 25 && enemy.contactCooldown <= 0) {
-        this.triggerEnemyAttack(enemy, 'melee', enemy.isBoss ? 0.42 : 0.34, Math.atan2(dy, dx))
+        this.triggerEnemyAttack(
+          enemy,
+          'melee',
+          enemy.isBoss ? 0.42 : 0.34,
+          Math.atan2(dy, dx),
+          enemy.isBoss,
+        )
         this.damagePlayer(enemy.damage)
         enemy.contactCooldown = enemy.isBoss ? 0.72 : 0.92
         if (!enemy.isBoss) {
@@ -5435,6 +5446,15 @@ class NighttraceRuntime {
 
     if (bossProfile) {
       this.drawBossSignatureMotif(enemy, x, y, angle, envelope)
+      if (
+        enemy.attackMotionStyle === 'boss-line' ||
+        enemy.attackMotionStyle === 'boss-orbit' ||
+        enemy.attackMotionStyle === 'boss-cross' ||
+        enemy.attackMotionStyle === 'boss-mirror' ||
+        enemy.attackMotionStyle === 'boss-cluster'
+      ) {
+        this.drawBossSpecialChoreography(enemy, x, y, angle, envelope)
+      }
     }
 
     if (directional) {
@@ -5684,6 +5704,305 @@ class NighttraceRuntime {
           centerY + Math.sin(rayAngle + side * 0.24) * radius,
         )
         .stroke({ color: profile.primaryColor, width: 4, alpha: alpha * 0.78 })
+    }
+  }
+
+  private drawBossSpecialChoreography(
+    enemy: EnemyEntity,
+    x: number,
+    y: number,
+    angle: number,
+    envelope: ReturnType<typeof sampleHostileEnvelope>,
+  ) {
+    const animationProfile = bossAnimationProfile(this.bossLevel.id)
+    const presentation = bossPresentation(this.bossLevel.bossId)
+    const energy = Math.max(
+      envelope.gather * 0.68,
+      envelope.release,
+      envelope.impact,
+    )
+    if (energy <= 0.025) return
+
+    const flashScale = this.settings.reducedFlash ? presentation.reducedFlashScale : 1
+    const alpha = energy * flashScale
+    const centerY = y + enemy.radius * 0.05
+    const forwardX = Math.cos(angle)
+    const forwardY = Math.sin(angle)
+    const sideX = -forwardY
+    const sideY = forwardX
+    const reach = enemy.radius * (
+      0.78 +
+      envelope.gather * 0.28 +
+      envelope.release * 0.66 +
+      envelope.impact * 0.38
+    )
+    const rotation = this.motionClock * (0.72 + enemy.phase * 0.09)
+
+    switch (animationProfile.signature) {
+      case 'antler-prowl': {
+        const spread = enemy.radius * (0.3 + envelope.release * 0.38)
+        for (const side of [-1, 1]) {
+          const shoulderX = x + forwardX * reach * 0.28 + sideX * spread * side
+          const shoulderY = centerY + forwardY * reach * 0.28 + sideY * spread * side
+          this.motionGraphics
+            .moveTo(
+              x - forwardX * enemy.radius * 0.18,
+              centerY - forwardY * enemy.radius * 0.18,
+            )
+            .lineTo(shoulderX, shoulderY)
+            .lineTo(
+              x + forwardX * reach + sideX * spread * side * 0.58,
+              centerY + forwardY * reach + sideY * spread * side * 0.58,
+            )
+            .stroke({
+              color: side > 0 ? presentation.primaryColor : presentation.secondaryColor,
+              width: 3.2 + envelope.impact * 2.8,
+              alpha: alpha * 0.7,
+            })
+        }
+        break
+      }
+      case 'choir-float': {
+        const orbitRadius = enemy.radius * (0.78 + envelope.release * 0.42)
+        for (let index = 0; index < 3; index += 1) {
+          const orbit = rotation + (Math.PI * 2 * index) / 3
+          const glyphX = x + Math.cos(orbit) * orbitRadius
+          const glyphY = centerY + Math.sin(orbit) * orbitRadius * 0.62
+          this.drawDiamondGlyph(
+            this.motionGraphics,
+            glyphX,
+            glyphY,
+            enemy.radius * (0.1 + envelope.impact * 0.08),
+            -orbit,
+            index % 2 ? presentation.secondaryColor : presentation.primaryColor,
+            alpha * (0.52 + envelope.impact * 0.24),
+            envelope.impact > 0.55,
+          )
+        }
+        break
+      }
+      case 'rail-rush': {
+        const railGap = enemy.radius * (0.3 + envelope.gather * 0.16)
+        const startX = x - forwardX * enemy.radius * 0.42
+        const startY = centerY - forwardY * enemy.radius * 0.42
+        for (const side of [-1, 1]) {
+          this.motionGraphics
+            .moveTo(startX + sideX * railGap * side, startY + sideY * railGap * side)
+            .lineTo(
+              x + forwardX * reach + sideX * railGap * side,
+              centerY + forwardY * reach + sideY * railGap * side,
+            )
+            .stroke({
+              color: side > 0 ? presentation.primaryColor : presentation.secondaryColor,
+              width: 4 + envelope.impact * 3,
+              alpha: alpha * 0.68,
+            })
+        }
+        const braceX = x + forwardX * reach * 0.48
+        const braceY = centerY + forwardY * reach * 0.48
+        this.motionGraphics
+          .moveTo(braceX - sideX * railGap * 1.35, braceY - sideY * railGap * 1.35)
+          .lineTo(braceX + sideX * railGap * 1.35, braceY + sideY * railGap * 1.35)
+          .stroke({
+            color: presentation.impactColor,
+            width: 2.2 + envelope.impact * 2.2,
+            alpha: alpha * 0.55,
+          })
+        break
+      }
+      case 'mirror-drift': {
+        const separation = enemy.radius * (0.58 + envelope.release * 0.48)
+        for (const side of [-1, 1]) {
+          for (let depth = 0; depth < 2; depth += 1) {
+            const distance = separation * (0.72 + depth * 0.46)
+            this.drawDiamondGlyph(
+              this.motionGraphics,
+              x + sideX * distance * side + forwardX * reach * depth * 0.18,
+              centerY + sideY * distance * side + forwardY * reach * depth * 0.18,
+              enemy.radius * (0.18 + envelope.impact * 0.08 - depth * 0.025),
+              rotation * side + depth * Math.PI * 0.25,
+              depth % 2 ? presentation.secondaryColor : presentation.primaryColor,
+              alpha * (0.6 - depth * 0.14),
+              envelope.impact > 0.62 && depth === 0,
+            )
+          }
+        }
+        break
+      }
+      case 'undertow-glide': {
+        const pullX = x - forwardX * enemy.radius * (0.2 + envelope.gather * 0.3)
+        const pullY = centerY - forwardY * enemy.radius * (0.2 + envelope.gather * 0.3)
+        for (let index = 0; index < 2; index += 1) {
+          this.drawSegmentedRing(
+            this.motionGraphics,
+            pullX + forwardX * enemy.radius * index * 0.28,
+            pullY + forwardY * enemy.radius * index * 0.28,
+            enemy.radius * (0.62 + index * 0.3 + envelope.release * 0.22),
+            7 + index * 3 + enemy.phase,
+            (index % 2 ? -1 : 1) * rotation,
+            index % 2 ? presentation.secondaryColor : presentation.primaryColor,
+            2.4 + index,
+            alpha * (0.58 - index * 0.12),
+            0.54,
+          )
+        }
+        break
+      }
+      case 'storm-engine': {
+        const startX = x - forwardX * enemy.radius * 0.2
+        const startY = centerY - forwardY * enemy.radius * 0.2
+        this.motionGraphics
+          .moveTo(startX, startY)
+          .lineTo(x + forwardX * reach, centerY + forwardY * reach)
+          .stroke({
+            color: presentation.primaryColor,
+            width: 3.4 + envelope.impact * 3.2,
+            alpha: alpha * 0.68,
+          })
+        const teeth = 6 + enemy.phase
+        for (let index = 1; index <= teeth; index += 1) {
+          const progress = index / (teeth + 1)
+          const toothX = lerp(startX, x + forwardX * reach, progress)
+          const toothY = lerp(startY, centerY + forwardY * reach, progress)
+          const toothLength = enemy.radius * (0.16 + (index % 2) * 0.13)
+          this.motionGraphics
+            .moveTo(toothX - sideX * toothLength, toothY - sideY * toothLength)
+            .lineTo(toothX + sideX * toothLength, toothY + sideY * toothLength)
+        }
+        this.motionGraphics.stroke({
+          color: presentation.secondaryColor,
+          width: 2.1,
+          alpha: alpha * 0.48,
+        })
+        break
+      }
+      case 'clock-stutter': {
+        const clockRadius = enemy.radius * (0.82 + envelope.release * 0.36)
+        this.drawRadialTicks(
+          this.motionGraphics,
+          x,
+          centerY,
+          clockRadius,
+          12,
+          enemy.radius * (0.11 + envelope.impact * 0.12),
+          rotation,
+          presentation.primaryColor,
+          2.6,
+          alpha * 0.62,
+        )
+        const minuteAngle = rotation * 0.42
+        const hourAngle = -rotation * 0.19 + Math.PI * 0.5
+        this.motionGraphics
+          .moveTo(x, centerY)
+          .lineTo(
+            x + Math.cos(minuteAngle) * clockRadius * 0.82,
+            centerY + Math.sin(minuteAngle) * clockRadius * 0.82,
+          )
+          .moveTo(x, centerY)
+          .lineTo(
+            x + Math.cos(hourAngle) * clockRadius * 0.58,
+            centerY + Math.sin(hourAngle) * clockRadius * 0.58,
+          )
+          .stroke({
+            color: presentation.impactColor,
+            width: 3 + envelope.impact * 2,
+            alpha: alpha * 0.6,
+          })
+        break
+      }
+      case 'furnace-stomp': {
+        const fissureRadius = enemy.radius * (0.68 + envelope.impact * 0.72)
+        this.drawJaggedRing(
+          this.motionGraphics,
+          x,
+          centerY,
+          fissureRadius,
+          18 + enemy.phase * 3,
+          -rotation * 0.24,
+          this.bossLevel.id * 113 + enemy.phase * 19,
+          7 + envelope.impact * 7,
+          presentation.primaryColor,
+          3.6 + envelope.impact * 2.8,
+          alpha * 0.64,
+        )
+        for (let index = 0; index < 6; index += 1) {
+          const fissureAngle = angle + (Math.PI * 2 * index) / 6
+          const innerRadius = fissureRadius * 0.45
+          const outerRadius = fissureRadius * (0.92 + (index % 2) * 0.24)
+          this.motionGraphics
+            .moveTo(
+              x + Math.cos(fissureAngle) * innerRadius,
+              centerY + Math.sin(fissureAngle) * innerRadius,
+            )
+            .lineTo(
+              x + Math.cos(fissureAngle + 0.08 * (index % 2 ? -1 : 1)) * outerRadius,
+              centerY + Math.sin(fissureAngle + 0.08 * (index % 2 ? -1 : 1)) * outerRadius,
+            )
+        }
+        this.motionGraphics.stroke({
+          color: presentation.secondaryColor,
+          width: 2.4,
+          alpha: alpha * 0.42,
+        })
+        break
+      }
+      case 'void-cartography': {
+        const gridRadius = enemy.radius * (0.72 + envelope.release * 0.46)
+        const gridStep = gridRadius * 0.46
+        for (let index = -1; index <= 1; index += 1) {
+          const sideOffset = gridStep * index
+          this.motionGraphics
+            .moveTo(
+              x - forwardX * gridRadius + sideX * sideOffset,
+              centerY - forwardY * gridRadius + sideY * sideOffset,
+            )
+            .lineTo(
+              x + forwardX * gridRadius + sideX * sideOffset,
+              centerY + forwardY * gridRadius + sideY * sideOffset,
+            )
+            .moveTo(
+              x - sideX * gridRadius + forwardX * sideOffset,
+              centerY - sideY * gridRadius + forwardY * sideOffset,
+            )
+            .lineTo(
+              x + sideX * gridRadius + forwardX * sideOffset,
+              centerY + sideY * gridRadius + forwardY * sideOffset,
+            )
+        }
+        this.motionGraphics.stroke({
+          color: presentation.primaryColor,
+          width: 2.1 + envelope.impact * 1.8,
+          alpha: alpha * 0.48,
+        })
+        break
+      }
+      case 'eclipse-majesty': {
+        const coronaRadius = enemy.radius * (0.72 + envelope.release * 0.48)
+        this.motionGraphics
+          .circle(x, centerY, coronaRadius * 0.55)
+          .fill({
+            color: presentation.shadowColor,
+            alpha: alpha * 0.72,
+          })
+          .stroke({
+            color: presentation.impactColor,
+            width: 3.8 + envelope.impact * 3.2,
+            alpha: alpha * 0.7,
+          })
+        this.drawStarburst(
+          this.motionGraphics,
+          x,
+          centerY,
+          16 + enemy.phase * 2,
+          coronaRadius * 0.68,
+          coronaRadius * (1.12 + envelope.impact * 0.28),
+          rotation,
+          presentation.primaryColor,
+          2.4 + envelope.impact * 1.8,
+          alpha * 0.62,
+        )
+        break
+      }
     }
   }
 

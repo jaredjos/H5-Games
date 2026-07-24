@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BOSS_ANIMATION_PROFILES,
   HERO_FIRE_DURATION,
   HERO_FIRE_RELEASE_TIME,
+  bossAnimationProfile,
   heroChargeFrameAt,
   heroFireFrameAt,
   heroPulseRecoveryFrameAt,
@@ -51,12 +53,26 @@ const BOSS_ATTACK_CASES: Array<{
 ]
 
 const BOSS_FRAMES_BY_LEVEL = [0, 1, 2, 3, 1, 4, 4, 2, 3, 5] as const
+const BOSS_SPECIAL_STYLES_BY_LEVEL: AttackMotionStyle[] = [
+  'boss-line',
+  'boss-orbit',
+  'boss-cross',
+  'boss-mirror',
+  'boss-cluster',
+  'boss-line',
+  'boss-orbit',
+  'boss-cluster',
+  'boss-cross',
+  'boss-mirror',
+]
 
 const visualPoseDistance = (left: MotionPose, right: MotionPose) =>
   Math.hypot(left.offsetX - right.offsetX, left.offsetY - right.offsetY) +
   Math.abs(left.rotation - right.rotation) * 40 +
   Math.abs(left.scaleX - right.scaleX) * 32 +
   Math.abs(left.scaleY - right.scaleY) * 32 +
+  Math.abs(left.pivotX - right.pivotX) * 180 +
+  Math.abs(left.pivotY - right.pivotY) * 180 +
   Math.abs(left.alpha - right.alpha) * 28 +
   Math.abs(left.glow - right.glow) * 14
 
@@ -73,6 +89,8 @@ const expectHordePoseBounds = (pose: MotionPose) => {
   expect(pose.scaleX).toBeLessThanOrEqual(1.35)
   expect(pose.scaleY).toBeGreaterThanOrEqual(0.72)
   expect(pose.scaleY).toBeLessThanOrEqual(1.35)
+  expect(Math.abs(pose.pivotX)).toBeLessThanOrEqual(0.08)
+  expect(Math.abs(pose.pivotY)).toBeLessThanOrEqual(0.08)
   expect(pose.alpha).toBeGreaterThanOrEqual(0.15)
   expect(pose.alpha).toBeLessThanOrEqual(1)
   expect(pose.glow).toBeGreaterThanOrEqual(0)
@@ -88,6 +106,8 @@ const expectBossPoseBounds = (pose: MotionPose) => {
   expect(pose.scaleX).toBeLessThanOrEqual(1.62)
   expect(pose.scaleY).toBeGreaterThanOrEqual(0.6)
   expect(pose.scaleY).toBeLessThanOrEqual(1.62)
+  expect(Math.abs(pose.pivotX)).toBeLessThanOrEqual(0.08)
+  expect(Math.abs(pose.pivotY)).toBeLessThanOrEqual(0.08)
   expect(pose.alpha).toBeGreaterThanOrEqual(0.12)
   expect(pose.alpha).toBeLessThanOrEqual(1)
   expect(pose.glow).toBeGreaterThanOrEqual(0)
@@ -132,6 +152,34 @@ describe('authored hero sprite timing', () => {
     expect(heroChargeFrameAt(1.25)).toBe(0)
     expect(heroPulseRecoveryFrameAt(0)).toBe(5)
     expect(heroPulseRecoveryFrameAt(1)).toBe(0)
+  })
+})
+
+describe('boss animation profiles', () => {
+  it('assigns every starter boss a distinct immutable motion signature', () => {
+    expect(BOSS_ANIMATION_PROFILES).toHaveLength(10)
+    expect(new Set(BOSS_ANIMATION_PROFILES.map((profile) => profile.signature)).size).toBe(10)
+
+    for (let levelId = 1; levelId <= 10; levelId += 1) {
+      const profile = bossAnimationProfile(levelId)
+      expect(profile.levelId).toBe(levelId)
+      expect(Object.isFrozen(profile)).toBe(true)
+      for (const value of [
+        profile.phaseOffset,
+        profile.meleeReach,
+        profile.meleeSide,
+        profile.meleeLift,
+        profile.meleeTwist,
+      ]) {
+        expect(Number.isFinite(value)).toBe(true)
+      }
+    }
+  })
+
+  it('clamps invalid level ids to a safe authored profile', () => {
+    expect(bossAnimationProfile(Number.NaN)).toBe(BOSS_ANIMATION_PROFILES[0])
+    expect(bossAnimationProfile(-100)).toBe(BOSS_ANIMATION_PROFILES[0])
+    expect(bossAnimationProfile(100)).toBe(BOSS_ANIMATION_PROFILES[9])
   })
 })
 
@@ -327,10 +375,23 @@ describe('character motion samplers', () => {
     expect(Math.abs(orbit.rotation - line.rotation)).toBeGreaterThan(0.01)
   })
 
-  it('gives all ten bosses a visible locomotion profile', () => {
+  it('gives all ten bosses distinct visible idle and locomotion cycles', () => {
     for (const [index, bossFrame] of BOSS_FRAMES_BY_LEVEL.entries()) {
       const levelId = index + 1
-      const samples = [0.17, 0.53, 0.89, 1.25].map((time) =>
+      const idleSamples = [0.17, 0.53, 0.89, 1.25].map((time) =>
+        sampleBossMotion({
+          bossFrame,
+          levelId,
+          phase: 2,
+          time,
+          moving: 0,
+          attackProgress: -1,
+          attackAngle: 0,
+          attackStyle: 'none',
+          reducedMotion: false,
+        }),
+      )
+      const locomotionSamples = [0.17, 0.53, 0.89, 1.25].map((time) =>
         sampleBossMotion({
           bossFrame,
           levelId,
@@ -344,15 +405,111 @@ describe('character motion samplers', () => {
         }),
       )
 
-      for (const sample of samples) expectBossPoseBounds(sample)
+      for (const sample of idleSamples) expectBossPoseBounds(sample)
+      for (const sample of locomotionSamples) expectBossPoseBounds(sample)
       expect(
         Math.max(
-          ...samples
+          ...idleSamples
             .slice(1)
-            .map((sample) => visualPoseDistance(samples[0], sample)),
+            .map((sample) => visualPoseDistance(idleSamples[0], sample)),
+        ),
+        `level ${levelId} boss idle`,
+      ).toBeGreaterThan(1.5)
+      expect(
+        Math.max(
+          ...locomotionSamples.map((sample, sampleIndex) =>
+            visualPoseDistance(idleSamples[sampleIndex], sample),
+          ),
         ),
         `level ${levelId} boss locomotion`,
       ).toBeGreaterThan(1.5)
+    }
+  })
+
+  it('gives every boss a complete normal-contact wind-up, release, and recovery', () => {
+    for (const [index, bossFrame] of BOSS_FRAMES_BY_LEVEL.entries()) {
+      const levelId = index + 1
+      const baseInput = {
+        bossFrame,
+        levelId,
+        phase: 2,
+        time: 1.17,
+        moving: 0.25,
+        attackAngle: Math.PI / 5,
+        attackStyle: 'melee' as const,
+        reducedMotion: false,
+      }
+      const idle = sampleBossMotion({
+        ...baseInput,
+        attackProgress: -1,
+        attackStyle: 'none',
+      })
+      const windup = sampleBossMotion({ ...baseInput, attackProgress: 0.18 })
+      const release = sampleBossMotion({ ...baseInput, attackProgress: 0.52 })
+      const recovery = sampleBossMotion({ ...baseInput, attackProgress: 0.88 })
+
+      for (const pose of [windup, release, recovery]) expectBossPoseBounds(pose)
+      expect(
+        visualPoseDistance(idle, windup),
+        `level ${levelId} boss melee wind-up`,
+      ).toBeGreaterThan(3)
+      expect(
+        visualPoseDistance(windup, release),
+        `level ${levelId} boss melee release`,
+      ).toBeGreaterThan(12)
+      expect(
+        visualPoseDistance(release, recovery),
+        `level ${levelId} boss melee recovery`,
+      ).toBeGreaterThan(8)
+      expect(release.glow).toBeGreaterThan(0.55)
+      expect(
+        Math.abs(release.pivotX - idle.pivotX) +
+          Math.abs(release.pivotY - idle.pivotY),
+      ).toBeGreaterThan(0.008)
+    }
+  })
+
+  it('gives each level-specific special a distinct body choreography', () => {
+    const signatures = BOSS_FRAMES_BY_LEVEL.map((bossFrame, index) => {
+      const levelId = index + 1
+      const style = BOSS_SPECIAL_STYLES_BY_LEVEL[index]
+      const progress = style === 'boss-cluster' ? 0.7 : 0.58
+      const baseInput = {
+        bossFrame,
+        levelId,
+        phase: 3,
+        time: 1.31,
+        moving: 0.6,
+        attackAngle: -Math.PI / 6,
+        reducedMotion: false,
+      }
+      const locomotion = sampleBossMotion({
+        ...baseInput,
+        attackProgress: -1,
+        attackStyle: 'none',
+      })
+      const special = sampleBossMotion({
+        ...baseInput,
+        attackProgress: progress,
+        attackStyle: style,
+      })
+
+      expectBossPoseBounds(special)
+      expect(
+        visualPoseDistance(locomotion, special),
+        `level ${levelId} ${style}`,
+      ).toBeGreaterThan(12)
+      expect(special.glow).toBeGreaterThan(0.45)
+      return special
+    })
+
+    for (let left = 0; left < signatures.length; left += 1) {
+      for (let right = left + 1; right < signatures.length; right += 1) {
+        expect(
+          visualPoseDistance(signatures[left], signatures[right]),
+          `boss levels ${left + 1} and ${right + 1} special silhouettes`,
+        ).toBeGreaterThan(0.75)
+      }
     }
   })
 
@@ -389,6 +546,7 @@ describe('character motion samplers', () => {
 
   it('keeps boss poses bounded across all frames, phases, angles, and action windows', () => {
     const styles: AttackMotionStyle[] = [
+      'melee',
       'boss-line',
       'boss-orbit',
       'boss-cross',
@@ -400,7 +558,8 @@ describe('character motion samplers', () => {
     const progressSamples = [0, 0.18, 0.4, 0.58, 0.78, 1]
     const angleSamples = [-Math.PI, -Math.PI / 2, 0, Math.PI / 2, Math.PI]
 
-    for (let bossFrame = 0; bossFrame < 6; bossFrame += 1) {
+    for (const [index, bossFrame] of BOSS_FRAMES_BY_LEVEL.entries()) {
+      const levelId = index + 1
       for (let phase = 1; phase <= 4; phase += 1) {
         for (const style of styles) {
           for (const progress of progressSamples) {
@@ -408,7 +567,7 @@ describe('character motion samplers', () => {
               expectBossPoseBounds(
                 sampleBossMotion({
                   bossFrame,
-                  levelId: bossFrame + 1,
+                  levelId,
                   phase,
                   time: 2.37,
                   moving: 1.6,

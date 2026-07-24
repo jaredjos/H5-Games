@@ -24,6 +24,8 @@ export interface MotionPose {
   rotation: number
   scaleX: number
   scaleY: number
+  pivotX: number
+  pivotY: number
   alpha: number
   glow: number
 }
@@ -50,6 +52,129 @@ export interface BossMotionInput extends MotionInput {
   bossFrame: number
   levelId: number
   phase: number
+}
+
+export type BossAnimationSignature =
+  | 'antler-prowl'
+  | 'choir-float'
+  | 'rail-rush'
+  | 'mirror-drift'
+  | 'undertow-glide'
+  | 'storm-engine'
+  | 'clock-stutter'
+  | 'furnace-stomp'
+  | 'void-cartography'
+  | 'eclipse-majesty'
+
+export interface BossAnimationProfile {
+  readonly levelId: number
+  readonly signature: BossAnimationSignature
+  readonly phaseOffset: number
+  readonly meleeReach: number
+  readonly meleeSide: number
+  readonly meleeLift: number
+  readonly meleeTwist: number
+}
+
+export const BOSS_ANIMATION_PROFILES = Object.freeze([
+  Object.freeze({
+    levelId: 1,
+    signature: 'antler-prowl',
+    phaseOffset: 0.19,
+    meleeReach: 40,
+    meleeSide: 5,
+    meleeLift: -2,
+    meleeTwist: 0.12,
+  }),
+  Object.freeze({
+    levelId: 2,
+    signature: 'choir-float',
+    phaseOffset: 0.67,
+    meleeReach: 28,
+    meleeSide: -10,
+    meleeLift: -8,
+    meleeTwist: -0.14,
+  }),
+  Object.freeze({
+    levelId: 3,
+    signature: 'rail-rush',
+    phaseOffset: 1.13,
+    meleeReach: 42,
+    meleeSide: 2,
+    meleeLift: 0,
+    meleeTwist: 0.07,
+  }),
+  Object.freeze({
+    levelId: 4,
+    signature: 'mirror-drift',
+    phaseOffset: 1.59,
+    meleeReach: 30,
+    meleeSide: 14,
+    meleeLift: -3,
+    meleeTwist: -0.16,
+  }),
+  Object.freeze({
+    levelId: 5,
+    signature: 'undertow-glide',
+    phaseOffset: 2.03,
+    meleeReach: 32,
+    meleeSide: -8,
+    meleeLift: 6,
+    meleeTwist: 0.11,
+  }),
+  Object.freeze({
+    levelId: 6,
+    signature: 'storm-engine',
+    phaseOffset: 2.47,
+    meleeReach: 36,
+    meleeSide: 6,
+    meleeLift: -5,
+    meleeTwist: -0.18,
+  }),
+  Object.freeze({
+    levelId: 7,
+    signature: 'clock-stutter',
+    phaseOffset: 2.89,
+    meleeReach: 34,
+    meleeSide: -12,
+    meleeLift: -4,
+    meleeTwist: 0.2,
+  }),
+  Object.freeze({
+    levelId: 8,
+    signature: 'furnace-stomp',
+    phaseOffset: 3.31,
+    meleeReach: 39,
+    meleeSide: 3,
+    meleeLift: 7,
+    meleeTwist: 0.08,
+  }),
+  Object.freeze({
+    levelId: 9,
+    signature: 'void-cartography',
+    phaseOffset: 3.77,
+    meleeReach: 31,
+    meleeSide: 10,
+    meleeLift: -2,
+    meleeTwist: -0.1,
+  }),
+  Object.freeze({
+    levelId: 10,
+    signature: 'eclipse-majesty',
+    phaseOffset: 4.21,
+    meleeReach: 38,
+    meleeSide: -4,
+    meleeLift: -6,
+    meleeTwist: 0.15,
+  }),
+] as const satisfies readonly BossAnimationProfile[])
+
+export function bossAnimationProfile(levelId: number): BossAnimationProfile {
+  const normalizedLevel = Math.max(
+    1,
+    Math.min(10, Math.floor(Number.isFinite(levelId) ? levelId : 1)),
+  )
+  return BOSS_ANIMATION_PROFILES[normalizedLevel - 1]
 }
 
 const TAU = Math.PI * 2
@@ -105,6 +230,8 @@ const restPose = (): MotionPose => ({
   rotation: 0,
   scaleX: 1,
   scaleY: 1,
+  pivotX: 0,
+  pivotY: 0,
   alpha: 1,
   glow: 0,
 })
@@ -346,38 +473,239 @@ export function sampleEnemyMotion(input: EnemyMotionInput): MotionPose {
   return pose
 }
 
+const applyBossIdleAndLocomotion = (
+  pose: MotionPose,
+  input: BossMotionInput,
+  profile: BossAnimationProfile,
+  amplitude: number,
+) => {
+  const moving = clamp01(input.moving)
+  const time = input.time + profile.phaseOffset
+
+  switch (profile.signature) {
+    case 'antler-prowl': {
+      const breath = Math.sin(time * 2.1)
+      const stride = Math.sin(time * 5.2)
+      const contact = Math.abs(stride)
+      pose.offsetX += (Math.sin(time * 1.25) * 0.65 + stride * 1.1 * moving) * amplitude
+      pose.offsetY += (breath * 1.35 - contact * 4.8 * moving) * amplitude
+      pose.rotation += (breath * 0.012 + stride * 0.032 * moving) * amplitude
+      pose.scaleX += (breath * 0.012 + contact * 0.032 * moving) * amplitude
+      pose.scaleY += (-breath * 0.009 - contact * 0.024 * moving) * amplitude
+      pose.pivotY += (-breath * 0.003 + contact * 0.006 * moving) * amplitude
+      break
+    }
+    case 'choir-float': {
+      const hover = Math.sin(time * 2.35)
+      const sweep = Math.cos(time * 1.3)
+      const travel = Math.sin(time * 4.1)
+      pose.offsetX += (sweep * 1.25 + travel * 2.2 * moving) * amplitude
+      pose.offsetY += (hover * 4.8 - Math.abs(travel) * 1.6 * moving) * amplitude
+      pose.rotation += (sweep * 0.026 + travel * 0.04 * moving) * amplitude
+      pose.scaleX += (hover * 0.018 + Math.abs(travel) * 0.022 * moving) * amplitude
+      pose.scaleY -= (hover * 0.014 + Math.abs(travel) * 0.015 * moving) * amplitude
+      pose.pivotX += sweep * 0.004 * amplitude
+      pose.pivotY += hover * 0.006 * amplitude
+      break
+    }
+    case 'rail-rush': {
+      const engine = Math.sin(time * 2.75)
+      const tread = Math.sin(time * 4.65)
+      const contact = Math.abs(tread)
+      pose.offsetX += (Math.cos(time * 1.55) * 0.48 + tread * 0.78 * moving) * amplitude
+      pose.offsetY += (engine * 1.15 - contact * 4.25 * moving) * amplitude
+      pose.rotation += (engine * 0.01 + tread * 0.023 * moving) * amplitude
+      pose.scaleX += (engine * 0.014 + contact * 0.038 * moving) * amplitude
+      pose.scaleY -= (engine * 0.01 + contact * 0.027 * moving) * amplitude
+      pose.pivotY += (-engine * 0.003 + contact * 0.008 * moving) * amplitude
+      break
+    }
+    case 'mirror-drift': {
+      const drift = Math.sin(time * 1.8)
+      const shimmer = Math.cos(time * 2.45)
+      const travel = Math.sin(time * 3.55)
+      pose.offsetX += (drift * 2.1 + travel * 2.4 * moving) * amplitude
+      pose.offsetY += (shimmer * 3.75 - Math.abs(travel) * 1.4 * moving) * amplitude
+      pose.rotation += (drift * 0.033 - travel * 0.055 * moving) * amplitude
+      pose.scaleX += (shimmer * 0.021 + Math.abs(travel) * 0.03 * moving) * amplitude
+      pose.scaleY -= (shimmer * 0.016 + Math.abs(travel) * 0.018 * moving) * amplitude
+      pose.pivotX += drift * 0.006 * amplitude
+      pose.pivotY += shimmer * 0.004 * amplitude
+      pose.alpha *= 0.95 + (0.5 + shimmer * 0.5) * 0.05
+      break
+    }
+    case 'undertow-glide': {
+      const tide = Math.sin(time * 1.7)
+      const eddy = Math.cos(time * 1.08)
+      const surge = Math.sin(time * 3.25)
+      pose.offsetX += (eddy * 1.45 + surge * 2.65 * moving) * amplitude
+      pose.offsetY += (tide * 5.15 + surge * 1.25 * moving) * amplitude
+      pose.rotation += (tide * 0.026 + surge * 0.048 * moving) * amplitude
+      pose.scaleX += (tide * 0.016 + Math.abs(surge) * 0.025 * moving) * amplitude
+      pose.scaleY -= (tide * 0.012 + Math.abs(surge) * 0.017 * moving) * amplitude
+      pose.pivotX += eddy * 0.004 * amplitude
+      pose.pivotY += tide * 0.007 * amplitude
+      break
+    }
+    case 'storm-engine': {
+      const engine = Math.sin(time * 3.9)
+      const spark = Math.sin(time * 10.8) * 0.28
+      const thrust = Math.cos(time * 2.62)
+      pose.offsetX += (engine * 0.72 + spark * 0.7 + thrust * 1.55 * moving) * amplitude
+      pose.offsetY += (engine * 3.6 + spark * 1.2 - Math.abs(thrust) * 1.1 * moving) * amplitude
+      pose.rotation += (engine * 0.048 + spark * 0.04 + thrust * 0.035 * moving) * amplitude
+      pose.scaleX += (engine * 0.019 + spark * 0.012 + Math.abs(thrust) * 0.022 * moving) * amplitude
+      pose.scaleY += (engine * 0.019 - spark * 0.008 - Math.abs(thrust) * 0.015 * moving) * amplitude
+      pose.pivotX += spark * 0.006 * amplitude
+      pose.pivotY += engine * 0.005 * amplitude
+      break
+    }
+    case 'clock-stutter': {
+      const tickBase = Math.sin(time * 5.7)
+      const tick = tickBase * Math.abs(tickBase)
+      const orbit = Math.cos(time * 1.92)
+      const travel = Math.sin(time * 3.85)
+      pose.offsetX += (orbit * 1.3 + travel * 1.9 * moving) * amplitude
+      pose.offsetY += (tick * 3.45 - Math.abs(travel) * 1.6 * moving) * amplitude
+      pose.rotation += (tick * 0.052 + travel * 0.045 * moving) * amplitude
+      pose.scaleX += (tick * 0.018 + Math.abs(travel) * 0.024 * moving) * amplitude
+      pose.scaleY -= (tick * 0.014 + Math.abs(travel) * 0.016 * moving) * amplitude
+      pose.pivotX += tick * 0.005 * amplitude
+      pose.pivotY -= tick * 0.006 * amplitude
+      break
+    }
+    case 'furnace-stomp': {
+      const breath = Math.sin(time * 2.02)
+      const stomp = Math.sin(time * 4.35)
+      const contact = Math.abs(stomp)
+      pose.offsetX += (Math.cos(time * 1.18) * 0.55 + stomp * 0.62 * moving) * amplitude
+      pose.offsetY += (breath * 1.55 - contact * 4.4 * moving) * amplitude
+      pose.rotation += (breath * 0.012 + stomp * 0.021 * moving) * amplitude
+      pose.scaleX += (breath * 0.023 + contact * 0.041 * moving) * amplitude
+      pose.scaleY -= (breath * 0.016 + contact * 0.029 * moving) * amplitude
+      pose.pivotY += (-breath * 0.004 + contact * 0.009 * moving) * amplitude
+      break
+    }
+    case 'void-cartography': {
+      const longitude = Math.cos(time * 1.35)
+      const latitude = Math.sin(time * 1.82)
+      const travel = Math.sin(time * 3.18)
+      pose.offsetX += (longitude * 2.25 + travel * 2.15 * moving) * amplitude
+      pose.offsetY += (latitude * 3.2 - Math.abs(travel) * 1.25 * moving) * amplitude
+      pose.rotation += (Math.sin(time * 0.92) * 0.023 + travel * 0.038 * moving) * amplitude
+      pose.scaleX += (longitude * 0.017 + Math.abs(travel) * 0.024 * moving) * amplitude
+      pose.scaleY += (latitude * 0.013 - Math.abs(travel) * 0.016 * moving) * amplitude
+      pose.pivotX += longitude * 0.006 * amplitude
+      pose.pivotY += latitude * 0.004 * amplitude
+      break
+    }
+    case 'eclipse-majesty': {
+      const corona = Math.sin(time * 1.42)
+      const orbit = Math.cos(time * 1.02)
+      const glide = Math.sin(time * 2.72)
+      pose.offsetX += (orbit * 1.25 + glide * 2.3 * moving) * amplitude
+      pose.offsetY += (corona * 4.45 - Math.abs(glide) * 1.3 * moving) * amplitude
+      pose.rotation += (corona * 0.019 + glide * 0.031 * moving) * amplitude
+      pose.scaleX += (corona * 0.028 + Math.abs(glide) * 0.022 * moving) * amplitude
+      pose.scaleY += (corona * 0.028 - Math.abs(glide) * 0.014 * moving) * amplitude
+      pose.pivotX += orbit * 0.003 * amplitude
+      pose.pivotY += corona * 0.006 * amplitude
+      pose.alpha *= 0.965 + (0.5 + corona * 0.5) * 0.035
+      break
+    }
+  }
+}
+
+const applyBossSpecialChoreography = (
+  pose: MotionPose,
+  profile: BossAnimationProfile,
+  attack: number,
+  angle: number,
+  amplitude: number,
+) => {
+  const gather = smoothStep(Math.min(1, attack / 0.44))
+  const release = attack >= 0.3 ? peak((attack - 0.3) / 0.7) : 0
+  const energy = peak(attack)
+
+  switch (profile.signature) {
+    case 'antler-prowl':
+      addForwardOffset(pose, (-gather * 3 + release * 9) * amplitude, Math.sin(attack * Math.PI) * 2 * amplitude, angle)
+      pose.rotation += Math.sin(attack * Math.PI) * 0.035 * amplitude
+      pose.scaleY -= release * 0.025 * amplitude
+      pose.pivotY += (gather * 0.012 - release * 0.016) * amplitude
+      break
+    case 'choir-float':
+      pose.offsetY -= energy * 7 * amplitude
+      addForwardOffset(pose, 0, Math.sin(attack * TAU) * 6 * amplitude, angle)
+      pose.rotation += Math.sin(attack * TAU) * 0.07 * amplitude
+      pose.scaleY += energy * 0.035 * amplitude
+      pose.pivotX += Math.sin(attack * TAU) * 0.012 * amplitude
+      break
+    case 'rail-rush':
+      addForwardOffset(pose, (-gather * 5 + release * 9) * amplitude, 0, angle)
+      pose.scaleX += release * 0.055 * amplitude
+      pose.scaleY -= release * 0.035 * amplitude
+      pose.pivotY += (gather * 0.016 - release * 0.012) * amplitude
+      break
+    case 'mirror-drift':
+      addForwardOffset(pose, 0, Math.sin(attack * Math.PI) * 11 * amplitude, angle)
+      pose.rotation -= Math.sin(attack * TAU) * 0.065 * amplitude
+      pose.pivotX += Math.sin(attack * Math.PI) * 0.018 * amplitude
+      pose.alpha *= 0.88 + Math.abs(Math.sin(attack * Math.PI * 4)) * 0.12
+      break
+    case 'undertow-glide':
+      pose.offsetY += (gather * 4 - release * 8) * amplitude
+      addForwardOffset(pose, 0, Math.sin(attack * TAU) * 4 * amplitude, angle)
+      pose.scaleX += energy * 0.035 * amplitude
+      pose.scaleY -= energy * 0.025 * amplitude
+      pose.pivotY += (gather * 0.014 - release * 0.012) * amplitude
+      break
+    case 'storm-engine': {
+      const surge = Math.sin(attack * Math.PI * 8) * energy
+      addForwardOffset(pose, release * 4 * amplitude, surge * 3 * amplitude, angle)
+      pose.rotation += surge * 0.075 * amplitude
+      pose.scaleX += Math.abs(surge) * 0.025 * amplitude
+      pose.pivotX += surge * 0.014 * amplitude
+      break
+    }
+    case 'clock-stutter': {
+      const tick = Math.sin(attack * Math.PI * 10)
+      const stutter = tick * Math.abs(tick) * energy
+      addForwardOffset(pose, stutter * 4 * amplitude, -stutter * 5 * amplitude, angle)
+      pose.rotation += stutter * 0.09 * amplitude
+      pose.pivotX -= stutter * 0.016 * amplitude
+      pose.alpha *= 0.9 + Math.abs(tick) * 0.1
+      break
+    }
+    case 'furnace-stomp':
+      pose.offsetY += (-gather * 6 + release * 9) * amplitude
+      pose.scaleX += release * 0.055 * amplitude
+      pose.scaleY -= release * 0.045 * amplitude
+      pose.pivotY += (gather * 0.018 - release * 0.02) * amplitude
+      break
+    case 'void-cartography':
+      addForwardOffset(pose, 0, Math.sin(attack * Math.PI) * 8 * amplitude, angle)
+      pose.rotation -= Math.sin(attack * TAU) * 0.05 * amplitude
+      pose.scaleX += energy * 0.045 * amplitude
+      pose.scaleY += gather * 0.028 * amplitude
+      pose.pivotX += Math.sin(attack * Math.PI) * 0.014 * amplitude
+      break
+    case 'eclipse-majesty':
+      pose.offsetY -= energy * 8 * amplitude
+      pose.scaleX += energy * 0.055 * amplitude
+      pose.scaleY += energy * 0.055 * amplitude
+      pose.rotation += Math.sin(attack * TAU) * 0.03 * amplitude
+      pose.pivotY -= energy * 0.018 * amplitude
+      pose.alpha *= 0.94 + energy * 0.06
+      break
+  }
+}
+
 export function sampleBossMotion(input: BossMotionInput): MotionPose {
   const pose = restPose()
   const amplitude = input.reducedMotion ? 0.34 : 1
-  const frame = ((input.bossFrame % 6) + 6) % 6
-  const levelPhase = input.levelId * 0.73
-  const moving = clamp01(input.moving)
-
-  if (frame === 0 || frame === 2) {
-    const stride = Math.sin(input.time * (frame === 0 ? 5.2 : 4.55) + levelPhase)
-    const contact = Math.abs(stride)
-    pose.offsetX += stride * 1.1 * moving * amplitude
-    pose.offsetY -= contact * (frame === 0 ? 4.8 : 4.1) * moving * amplitude
-    pose.rotation += stride * (frame === 0 ? 0.032 : 0.024) * moving * amplitude
-    pose.scaleX += contact * 0.032 * moving * amplitude
-    pose.scaleY -= contact * 0.024 * moving * amplitude
-  } else if (frame === 4) {
-    const engine = Math.sin(input.time * 3.9 + levelPhase)
-    pose.offsetX += Math.cos(input.time * 2.6 + levelPhase) * 1.5 * moving * amplitude
-    pose.offsetY += engine * 3.8 * amplitude
-    pose.rotation += engine * 0.052 * amplitude
-    pose.scaleX += engine * 0.02 * amplitude
-    pose.scaleY += engine * 0.02 * amplitude
-  } else {
-    const hover = Math.sin(input.time * (frame === 5 ? 2.65 : 3.15) + levelPhase)
-    const hoverWeight = 0.64 + moving * 0.36
-    pose.offsetX +=
-      Math.cos(input.time * 2.1 + levelPhase * 0.8) * 1.8 * moving * amplitude
-    pose.offsetY += hover * (frame === 5 ? 4.4 : 5.6) * hoverWeight * amplitude
-    pose.rotation += Math.sin(input.time * 1.85 + levelPhase) * 0.032 * amplitude
-    pose.scaleX += hover * 0.018 * amplitude
-    pose.scaleY -= hover * 0.013 * amplitude
-  }
+  const profile = bossAnimationProfile(input.levelId)
+  applyBossIdleAndLocomotion(pose, input, profile, amplitude)
 
   const attack = input.attackProgress
   const phaseWeight = 1 + (Math.max(1, input.phase) - 1) * 0.08
@@ -391,8 +719,37 @@ export function sampleBossMotion(input: BossMotionInput): MotionPose {
   pose.offsetY *= 1 - hit * 0.24
   pose.rotation *= 1 - hit * 0.25
 
+  let signatureSpecial = false
   switch (input.attackStyle) {
+    case 'melee': {
+      const windup =
+        attack < 0.28
+          ? smoothStep(attack / 0.28)
+          : 1 - smoothStep((attack - 0.28) / 0.18)
+      const release = attack >= 0.22 ? peak((attack - 0.22) / 0.78) : 0
+      const impact = attack >= 0.52 ? 1 - smoothStep((attack - 0.52) / 0.48) : 0
+      addForwardOffset(
+        pose,
+        (-windup * profile.meleeReach * 0.34 +
+          release * profile.meleeReach +
+          impact * profile.meleeReach * 0.16) *
+          amplitude,
+        profile.meleeSide * (windup * -0.32 + release) * amplitude,
+        input.attackAngle,
+      )
+      pose.offsetY += profile.meleeLift * hit * amplitude
+      pose.rotation +=
+        profile.meleeTwist * (-windup * 0.48 + release + impact * 0.2) * amplitude
+      pose.scaleX += (-windup * 0.065 + release * 0.17 + impact * 0.04) * amplitude
+      pose.scaleY += (windup * 0.085 - release * 0.105 - impact * 0.03) * amplitude
+      pose.pivotX +=
+        Math.sign(profile.meleeSide || 1) * (-windup * 0.01 + release * 0.016) * amplitude
+      pose.pivotY += (windup * 0.018 - release * 0.015 - impact * 0.006) * amplitude
+      pose.glow = Math.max(windup * 0.36, release, impact * 0.72)
+      break
+    }
     case 'boss-line': {
+      signatureSpecial = true
       const windup =
         attack < 0.4
           ? smoothStep(attack / 0.4)
@@ -414,6 +771,7 @@ export function sampleBossMotion(input: BossMotionInput): MotionPose {
       break
     }
     case 'boss-orbit': {
+      signatureSpecial = true
       const gather = smoothStep(Math.min(1, attack / 0.46))
       pose.offsetY -= hit * 18 * amplitude
       addForwardOffset(
@@ -429,6 +787,7 @@ export function sampleBossMotion(input: BossMotionInput): MotionPose {
       break
     }
     case 'boss-cross': {
+      signatureSpecial = true
       const brace =
         attack < 0.36
           ? smoothStep(attack / 0.36)
@@ -441,6 +800,7 @@ export function sampleBossMotion(input: BossMotionInput): MotionPose {
       break
     }
     case 'boss-mirror': {
+      signatureSpecial = true
       const split = Math.sin(attack * Math.PI)
       addForwardOffset(pose, 0, split * 16 * amplitude, input.attackAngle)
       pose.scaleX += hit * 0.19 * amplitude
@@ -451,6 +811,7 @@ export function sampleBossMotion(input: BossMotionInput): MotionPose {
       break
     }
     case 'boss-cluster': {
+      signatureSpecial = true
       const rise =
         attack < 0.58
           ? smoothStep(attack / 0.58)
@@ -482,6 +843,16 @@ export function sampleBossMotion(input: BossMotionInput): MotionPose {
     }
     default:
       break
+  }
+
+  if (signatureSpecial) {
+    applyBossSpecialChoreography(
+      pose,
+      profile,
+      attack,
+      input.attackAngle,
+      amplitude,
+    )
   }
 
   pose.scaleX *= phaseWeight
