@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "game": "NIGHTTRACE",
-  "game_version_at_capture": "1.3.0-dev",
-  "captured_at_utc": "2026-07-23T19:20:29.059586+00:00",
+  "game_version_at_capture": "1.4.0",
+  "captured_at_utc": "2026-07-24T02:32:48.542291+00:00",
   "renderer": "production Pixi gameplay renderer",
   "viewport": {
-    "width": 1280,
-    "height": 720,
+    "width": 1440,
+    "height": 900,
     "dpr_cap": 2
   },
-  "selection_method": "Local-only showcase route; one actual weapon loadout; eight frozen deterministic targets; frame frozen 0.20 seconds after the production weapon fires.",
+  "selection_method": "Local-only showcase route; one actual weapon loadout; weapon-specific deterministic target fixtures; production effect frozen at its authored readability beat. qa=1 accelerates fixed simulation ticks without changing the captured gameplay state.",
   "state_definitions": {
     "solo": {
       "weapon_rank": 1,
@@ -42,12 +42,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=helio-lance&state=solo",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=helio-lance&state=solo&qa=1",
+      "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/helio-lance/solo.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 209445,
-      "sha256": "afb885d5c06d93365c236ee2802392db1e7ffb6f442263dd0924fe896d4793a3"
+      "width": 1440,
+      "height": 900,
+      "bytes": 272732,
+      "sha256": "193ca323a0a308b4e236c211e2df318cf24d12f6fb51592ad6a3285744d00bf3"
     },
     {
       "weapon_id": "helio-lance",
@@ -58,12 +59,13 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=helio-lance&state=combined",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=helio-lance&state=combined&qa=1",
+      "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/helio-lance/combined.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 210091,
-      "sha256": "2704d1dd692f6647dc19ab5190da35d7e3f449d9d214ea66922efa1842434e8a"
+      "width": 1440,
+      "height": 900,
+      "bytes": 274487,
+      "sha256": "fc2e13bddea39f4db488544df89d4cb301111732862f5cd5441f8c2c2e9efa72"
     },
     {
       "weapon_id": "helio-lance",
@@ -74,12 +76,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=helio-lance&state=mastered",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=helio-lance&state=mastered&qa=1",
+      "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/helio-lance/mastered.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 209502,
-      "sha256": "28ee3f69da9472642cd74754b7e8888211fa4d17352eb84f2a3859991ecfdda2"
+      "width": 1440,
+      "height": 900,
+      "bytes": 274818,
+      "sha256": "8dd3c9d3bdf5f3c4df88a8da34a157160930db1697d3d26fc7dadd9edfd57b4f"
     },
     {
       "weapon_id": "helio-lance",
@@ -90,12 +93,13 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=helio-lance&state=final",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=helio-lance&state=final&qa=1",
+      "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/helio-lance/final.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 210772,
-      "sha256": "1f2948612cb4a0fb4f5164bd9a83248f051914ad307f767ab1ce7b51e7690eaf"
+      "width": 1440,
+      "height": 900,
+      "bytes": 277049,
+      "sha256": "842a9d2e2b81ab90edeb2bb84a2a8685f612b533590a0992b280b6714f7e924b"
     },
     {
       "weapon_id": "crescent-array",
@@ -106,12 +110,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=crescent-array&state=solo",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=crescent-array&state=solo&qa=1",
+      "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/crescent-array/solo.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 209968,
-      "sha256": "73f4dea379316e29e4a4a8472964358a8721de0ba059014fa6df0635844e239d"
+      "width": 1440,
+      "height": 900,
+      "bytes": 273546,
+      "sha256": "bf3d92f39ca9f194f05d00f6ec03c8283cc547b210e00b3b57ae81ef3b841bc7"
     },
     {
       "weapon_id": "crescent-array",
@@ -122,12 +127,13 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=crescent-array&state=combined",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=crescent-array&state=combined&qa=1",
+      "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/crescent-array/combined.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 210917,
-      "sha256": "26a5e45de863f46ddd342b88b138beb87e25cf30150a7d0d944c3932cbad8e9b"
+      "width": 1440,
+      "height": 900,
+      "bytes": 274993,
+      "sha256": "db5161780477fa5a6660027fe8d3dace1945e1a8e2c8c96611237c981d056d75"
     },
     {
       "weapon_id": "crescent-array",
@@ -138,12 +144,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=crescent-array&state=mastered",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=crescent-array&state=mastered&qa=1",
+      "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/crescent-array/mastered.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 211007,
-      "sha256": "e0d4e84c0776875e9dfa94c1efc73b92a835cfa88d738f5c8a7d5960d5dff31f"
+      "width": 1440,
+      "height": 900,
+      "bytes": 276160,
+      "sha256": "6d5350511defb4a36549b6b84374e6fb874fb20d293b394b6926cc2a4b709cc3"
     },
     {
       "weapon_id": "crescent-array",
@@ -154,12 +161,13 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=crescent-array&state=final",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=crescent-array&state=final&qa=1",
+      "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/crescent-array/final.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 212608,
-      "sha256": "ae2ce125bab846a9302a1d8f102edc02a549546041a410b933b02e6977f7d7b0"
+      "width": 1440,
+      "height": 900,
+      "bytes": 279018,
+      "sha256": "fc4c729312c6d4c6a766117ae8770055e3597865698e2a7d198373f78b52bc05"
     },
     {
       "weapon_id": "arc-choir",
@@ -170,12 +178,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=arc-choir&state=solo",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=arc-choir&state=solo&qa=1",
+      "capture_simulation_seconds": 0.96,
       "file": "outputs/nighttrace-upgrade-runtime-captures/arc-choir/solo.png",
       "width": 1280,
       "height": 720,
-      "bytes": 209066,
-      "sha256": "573165e0e154864566a6b4a0bab94f8762c7c1c0d47883150a350f79c37905fb"
+      "bytes": 210281,
+      "sha256": "f6119b334a94637406a84ec334d1789083de285eeb731205a1bbc0685ffc1425"
     },
     {
       "weapon_id": "arc-choir",
@@ -186,12 +195,13 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=arc-choir&state=combined",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=arc-choir&state=combined&qa=1",
+      "capture_simulation_seconds": 0.96,
       "file": "outputs/nighttrace-upgrade-runtime-captures/arc-choir/combined.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 209584,
-      "sha256": "131db383d943056888fa3e9d1e503ba8404530a7e07e6e8bfb3bfd6ab8b169a4"
+      "width": 1440,
+      "height": 900,
+      "bytes": 274400,
+      "sha256": "d768c14452102d4475cda0899add60e3e91fff1ed5c10ca06bf499b9c4183ac8"
     },
     {
       "weapon_id": "arc-choir",
@@ -202,12 +212,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=arc-choir&state=mastered",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=arc-choir&state=mastered&qa=1",
+      "capture_simulation_seconds": 0.96,
       "file": "outputs/nighttrace-upgrade-runtime-captures/arc-choir/mastered.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 209347,
-      "sha256": "df1056db98a4aa0e61a62d2785de60399dd2ccf04bdd5c84fcdd004528526931"
+      "width": 1440,
+      "height": 900,
+      "bytes": 275368,
+      "sha256": "61a352b26c2806ad94909671f929e3dec02c67f88ebdb4140df2d0cee2e04e7f"
     },
     {
       "weapon_id": "arc-choir",
@@ -218,12 +229,13 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=arc-choir&state=final",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=arc-choir&state=final&qa=1",
+      "capture_simulation_seconds": 0.96,
       "file": "outputs/nighttrace-upgrade-runtime-captures/arc-choir/final.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 210109,
-      "sha256": "437857012cacea23ab49260953aa563cafe7ee38861d507d7b9620eb8f1aeee6"
+      "width": 1440,
+      "height": 900,
+      "bytes": 279512,
+      "sha256": "4947137658287362c52d67868db18f9df511c62b029a0078c3cda1a8c4cea0b2"
     },
     {
       "weapon_id": "rift-seeds",
@@ -234,12 +246,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=rift-seeds&state=solo",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=rift-seeds&state=solo&qa=1",
+      "capture_simulation_seconds": 1.5,
       "file": "outputs/nighttrace-upgrade-runtime-captures/rift-seeds/solo.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 209197,
-      "sha256": "c2962322b98a6f8f13718a296ee8c0960d41d8be9e7024bdc2a6628746b0d9b4"
+      "width": 1440,
+      "height": 900,
+      "bytes": 272565,
+      "sha256": "4df947c1acf109a5b7b19ba2a2535f8039ef5629e7dc5570338e99225262d833"
     },
     {
       "weapon_id": "rift-seeds",
@@ -250,12 +263,13 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=rift-seeds&state=combined",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=rift-seeds&state=combined&qa=1",
+      "capture_simulation_seconds": 1.5,
       "file": "outputs/nighttrace-upgrade-runtime-captures/rift-seeds/combined.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 209864,
-      "sha256": "1531817500b5f3e55b62bfeb9977a8c37262f25b0e1370da282b07cfd8f8ac3a"
+      "width": 1440,
+      "height": 900,
+      "bytes": 273901,
+      "sha256": "c4879d6c2722fbb3357e1734d36ff956cf01a7d829fe86a44d204b2528de33f5"
     },
     {
       "weapon_id": "rift-seeds",
@@ -266,12 +280,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=rift-seeds&state=mastered",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=rift-seeds&state=mastered&qa=1",
+      "capture_simulation_seconds": 1.5,
       "file": "outputs/nighttrace-upgrade-runtime-captures/rift-seeds/mastered.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 209341,
-      "sha256": "3bb68283012e8c97ba0b0baed790be6e1673072714a688b2563a8d5177f5d59e"
+      "width": 1440,
+      "height": 900,
+      "bytes": 273437,
+      "sha256": "15fd58efe037eea3f957f8bceba5e2242456ed8b5b51771624fc04a23329e82a"
     },
     {
       "weapon_id": "rift-seeds",
@@ -282,12 +297,13 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=rift-seeds&state=final",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=rift-seeds&state=final&qa=1",
+      "capture_simulation_seconds": 1.5,
       "file": "outputs/nighttrace-upgrade-runtime-captures/rift-seeds/final.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 211472,
-      "sha256": "dac5e532f57ba7a96d86611f1f9849cf28d535737ab739881460cac47265bab0"
+      "width": 1440,
+      "height": 900,
+      "bytes": 274519,
+      "sha256": "620fe9cc3fe893093bec8bd5e9c1ff561ea4f21d249c62949033d49c5c82e4fc"
     },
     {
       "weapon_id": "comet-swarm",
@@ -298,12 +314,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=comet-swarm&state=solo",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=comet-swarm&state=solo&qa=1",
+      "capture_simulation_seconds": 1.12,
       "file": "outputs/nighttrace-upgrade-runtime-captures/comet-swarm/solo.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 209371,
-      "sha256": "ee7c4e8731d2ee9e593762ec61b34a2e7945fbabefd1bde66891e1f412c3ba67"
+      "width": 1440,
+      "height": 900,
+      "bytes": 272068,
+      "sha256": "4e27670e58c1e4849f7fcc7e3a275e9ffd93156c23adfbf54635ae33c651d429"
     },
     {
       "weapon_id": "comet-swarm",
@@ -314,12 +331,13 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=comet-swarm&state=combined",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=comet-swarm&state=combined&qa=1",
+      "capture_simulation_seconds": 1.12,
       "file": "outputs/nighttrace-upgrade-runtime-captures/comet-swarm/combined.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 210052,
-      "sha256": "f4aac1bb472c7e50abf9f6d5ad3d1a87c5e5113667bef2ca6558070bf9691251"
+      "width": 1440,
+      "height": 900,
+      "bytes": 272969,
+      "sha256": "de4a342bebb0e498cb7ff17353801515941d03ef80a06087f711d3e2f7e3342c"
     },
     {
       "weapon_id": "comet-swarm",
@@ -330,12 +348,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=comet-swarm&state=mastered",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=comet-swarm&state=mastered&qa=1",
+      "capture_simulation_seconds": 1.12,
       "file": "outputs/nighttrace-upgrade-runtime-captures/comet-swarm/mastered.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 209674,
-      "sha256": "ed2af349aaad039d9c6e596f35704e93cd3970940919cdd833bdf28246d0b239"
+      "width": 1440,
+      "height": 900,
+      "bytes": 272812,
+      "sha256": "89180620da837693b0d4e82de75681c8b967055b64f694be2fcc17d3d6f329cd"
     },
     {
       "weapon_id": "comet-swarm",
@@ -346,12 +365,13 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=comet-swarm&state=final",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=comet-swarm&state=final&qa=1",
+      "capture_simulation_seconds": 1.12,
       "file": "outputs/nighttrace-upgrade-runtime-captures/comet-swarm/final.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 210704,
-      "sha256": "18c334cecb3d26631f7707ad56b9e614b4bbd1b9c79f79208a54615f1858208c"
+      "width": 1440,
+      "height": 900,
+      "bytes": 274343,
+      "sha256": "23bbbda173703cbd852eb414564928fb7dfa33dd165817b5ab067c304097ca0f"
     },
     {
       "weapon_id": "ash-halo",
@@ -362,12 +382,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=ash-halo&state=solo",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=ash-halo&state=solo&qa=1",
+      "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/ash-halo/solo.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 209943,
-      "sha256": "6b9dd94793cc787e9c501668798b214f225f7094b21d14a39aa95392e91d6ba0"
+      "width": 1440,
+      "height": 900,
+      "bytes": 274661,
+      "sha256": "213cca38633a750a0db8b6f2650ca358ff57a4c3f5330ca210cdfd06afdd4c3b"
     },
     {
       "weapon_id": "ash-halo",
@@ -378,12 +399,13 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=ash-halo&state=combined",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=ash-halo&state=combined&qa=1",
+      "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/ash-halo/combined.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 210558,
-      "sha256": "a7544bd71f7f4d34a46e4f9cf9f212bb32b02ce6e013bfed2249ba927e3b42f0"
+      "width": 1440,
+      "height": 900,
+      "bytes": 275593,
+      "sha256": "29b421c601a552276091a8d5fb72f9da31d03f970a00ac7a20c15f75beb51afe"
     },
     {
       "weapon_id": "ash-halo",
@@ -394,12 +416,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=ash-halo&state=mastered",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=ash-halo&state=mastered&qa=1",
+      "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/ash-halo/mastered.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 210280,
-      "sha256": "e5a41da4c66e7bd04172fa98a1f833aaedca1e8ee514e9257ea9ec1714cb3de7"
+      "width": 1440,
+      "height": 900,
+      "bytes": 276826,
+      "sha256": "1417068f2b9da2187cb447a2107694132d3dbb76b3264b0c66beabde90d4f83a"
     },
     {
       "weapon_id": "ash-halo",
@@ -410,12 +433,13 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=ash-halo&state=final",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=ash-halo&state=final&qa=1",
+      "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/ash-halo/final.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 218678,
-      "sha256": "20577b0b8e659c8a97e3262c9ff296e8a4fbcb39b9ab7b56ecf81bdcffdb4888"
+      "width": 1440,
+      "height": 900,
+      "bytes": 284917,
+      "sha256": "3eefc346e6759326bb9a31d34d6d2b4ab8e69cb863e56290298dedeb780fc115"
     },
     {
       "weapon_id": "mirror-bow",
@@ -426,12 +450,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=mirror-bow&state=solo",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=mirror-bow&state=solo&qa=1",
+      "capture_simulation_seconds": 1.08,
       "file": "outputs/nighttrace-upgrade-runtime-captures/mirror-bow/solo.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 209640,
-      "sha256": "a06ea6c5cd57ddf2a493fb88e3a9795e253b398bdb2d44cbdc0c73b33097138f"
+      "width": 1440,
+      "height": 900,
+      "bytes": 273350,
+      "sha256": "2ea7f12f1091e867b38eb0a74da60bc5cabf356db7ca45341fa4bdd35559784a"
     },
     {
       "weapon_id": "mirror-bow",
@@ -442,12 +467,13 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=mirror-bow&state=combined",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=mirror-bow&state=combined&qa=1",
+      "capture_simulation_seconds": 1.08,
       "file": "outputs/nighttrace-upgrade-runtime-captures/mirror-bow/combined.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 210297,
-      "sha256": "583f31bfc9e6010d91e2ca5aa37856618c275d52584fcbad29875678b86f1a73"
+      "width": 1440,
+      "height": 900,
+      "bytes": 274571,
+      "sha256": "cc6b96321e2eb35dcac81cfcd84adbd990b1b71a9506330d15a685c7286d2112"
     },
     {
       "weapon_id": "mirror-bow",
@@ -458,12 +484,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=mirror-bow&state=mastered",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=mirror-bow&state=mastered&qa=1",
+      "capture_simulation_seconds": 1.08,
       "file": "outputs/nighttrace-upgrade-runtime-captures/mirror-bow/mastered.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 209719,
-      "sha256": "c50c52b47611b758fecbaebdc3f2612ea3b9998bf5d88e86c0a67bf3d94bf02a"
+      "width": 1440,
+      "height": 900,
+      "bytes": 275084,
+      "sha256": "07665d7de4f6b86ff509809196554dbe8a7a62a8975294505a5670595491f0a8"
     },
     {
       "weapon_id": "mirror-bow",
@@ -474,12 +501,13 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=mirror-bow&state=final",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=mirror-bow&state=final&qa=1",
+      "capture_simulation_seconds": 1.08,
       "file": "outputs/nighttrace-upgrade-runtime-captures/mirror-bow/final.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 210997,
-      "sha256": "f7692ebb9f12cbdef9e4a3465db43d826cdee1a8b3b4df415868c75992accc2c"
+      "width": 1440,
+      "height": 900,
+      "bytes": 277156,
+      "sha256": "0a22c386c4e613f83ffeb3f3c54f6c322703ec693eb8bd09f41ce0e69ad960e2"
     },
     {
       "weapon_id": "null-bell",
@@ -490,12 +518,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=null-bell&state=solo",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=null-bell&state=solo&qa=1",
+      "capture_simulation_seconds": 1.12,
       "file": "outputs/nighttrace-upgrade-runtime-captures/null-bell/solo.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 210803,
-      "sha256": "c8f41a9fe6c8870c83e35f384cb89db896e8d09902f4c0c933a7b4f1012d3c6b"
+      "width": 1440,
+      "height": 900,
+      "bytes": 276621,
+      "sha256": "49af9c45b52013bad78c7859586d83433c523315a4a199453fe94eb948f9a808"
     },
     {
       "weapon_id": "null-bell",
@@ -506,12 +535,13 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=null-bell&state=combined",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=null-bell&state=combined&qa=1",
+      "capture_simulation_seconds": 1.12,
       "file": "outputs/nighttrace-upgrade-runtime-captures/null-bell/combined.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 211430,
-      "sha256": "cded81cbd974010b7b66a9ec55715414211e10b97f78c38390c9d0efa4891931"
+      "width": 1440,
+      "height": 900,
+      "bytes": 278633,
+      "sha256": "bb151d7a47ae4fd84b768724d3a710fa680981a25b0bbd541d65b390b14dddfb"
     },
     {
       "weapon_id": "null-bell",
@@ -522,12 +552,13 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=null-bell&state=mastered",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=null-bell&state=mastered&qa=1",
+      "capture_simulation_seconds": 1.12,
       "file": "outputs/nighttrace-upgrade-runtime-captures/null-bell/mastered.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 211750,
-      "sha256": "85f0adb493dd18000a19a1e11533992a86b2b581dd9794784ad362948c4aef09"
+      "width": 1440,
+      "height": 900,
+      "bytes": 282095,
+      "sha256": "5005e02fafa66a80bf7b1798df6eccef7f36849ff94531e06cfed62025a0c26f"
     },
     {
       "weapon_id": "null-bell",
@@ -538,12 +569,13 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41731/?showcase=weapon&weapon=null-bell&state=final",
+      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=null-bell&state=final&qa=1",
+      "capture_simulation_seconds": 1.12,
       "file": "outputs/nighttrace-upgrade-runtime-captures/null-bell/final.png",
-      "width": 1280,
-      "height": 720,
-      "bytes": 215227,
-      "sha256": "84d64bb98f1d682f33e1aadc6665533a8b0a248c57e54c69189e2de6c5ccbfe2"
+      "width": 1440,
+      "height": 900,
+      "bytes": 284141,
+      "sha256": "47dba42fd588c68fa04796293010547af932d1a3fd1d65f05c641dbbb1e9b82c"
     }
   ]
 }

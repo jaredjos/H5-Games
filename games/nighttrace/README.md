@@ -14,6 +14,7 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.2.0` — landscape-first combat, a simultaneous three-card mobile draft, a 50% default music setting mixed at roughly twice the former loudness, ten sector-specific boss patterns, and timed support pickups
 - `v1.3.0` — re-authored encounter pacing with a readable one-minute warmup, accelerating mid/late hordes, progression-gated specialists, steeper late upgrade costs, and build-aware sovereign durability
 - `v1.3.1` — runtime-captured upgrade documentation plus stronger, species-specific horde locomotion, attack anticipation/release poses, sovereign motion profiles, responsive shadows, footfalls, hover trails, and compact attack accents
+- `v1.4.0` — a complete eight-weapon visual overhaul with stage-aware silhouettes, cast gates, impact punctuation, mastery density, awakened signatures, deterministic 32-state capture evidence, and landscape-phone validation
 
 ## Runtime guide and visual evidence
 
@@ -105,8 +106,17 @@ accents make these poses readable without changing collision radii or balance.
 Reduced-motion mode keeps gameplay telegraphs while softening nonessential
 sway, recoil, and afterimages.
 
-Each weapon now has a distinct luminous projectile silhouette and pooled trail
-language. Boss arrivals shift the ambient score into a heavier combat state,
+Each weapon now has a full four-stage visual identity. Helio Lance builds from
+a focused solar rail into a crowned spear gate; Crescent Array grows into an
+eclipsed orbit wheel; Arc Choir forms cathedral-like lightning geometry; Rift
+Seeds compress into dark singularities; Comet Swarm gains ember-rich curved
+wakes; Ash Halo becomes a living cinder corona; Mirror Bow refracts through
+prismatic lanes; and Null Bell resolves as a runic compression field with a
+final strike axis. Cast, travel, impact, decay, mastery density, and awakening
+punctuation are authored separately while damage, cooldowns, target counts,
+collision radii, and encounter balance remain unchanged.
+
+Boss arrivals shift the ambient score into a heavier combat state,
 phase changes and attacks receive restrained stingers, and every run ends on a
 dedicated victory or defeat cue that finishes before the results screen appears.
 The music slider starts at 50%, while the ambient and boss music buses are mixed

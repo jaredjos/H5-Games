@@ -2,7 +2,7 @@
 
 ## Shipping target
 
-NIGHTTRACE v1.3.1 is an installable mobile web app suitable for HTTPS static
+NIGHTTRACE v1.4.0 is an installable mobile web app suitable for HTTPS static
 hosting and Add to Home Screen on current Android and iOS browsers. Menus remain
 usable in portrait; combat is landscape-first and pauses behind an accessible
 rotate gate when required. It supports safe-area insets, 44 px minimum touch
@@ -27,7 +27,8 @@ or remote backend. Campaign progress and settings are stored locally under
 
 ## Verified release matrix
 
-- Browser sizes: 320x568, 390x844, 844x390, and 1440x900
+- Browser sizes: 320x568, 390x844, constrained landscape-phone CSS viewport,
+  844x390, and 1440x900
 - Input: keyboard, pointer/touch drag, tappable Pulse, and pause; no D-pad
 - Installability: web manifest, standard/maskable/Apple icons, production-only
   scoped service worker
@@ -35,6 +36,8 @@ or remote backend. Campaign progress and settings are stored locally under
   arena backgrounds install-precache atomically
 - Hosting: root and nested-path build contract
 - Production hygiene: no source maps and no root-absolute app references
+- Weapon VFX: all eight powers validated across Solo, Combined, Mastered, and
+  Final states; representative Final states validated in landscape-phone view
 
 Physical-device smoke tests and store signing should be repeated after the
 publisher identity and wrapper are finalized.

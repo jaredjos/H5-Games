@@ -16,6 +16,21 @@ const SHOWCASE_STATES = new Set<WeaponShowcaseState>([
   'final',
 ])
 
+const SHOWCASE_CAPTURE_SECONDS: Readonly<Record<WeaponId, number>> = Object.freeze({
+  'helio-lance': 1.02,
+  'crescent-array': 1.02,
+  'arc-choir': 0.96,
+  'rift-seeds': 1.5,
+  'comet-swarm': 1.12,
+  'ash-halo': 1.02,
+  'mirror-bow': 1.08,
+  'null-bell': 1.12,
+})
+
+export function showcaseCaptureSeconds(weaponId: WeaponId) {
+  return SHOWCASE_CAPTURE_SECONDS[weaponId]
+}
+
 export function parseLocalWeaponShowcase(
   hostname: string,
   search: string,

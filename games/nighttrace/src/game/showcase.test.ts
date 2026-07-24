@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   parseLocalWeaponShowcase,
+  showcaseCaptureSeconds,
   showcaseLabel,
   showcaseLoadout,
 } from './showcase'
+import { ALL_WEAPON_VFX_IDS } from './weaponVfx'
 
 describe('local weapon showcase', () => {
   it('is restricted to local development hosts', () => {
@@ -36,29 +38,37 @@ describe('local weapon showcase', () => {
     ).toBeUndefined()
   })
 
-  it('builds the three documented runtime states', () => {
-    const solo = showcaseLoadout({ weaponId: 'comet-swarm', state: 'solo' })
-    const combined = showcaseLoadout({ weaponId: 'comet-swarm', state: 'combined' })
-    const mastered = showcaseLoadout({ weaponId: 'comet-swarm', state: 'mastered' })
-    const final = showcaseLoadout({ weaponId: 'comet-swarm', state: 'final' })
+  it('builds all four documented runtime states for every weapon', () => {
+    for (const weaponId of ALL_WEAPON_VFX_IDS) {
+      const solo = showcaseLoadout({ weaponId, state: 'solo' })
+      const combined = showcaseLoadout({ weaponId, state: 'combined' })
+      const mastered = showcaseLoadout({ weaponId, state: 'mastered' })
+      const final = showcaseLoadout({ weaponId, state: 'final' })
 
-    expect(solo).toEqual({
-      weapons: [{ id: 'comet-swarm', rank: 1, awakened: undefined }],
-      modules: [],
-    })
-    expect(combined).toEqual({
-      weapons: [{ id: 'comet-swarm', rank: 1, awakened: undefined }],
-      modules: [{ id: 'guidance-filament', rank: 1 }],
-    })
-    expect(mastered).toEqual({
-      weapons: [{ id: 'comet-swarm', rank: 5, awakened: undefined }],
-      modules: [],
-    })
-    expect(final.weapons[0]).toEqual({
-      id: 'comet-swarm',
-      rank: 5,
-      awakened: true,
-    })
+      expect(solo.weapons[0]).toEqual({ id: weaponId, rank: 1, awakened: undefined })
+      expect(solo.modules).toEqual([])
+      expect(combined.weapons[0]).toEqual({
+        id: weaponId,
+        rank: 1,
+        awakened: undefined,
+      })
+      expect(combined.modules).toHaveLength(1)
+      expect(combined.modules[0].rank).toBe(1)
+      expect(mastered.weapons[0]).toEqual({
+        id: weaponId,
+        rank: 5,
+        awakened: undefined,
+      })
+      expect(mastered.modules).toEqual([])
+      expect(final.weapons[0]).toEqual({
+        id: weaponId,
+        rank: 5,
+        awakened: true,
+      })
+      expect(final.modules[0].rank).toBe(3)
+      expect(showcaseCaptureSeconds(weaponId)).toBeGreaterThan(0.75)
+      expect(showcaseCaptureSeconds(weaponId)).toBeLessThanOrEqual(1.5)
+    }
     expect(showcaseLabel({ weaponId: 'comet-swarm', state: 'final' })).toContain(
       'PERIHELION HUNT',
     )
