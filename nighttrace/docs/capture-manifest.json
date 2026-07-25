@@ -1,13 +1,13 @@
 {
   "schema": 1,
   "game": "NIGHTTRACE",
-  "latest_game_version_at_capture": "1.5.1",
+  "latest_game_version_at_capture": "1.6.0",
   "capture_versions": [
     "1.4.0",
-    "1.5.1"
+    "1.6.0"
   ],
-  "capture_version_note": "Ash Halo and Null Bell were recaptured from v1.5.1. The other six unchanged weapon proofs remain their original v1.4.0 production frames.",
-  "captured_at_utc": "2026-07-24T07:05:20.890502+00:00",
+  "capture_version_note": "Graveglass Spires and Eclipse Harrow were recaptured from v1.6.0 after replacing the former area-power designs. The other six unchanged weapon proofs retain their original v1.4.0 production frames.",
+  "manifest_generated_at_utc": "2026-07-25T17:35:36.583535+00:00",
   "renderer": "production Pixi gameplay renderer",
   "viewport": {
     "nominal_width": 1440,
@@ -16,6 +16,7 @@
     "note": "See each capture for exact pixel dimensions."
   },
   "selection_method": "Local-only showcase route; one actual weapon loadout; weapon-specific deterministic target fixtures; production effect frozen at its authored readability beat. qa=1 accelerates fixed simulation ticks without changing the captured gameplay state.",
+  "v160_capture_report": "outputs/nighttrace/qa/graveglass-harrow-v160/capture-report.json",
   "state_definitions": {
     "solo": {
       "weapon_rank": 1,
@@ -49,7 +50,7 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=helio-lance&state=solo&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=helio-lance&state=solo&qa=1",
       "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/helio-lance/solo.png",
       "width": 1440,
@@ -67,7 +68,7 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=helio-lance&state=combined&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=helio-lance&state=combined&qa=1",
       "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/helio-lance/combined.png",
       "width": 1440,
@@ -85,7 +86,7 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=helio-lance&state=mastered&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=helio-lance&state=mastered&qa=1",
       "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/helio-lance/mastered.png",
       "width": 1440,
@@ -103,7 +104,7 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=helio-lance&state=final&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=helio-lance&state=final&qa=1",
       "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/helio-lance/final.png",
       "width": 1440,
@@ -121,7 +122,7 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=crescent-array&state=solo&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=crescent-array&state=solo&qa=1",
       "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/crescent-array/solo.png",
       "width": 1440,
@@ -139,7 +140,7 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=crescent-array&state=combined&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=crescent-array&state=combined&qa=1",
       "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/crescent-array/combined.png",
       "width": 1440,
@@ -157,7 +158,7 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=crescent-array&state=mastered&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=crescent-array&state=mastered&qa=1",
       "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/crescent-array/mastered.png",
       "width": 1440,
@@ -175,7 +176,7 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=crescent-array&state=final&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=crescent-array&state=final&qa=1",
       "capture_simulation_seconds": 1.02,
       "file": "outputs/nighttrace-upgrade-runtime-captures/crescent-array/final.png",
       "width": 1440,
@@ -193,7 +194,7 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=arc-choir&state=solo&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=arc-choir&state=solo&qa=1",
       "capture_simulation_seconds": 0.96,
       "file": "outputs/nighttrace-upgrade-runtime-captures/arc-choir/solo.png",
       "width": 1280,
@@ -211,7 +212,7 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=arc-choir&state=combined&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=arc-choir&state=combined&qa=1",
       "capture_simulation_seconds": 0.96,
       "file": "outputs/nighttrace-upgrade-runtime-captures/arc-choir/combined.png",
       "width": 1440,
@@ -229,7 +230,7 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=arc-choir&state=mastered&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=arc-choir&state=mastered&qa=1",
       "capture_simulation_seconds": 0.96,
       "file": "outputs/nighttrace-upgrade-runtime-captures/arc-choir/mastered.png",
       "width": 1440,
@@ -247,7 +248,7 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=arc-choir&state=final&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=arc-choir&state=final&qa=1",
       "capture_simulation_seconds": 0.96,
       "file": "outputs/nighttrace-upgrade-runtime-captures/arc-choir/final.png",
       "width": 1440,
@@ -265,7 +266,7 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=rift-seeds&state=solo&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=rift-seeds&state=solo&qa=1",
       "capture_simulation_seconds": 1.5,
       "file": "outputs/nighttrace-upgrade-runtime-captures/rift-seeds/solo.png",
       "width": 1440,
@@ -283,7 +284,7 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=rift-seeds&state=combined&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=rift-seeds&state=combined&qa=1",
       "capture_simulation_seconds": 1.5,
       "file": "outputs/nighttrace-upgrade-runtime-captures/rift-seeds/combined.png",
       "width": 1440,
@@ -301,7 +302,7 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=rift-seeds&state=mastered&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=rift-seeds&state=mastered&qa=1",
       "capture_simulation_seconds": 1.5,
       "file": "outputs/nighttrace-upgrade-runtime-captures/rift-seeds/mastered.png",
       "width": 1440,
@@ -319,7 +320,7 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=rift-seeds&state=final&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=rift-seeds&state=final&qa=1",
       "capture_simulation_seconds": 1.5,
       "file": "outputs/nighttrace-upgrade-runtime-captures/rift-seeds/final.png",
       "width": 1440,
@@ -337,7 +338,7 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=comet-swarm&state=solo&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=comet-swarm&state=solo&qa=1",
       "capture_simulation_seconds": 1.12,
       "file": "outputs/nighttrace-upgrade-runtime-captures/comet-swarm/solo.png",
       "width": 1440,
@@ -355,7 +356,7 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=comet-swarm&state=combined&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=comet-swarm&state=combined&qa=1",
       "capture_simulation_seconds": 1.12,
       "file": "outputs/nighttrace-upgrade-runtime-captures/comet-swarm/combined.png",
       "width": 1440,
@@ -373,7 +374,7 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=comet-swarm&state=mastered&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=comet-swarm&state=mastered&qa=1",
       "capture_simulation_seconds": 1.12,
       "file": "outputs/nighttrace-upgrade-runtime-captures/comet-swarm/mastered.png",
       "width": 1440,
@@ -391,7 +392,7 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=comet-swarm&state=final&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=comet-swarm&state=final&qa=1",
       "capture_simulation_seconds": 1.12,
       "file": "outputs/nighttrace-upgrade-runtime-captures/comet-swarm/final.png",
       "width": 1440,
@@ -400,76 +401,80 @@
       "sha256": "23bbbda173703cbd852eb414564928fb7dfa33dd165817b5ab067c304097ca0f"
     },
     {
-      "weapon_id": "ash-halo",
-      "weapon_name": "Ash Halo",
+      "weapon_id": "graveglass-spires",
+      "weapon_name": "Graveglass Spires",
       "state": "solo",
-      "capture_version": "1.5.1",
+      "capture_version": "1.6.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=ash-halo&state=solo&qa=1",
-      "capture_simulation_seconds": 1.02,
-      "file": "outputs/nighttrace-upgrade-runtime-captures/ash-halo/solo.png",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=ash-halo&state=solo&qa=1",
+      "capture_simulation_seconds": 0.9,
+      "file": "outputs/nighttrace-upgrade-runtime-captures/graveglass-spires/solo.png",
       "width": 1440,
       "height": 900,
-      "bytes": 2148225,
-      "sha256": "fa7f4cc19942f196b50fdd0b53ecee5851a3efa2139ebddde4c3218ea851f966"
+      "bytes": 2145076,
+      "sha256": "7d0043134c4dabd1c092dab627aab91240728c61ac02c5aafba0a9733ccc89be",
+      "runtime_route_weapon_id": "ash-halo"
     },
     {
-      "weapon_id": "ash-halo",
-      "weapon_name": "Ash Halo",
+      "weapon_id": "graveglass-spires",
+      "weapon_name": "Graveglass Spires",
       "state": "combined",
-      "capture_version": "1.5.1",
+      "capture_version": "1.6.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=ash-halo&state=combined&qa=1",
-      "capture_simulation_seconds": 1.02,
-      "file": "outputs/nighttrace-upgrade-runtime-captures/ash-halo/combined.png",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=ash-halo&state=combined&qa=1",
+      "capture_simulation_seconds": 0.9,
+      "file": "outputs/nighttrace-upgrade-runtime-captures/graveglass-spires/combined.png",
       "width": 1440,
       "height": 900,
-      "bytes": 2146844,
-      "sha256": "dd3496892531137e93c3401615519292e884950e12f82c96f1feb10125ceb442"
+      "bytes": 2143241,
+      "sha256": "c569d2b49b6a4a28fe987a5829a2de8c60130b44c8d4b73439a3de04b8db0c71",
+      "runtime_route_weapon_id": "ash-halo"
     },
     {
-      "weapon_id": "ash-halo",
-      "weapon_name": "Ash Halo",
+      "weapon_id": "graveglass-spires",
+      "weapon_name": "Graveglass Spires",
       "state": "mastered",
-      "capture_version": "1.5.1",
+      "capture_version": "1.6.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=ash-halo&state=mastered&qa=1",
-      "capture_simulation_seconds": 1.02,
-      "file": "outputs/nighttrace-upgrade-runtime-captures/ash-halo/mastered.png",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=ash-halo&state=mastered&qa=1",
+      "capture_simulation_seconds": 0.9,
+      "file": "outputs/nighttrace-upgrade-runtime-captures/graveglass-spires/mastered.png",
       "width": 1440,
       "height": 900,
-      "bytes": 2154876,
-      "sha256": "afb25a6b044b42ce747032737bf2bf4e1667e574f18b516aeb99aff0bbda2366"
+      "bytes": 2148687,
+      "sha256": "3e22c9c62214e378308dbde41cfe5048f6fd72ec48769032bf68dc25d582fe79",
+      "runtime_route_weapon_id": "ash-halo"
     },
     {
-      "weapon_id": "ash-halo",
-      "weapon_name": "Ash Halo",
+      "weapon_id": "graveglass-spires",
+      "weapon_name": "Graveglass Spires",
       "state": "final",
-      "capture_version": "1.5.1",
+      "capture_version": "1.6.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=ash-halo&state=final&qa=1",
-      "capture_simulation_seconds": 1.02,
-      "file": "outputs/nighttrace-upgrade-runtime-captures/ash-halo/final.png",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=ash-halo&state=final&qa=1",
+      "capture_simulation_seconds": 0.9,
+      "file": "outputs/nighttrace-upgrade-runtime-captures/graveglass-spires/final.png",
       "width": 1440,
       "height": 900,
-      "bytes": 2157873,
-      "sha256": "54387e8b98d23efa4b473c8ed3ba715755eace57779a93e55e164d16b9ce7d1e"
+      "bytes": 2150701,
+      "sha256": "4d3521b2b5ba8fff22fe0285e024e470f6bf0cc70ec42d83be5ea1d085dc34c0",
+      "runtime_route_weapon_id": "ash-halo"
     },
     {
       "weapon_id": "mirror-bow",
@@ -481,7 +486,7 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=mirror-bow&state=solo&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=mirror-bow&state=solo&qa=1",
       "capture_simulation_seconds": 1.08,
       "file": "outputs/nighttrace-upgrade-runtime-captures/mirror-bow/solo.png",
       "width": 1440,
@@ -499,7 +504,7 @@
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=mirror-bow&state=combined&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=mirror-bow&state=combined&qa=1",
       "capture_simulation_seconds": 1.08,
       "file": "outputs/nighttrace-upgrade-runtime-captures/mirror-bow/combined.png",
       "width": 1440,
@@ -517,7 +522,7 @@
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=mirror-bow&state=mastered&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=mirror-bow&state=mastered&qa=1",
       "capture_simulation_seconds": 1.08,
       "file": "outputs/nighttrace-upgrade-runtime-captures/mirror-bow/mastered.png",
       "width": 1440,
@@ -535,7 +540,7 @@
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=mirror-bow&state=final&qa=1",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=mirror-bow&state=final&qa=1",
       "capture_simulation_seconds": 1.08,
       "file": "outputs/nighttrace-upgrade-runtime-captures/mirror-bow/final.png",
       "width": 1440,
@@ -544,76 +549,80 @@
       "sha256": "0a22c386c4e613f83ffeb3f3c54f6c322703ec693eb8bd09f41ce0e69ad960e2"
     },
     {
-      "weapon_id": "null-bell",
-      "weapon_name": "Null Bell",
+      "weapon_id": "eclipse-harrow",
+      "weapon_name": "Eclipse Harrow",
       "state": "solo",
-      "capture_version": "1.5.1",
+      "capture_version": "1.6.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=null-bell&state=solo&qa=1",
-      "capture_simulation_seconds": 1.12,
-      "file": "outputs/nighttrace-upgrade-runtime-captures/null-bell/solo.png",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=null-bell&state=solo&qa=1",
+      "capture_simulation_seconds": 1.43,
+      "file": "outputs/nighttrace-upgrade-runtime-captures/eclipse-harrow/solo.png",
       "width": 1440,
       "height": 900,
-      "bytes": 2151331,
-      "sha256": "1efe59997c15b5d7473debf4dba676c20cb2d68da96e2f2bfd66c021b5db51e7"
+      "bytes": 2146269,
+      "sha256": "83ee047aa9b2ab11c72da278ef2d882950190ebab38ac8f3fb4b473a9b65928d",
+      "runtime_route_weapon_id": "null-bell"
     },
     {
-      "weapon_id": "null-bell",
-      "weapon_name": "Null Bell",
+      "weapon_id": "eclipse-harrow",
+      "weapon_name": "Eclipse Harrow",
       "state": "combined",
-      "capture_version": "1.5.1",
+      "capture_version": "1.6.0",
       "loadout": {
         "weapon_rank": 1,
         "module_rank": 1,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=null-bell&state=combined&qa=1",
-      "capture_simulation_seconds": 1.12,
-      "file": "outputs/nighttrace-upgrade-runtime-captures/null-bell/combined.png",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=null-bell&state=combined&qa=1",
+      "capture_simulation_seconds": 1.43,
+      "file": "outputs/nighttrace-upgrade-runtime-captures/eclipse-harrow/combined.png",
       "width": 1440,
       "height": 900,
-      "bytes": 2151273,
-      "sha256": "7ab09223e10137fc446ad0ce83a90081c24766291c8e65cc4a6c7626ee792ac0"
+      "bytes": 2146831,
+      "sha256": "5da90c287247cb9b937f89a6d1f3f5494cbbe1639c4dd80e93477be70f01a151",
+      "runtime_route_weapon_id": "null-bell"
     },
     {
-      "weapon_id": "null-bell",
-      "weapon_name": "Null Bell",
+      "weapon_id": "eclipse-harrow",
+      "weapon_name": "Eclipse Harrow",
       "state": "mastered",
-      "capture_version": "1.5.1",
+      "capture_version": "1.6.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 0,
         "awakened": false
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=null-bell&state=mastered&qa=1",
-      "capture_simulation_seconds": 1.12,
-      "file": "outputs/nighttrace-upgrade-runtime-captures/null-bell/mastered.png",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=null-bell&state=mastered&qa=1",
+      "capture_simulation_seconds": 1.43,
+      "file": "outputs/nighttrace-upgrade-runtime-captures/eclipse-harrow/mastered.png",
       "width": 1440,
       "height": 900,
-      "bytes": 2164572,
-      "sha256": "9c5861ecb385caf6a2c13a625ec4825b965129d0376d6c08db3a56f04dc69766"
+      "bytes": 2147202,
+      "sha256": "c6e2727dbb7519f1243b3b807033657a7e03f74f1f64e7ab136b5c064335c68f",
+      "runtime_route_weapon_id": "null-bell"
     },
     {
-      "weapon_id": "null-bell",
-      "weapon_name": "Null Bell",
+      "weapon_id": "eclipse-harrow",
+      "weapon_name": "Eclipse Harrow",
       "state": "final",
-      "capture_version": "1.5.1",
+      "capture_version": "1.6.0",
       "loadout": {
         "weapon_rank": 5,
         "module_rank": 3,
         "awakened": true
       },
-      "route": "http://127.0.0.1:41734/?showcase=weapon&weapon=null-bell&state=final&qa=1",
-      "capture_simulation_seconds": 1.12,
-      "file": "outputs/nighttrace-upgrade-runtime-captures/null-bell/final.png",
+      "reproduction_route": "http://127.0.0.1:41850/?showcase=weapon&weapon=null-bell&state=final&qa=1",
+      "capture_simulation_seconds": 1.43,
+      "file": "outputs/nighttrace-upgrade-runtime-captures/eclipse-harrow/final.png",
       "width": 1440,
       "height": 900,
-      "bytes": 2170416,
-      "sha256": "97df6c5180c2343aadd9159ef7a4adabe453633ddf71d46be918fcde90c8deac"
+      "bytes": 2144649,
+      "sha256": "8aa3378dadc5336b3b7567a7b40ba32e2a68ac58caa17db6b69eebb18cfafd42",
+      "runtime_route_weapon_id": "null-bell"
     }
   ]
 }

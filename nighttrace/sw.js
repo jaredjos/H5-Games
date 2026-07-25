@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.5.2'
+const CACHE_VERSION = 'v1.6.0'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
 const ASSET_CACHE = `${CACHE_PREFIX}assets-${CACHE_VERSION}`
@@ -26,6 +26,14 @@ const SHELL_URLS = [
   new URL('assets/hero-animations/hero-charge-runtime.webp', SCOPE_URL).href,
   new URL('assets/hero-animations/hero-fire-runtime.webp', SCOPE_URL).href,
   new URL('assets/hero-animations/hero-walk-runtime.webp', SCOPE_URL).href,
+  new URL('assets/audio/nighttrace-dungeon-loop.ogg', SCOPE_URL).href,
+  new URL('assets/audio/nighttrace-dungeon-loop.m4a', SCOPE_URL).href,
+  new URL('assets/audio/nighttrace-dungeon-loop-compact.ogg', SCOPE_URL).href,
+  new URL('assets/audio/nighttrace-dungeon-loop-compact.m4a', SCOPE_URL).href,
+  new URL('assets/audio/nighttrace-sovereign-loop.ogg', SCOPE_URL).href,
+  new URL('assets/audio/nighttrace-sovereign-loop.m4a', SCOPE_URL).href,
+  new URL('assets/audio/nighttrace-sovereign-loop-compact.ogg', SCOPE_URL).href,
+  new URL('assets/audio/nighttrace-sovereign-loop-compact.m4a', SCOPE_URL).href,
 ]
 
 function isCacheable(response) {
