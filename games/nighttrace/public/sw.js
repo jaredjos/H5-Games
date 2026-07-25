@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.6.0'
+const CACHE_VERSION = 'v1.7.0'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
 const ASSET_CACHE = `${CACHE_PREFIX}assets-${CACHE_VERSION}`
@@ -26,6 +26,10 @@ const SHELL_URLS = [
   new URL('assets/hero-animations/hero-charge-runtime.webp', SCOPE_URL).href,
   new URL('assets/hero-animations/hero-fire-runtime.webp', SCOPE_URL).href,
   new URL('assets/hero-animations/hero-walk-runtime.webp', SCOPE_URL).href,
+  new URL('assets/character-vfx/hero-material-vfx-atlas-v1-desktop.webp', SCOPE_URL).href,
+  new URL('assets/character-vfx/hero-material-vfx-atlas-v1-mobile.webp', SCOPE_URL).href,
+  new URL('assets/character-vfx/boss-material-vfx-atlas-v1-desktop.webp', SCOPE_URL).href,
+  new URL('assets/character-vfx/boss-material-vfx-atlas-v1-mobile.webp', SCOPE_URL).href,
   new URL('assets/audio/nighttrace-dungeon-loop.ogg', SCOPE_URL).href,
   new URL('assets/audio/nighttrace-dungeon-loop.m4a', SCOPE_URL).href,
   new URL('assets/audio/nighttrace-dungeon-loop-compact.ogg', SCOPE_URL).href,

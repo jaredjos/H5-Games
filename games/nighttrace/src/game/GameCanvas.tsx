@@ -110,6 +110,29 @@ import {
   SUPPORT_PICKUP_LIFETIME_SECONDS,
   supportPickupPresentation,
 } from './pickupPresentation'
+import {
+  createCharacterBloomFilter,
+  createCharacterMaterialFilter,
+  createGroundShadowFilter,
+  createRefractiveAtmosphereFilter,
+  createScreenGradeFilter,
+  updateCharacterMaterialFilter,
+  updateGroundShadowFilter,
+  updateRefractiveAtmosphereFilter,
+  updateScreenGradeFilter,
+  type CharacterMaterialFilter,
+  type GroundShadowFilter,
+  type RefractiveAtmosphereFilter,
+  type ScreenGradeFilter,
+} from './characterMaterial'
+import {
+  CHARACTER_VISUAL_PROFILES,
+  browserVisualCapabilitySnapshot,
+  characterMaterialFrameAt,
+  resolveCharacterVisualLod,
+  type CharacterVisualLod,
+  type CharacterVisualProfile,
+} from './visualQuality'
 
 const WORLD_WIDTH = 1672
 const WORLD_HEIGHT = 941
@@ -381,7 +404,9 @@ class NighttraceRuntime {
   private readonly world = new Container()
   private readonly trailLayer = new Container()
   private readonly pickupLayer = new Container()
+  private readonly enemyMaterialLayer = new Container()
   private readonly enemyLayer = new Container()
+  private readonly enemyForegroundLayer = new Container()
   private readonly projectileLayer = new Container()
   private readonly actorLayer = new Container()
   private readonly effectLayer = new Container()
@@ -416,16 +441,34 @@ class NighttraceRuntime {
   private input?: GameInput
   private resizeObserver?: ResizeObserver
   private hero?: Sprite
+  private heroGroundShadow?: Sprite
+  private heroBloom?: Sprite
+  private heroMaterialVfx?: Sprite
+  private bossBloom?: Sprite
+  private bossGroundShadow?: Sprite
+  private bossMaterialVfx?: Sprite
   private heroWalkFrames: Texture[] = []
   private heroFireFrames: Texture[] = []
   private heroChargeFrames: Texture[] = []
+  private heroMaterialFrames: Texture[] = []
   private enemyFrames: Texture[] = []
   private bossFrames: Texture[] = []
+  private bossMaterialFrames: Texture[] = []
   private pickupFrames: Texture[] = []
   private readonly projectileTextures = new Map<WeaponId, Texture>()
   private sparkTexture = Texture.WHITE
   private background?: Sprite
   private settings: GameSettings
+  private readonly visualLod: CharacterVisualLod
+  private readonly visualProfile: CharacterVisualProfile
+  private heroMaterialFilter?: CharacterMaterialFilter
+  private bossMaterialFilter?: CharacterMaterialFilter
+  private heroGroundShadowFilter?: GroundShadowFilter
+  private bossGroundShadowFilter?: GroundShadowFilter
+  private bossRefractionFilter?: RefractiveAtmosphereFilter
+  private screenGradeFilter?: ScreenGradeFilter
+  private heroBloomFilter?: ReturnType<typeof createCharacterBloomFilter>
+  private bossBloomFilter?: ReturnType<typeof createCharacterBloomFilter>
   private destroyed = false
   private applicationReady = false
   private initialized = false
@@ -525,6 +568,18 @@ class NighttraceRuntime {
     this.persistentUpgrades = persistentUpgrades
     this.callbacks = callbacks
     this.audio = new NighttraceAudio(settings)
+    const requestedLod =
+      typeof location === 'undefined'
+        ? undefined
+        : new URLSearchParams(location.search).get('lod')
+    const detectedLod = resolveCharacterVisualLod(browserVisualCapabilitySnapshot())
+    this.visualLod =
+      requestedLod === 'cinematic' ||
+      requestedLod === 'balanced' ||
+      requestedLod === 'mobile'
+        ? requestedLod
+        : detectedLod
+    this.visualProfile = CHARACTER_VISUAL_PROFILES[this.visualLod]
     this.upgradeSeed = (level.id * 0x9e3779b1) >>> 0
     this.random = new DeterministicRandom((level.id * 0x85ebca6b + 0x27d4eb2d) >>> 0)
     this.awaitingStart = runConfig.bossOnly
@@ -579,12 +634,20 @@ class NighttraceRuntime {
   }
 
   async init() {
-    const resolution = Math.min(window.devicePixelRatio || 1, 2)
+    const resolution = Math.min(
+      window.devicePixelRatio || 1,
+      this.visualProfile.rendererResolutionCap,
+    )
+    const materialAtlasSuffix =
+      this.visualProfile.atlasVariant === 'mobile'
+        ? '-mobile.webp'
+        : '-desktop.webp'
     const applicationInit = this.app
       .init({
         resizeTo: this.host,
         autoDensity: true,
-        antialias: true,
+        antialias: this.visualProfile.rendererAntialias,
+        useBackBuffer: this.visualProfile.refraction,
         resolution,
         background: '#03070c',
         preference: 'webgl',
@@ -598,8 +661,18 @@ class NighttraceRuntime {
       Assets.load<Texture>(appAssetUrl('assets/hero-animations/hero-walk-runtime.webp')),
       Assets.load<Texture>(appAssetUrl('assets/hero-animations/hero-fire-runtime.webp')),
       Assets.load<Texture>(appAssetUrl('assets/hero-animations/hero-charge-runtime.webp')),
+      Assets.load<Texture>(
+        appAssetUrl(
+          `assets/character-vfx/hero-material-vfx-atlas-v1${materialAtlasSuffix}`,
+        ),
+      ),
       Assets.load<Texture>(appAssetUrl('assets/nighttrace-enemy-atlas.webp')),
       Assets.load<Texture>(appAssetUrl('assets/nighttrace-boss-atlas.webp')),
+      Assets.load<Texture>(
+        appAssetUrl(
+          `assets/character-vfx/boss-material-vfx-atlas-v1${materialAtlasSuffix}`,
+        ),
+      ),
       Assets.load<Texture>(appAssetUrl('assets/nighttrace-pickup-atlas.webp')),
     ])
     try {
@@ -610,8 +683,10 @@ class NighttraceRuntime {
           heroWalkSheet,
           heroFireSheet,
           heroChargeSheet,
+          heroMaterialSheet,
           enemySheet,
           bossSheet,
+          bossMaterialSheet,
           pickupSheet,
         ],
       ] = await Promise.all([applicationInit, assetLoad])
@@ -634,7 +709,9 @@ class NighttraceRuntime {
       this.world.addChild(
         this.trailLayer,
         this.pickupLayer,
+        this.enemyMaterialLayer,
         this.enemyLayer,
+        this.enemyForegroundLayer,
         this.projectileLayer,
         this.actorLayer,
         this.effectLayer,
@@ -660,24 +737,101 @@ class NighttraceRuntime {
       this.heroWalkFrames = this.sliceTexture(heroWalkSheet, 4, 2)
       this.heroFireFrames = this.sliceTexture(heroFireSheet, 3, 2)
       this.heroChargeFrames = this.sliceTexture(heroChargeSheet, 3, 2)
+      this.heroMaterialFrames = this.sliceTexture(heroMaterialSheet, 4, 4)
       this.enemyFrames = this.sliceTexture(enemySheet, 3, 2)
       this.bossFrames = this.sliceTexture(bossSheet, 3, 2)
+      this.bossMaterialFrames = this.sliceTexture(bossMaterialSheet, 4, 4)
       this.pickupFrames = this.sliceTexture(pickupSheet, 3, 2)
       this.createVfxTextures()
+      this.heroMaterialFilter = createCharacterMaterialFilter(
+        0xffdf83,
+        this.visualProfile,
+      )
+      this.bossMaterialFilter = createCharacterMaterialFilter(
+        bossPresentation(this.bossLevel.bossId).primaryColor,
+        this.visualProfile,
+      )
+      this.heroGroundShadowFilter = createGroundShadowFilter(
+        0x163b46,
+        this.visualProfile,
+      )
+      this.bossGroundShadowFilter = createGroundShadowFilter(
+        bossPresentation(this.bossLevel.bossId).shadowColor,
+        this.visualProfile,
+      )
+      this.bossRefractionFilter = createRefractiveAtmosphereFilter(this.visualProfile)
+      this.screenGradeFilter = createScreenGradeFilter(this.visualProfile)
+      if (this.screenGradeFilter) {
+        this.world.filters = [this.screenGradeFilter.filter]
+        this.world.filterArea = new Rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT)
+      }
       this.heroAura.ellipse(0, 9, 54, 18).fill({ color: 0x02060a, alpha: 0.34 })
       this.heroAura.ellipse(0, 8, 44, 14).stroke({ color: 0xffdf83, width: 2, alpha: 0.28 })
       this.heroAura
         .poly([-42, 8, -19, 3, 0, -5, 19, 3, 42, 8, 19, 13, 0, 21, -19, 13], true)
         .stroke({ color: 0x64f5e0, width: 1.5, alpha: 0.22 })
       this.heroAura.position.set(this.player.x, this.player.y)
+      this.heroGroundShadow = new Sprite(Texture.WHITE)
+      this.heroGroundShadow.anchor.set(0.5)
+      this.heroGroundShadow.width = 78
+      this.heroGroundShadow.height = 28
+      this.heroGroundShadow.position.set(this.player.x, this.player.y + 17)
+      this.heroGroundShadow.filters = [this.heroGroundShadowFilter.filter]
+      this.actorLayer.addChild(this.heroGroundShadow)
       this.actorLayer.addChild(this.heroAura)
-      this.hero = new Sprite(this.heroChargeFrames[0] ?? this.heroWalkFrames[0] ?? Texture.WHITE)
+      const initialHeroTexture =
+        this.heroChargeFrames[0] ?? this.heroWalkFrames[0] ?? Texture.WHITE
+      this.heroBloom = new Sprite(initialHeroTexture)
+      this.heroBloom.anchor.set(HERO_ART_ROOT_X, HERO_ART_ROOT_Y)
+      this.heroBloom.scale.set(HERO_ART_SCALE)
+      this.heroBloom.tint = 0xffd983
+      this.heroBloom.blendMode = 'add'
+      this.heroBloom.alpha = 0.12
+      this.heroBloomFilter = createCharacterBloomFilter(this.visualProfile)
+      if (this.heroBloomFilter) this.heroBloom.filters = [this.heroBloomFilter]
+      this.actorLayer.addChild(this.heroBloom)
+      this.heroMaterialVfx = new Sprite(this.heroMaterialFrames[0] ?? Texture.WHITE)
+      this.heroMaterialVfx.anchor.set(0.5)
+      this.heroMaterialVfx.blendMode = 'add'
+      this.heroMaterialVfx.alpha = 0.58
+      this.heroMaterialVfx.position.set(this.player.x, this.player.y)
+      this.actorLayer.addChild(this.heroMaterialVfx)
+      this.hero = new Sprite(initialHeroTexture)
       this.hero.anchor.set(HERO_ART_ROOT_X, HERO_ART_ROOT_Y)
       this.hero.scale.set(HERO_ART_SCALE)
       this.hero.position.set(this.player.x, this.player.y)
+      this.hero.filters = [this.heroMaterialFilter.filter]
       this.actorLayer.addChild(this.hero)
+
+      this.bossGroundShadow = new Sprite(Texture.WHITE)
+      this.bossGroundShadow.anchor.set(0.5)
+      this.bossGroundShadow.width = 178
+      this.bossGroundShadow.height = 62
+      this.bossGroundShadow.visible = false
+      this.bossGroundShadow.filters = [this.bossGroundShadowFilter.filter]
+      this.enemyMaterialLayer.addChild(this.bossGroundShadow)
+
+      this.bossBloom = new Sprite(this.bossFrames[0] ?? Texture.WHITE)
+      this.bossBloom.anchor.set(0.5, 0.62)
+      this.bossBloom.tint = bossPresentation(this.bossLevel.bossId).primaryColor
+      this.bossBloom.blendMode = 'add'
+      this.bossBloom.visible = false
+      this.bossBloomFilter = createCharacterBloomFilter(this.visualProfile)
+      if (this.bossBloomFilter) this.bossBloom.filters = [this.bossBloomFilter]
+      this.enemyMaterialLayer.addChild(this.bossBloom)
+
+      this.bossMaterialVfx = new Sprite(this.bossMaterialFrames[0] ?? Texture.WHITE)
+      this.bossMaterialVfx.anchor.set(0.5)
+      this.bossMaterialVfx.blendMode = 'add'
+      this.bossMaterialVfx.visible = false
+      if (this.bossRefractionFilter) {
+        this.bossMaterialVfx.filters = [this.bossRefractionFilter.filter]
+      }
+      this.enemyMaterialLayer.addChild(this.bossMaterialVfx)
       this.cinematicTitle.anchor.set(0.5)
       this.cinematicTitle.alpha = 0
+      this.host.dataset.visualLod = this.visualLod
+      this.host.dataset.materialVfxReady = 'true'
 
       this.input = new GameInput(this.host, {
         onInteract: () => void this.audio.unlock(),
@@ -858,6 +1012,22 @@ class NighttraceRuntime {
   private destroyApplication() {
     if (!this.applicationReady) return
     this.app.ticker.remove(this.tick)
+    this.heroMaterialFilter?.filter.destroy()
+    this.bossMaterialFilter?.filter.destroy()
+    this.heroGroundShadowFilter?.filter.destroy()
+    this.bossGroundShadowFilter?.filter.destroy()
+    this.bossRefractionFilter?.filter.destroy()
+    this.screenGradeFilter?.filter.destroy()
+    this.heroBloomFilter?.destroy()
+    this.bossBloomFilter?.destroy()
+    this.heroMaterialFilter = undefined
+    this.bossMaterialFilter = undefined
+    this.heroGroundShadowFilter = undefined
+    this.bossGroundShadowFilter = undefined
+    this.bossRefractionFilter = undefined
+    this.screenGradeFilter = undefined
+    this.heroBloomFilter = undefined
+    this.bossBloomFilter = undefined
     this.app.destroy(true, { children: true })
     this.applicationReady = false
     this.initialized = false
@@ -865,8 +1035,10 @@ class NighttraceRuntime {
       ...this.heroWalkFrames,
       ...this.heroFireFrames,
       ...this.heroChargeFrames,
+      ...this.heroMaterialFrames,
       ...this.enemyFrames,
       ...this.bossFrames,
+      ...this.bossMaterialFrames,
       ...this.pickupFrames,
     ]) {
       texture.destroy(false)
@@ -874,8 +1046,10 @@ class NighttraceRuntime {
     this.heroWalkFrames.length = 0
     this.heroFireFrames.length = 0
     this.heroChargeFrames.length = 0
+    this.heroMaterialFrames.length = 0
     this.enemyFrames.length = 0
     this.bossFrames.length = 0
+    this.bossMaterialFrames.length = 0
     this.pickupFrames.length = 0
     for (const texture of this.projectileTextures.values()) texture.destroy(true)
     this.projectileTextures.clear()
@@ -1077,13 +1251,17 @@ class NighttraceRuntime {
     const attackProgress = motionProgress(this.heroAttackRemaining, this.heroAttackDuration)
     const pulseActive = this.heroAttackStyle === 'hero-pulse' && attackProgress >= 0
     const castActive = this.heroAttackStyle === 'hero-cast' && attackProgress >= 0
+    const heroHurtProgress = motionProgress(
+      this.heroHurtRemaining,
+      this.heroHurtDuration,
+    )
     const heroPose = sampleHeroMotion({
       time: this.motionClock,
-      moving: 0,
-      attackProgress: -1,
+      moving,
+      attackProgress,
       attackAngle: this.heroAttackAngle,
-      attackStyle: 'none',
-      hurtProgress: motionProgress(this.heroHurtRemaining, this.heroHurtDuration),
+      attackStyle: this.heroAttackStyle,
+      hurtProgress: heroHurtProgress,
       reducedMotion: this.settings.reducedShake,
     })
     if (Math.abs(this.heroFacing.x) > 0.08) {
@@ -1121,17 +1299,108 @@ class NighttraceRuntime {
     this.hero.rotation = heroPose.rotation
     this.hero.alpha = heroPose.alpha
     const heroGlow = Math.max(heroPose.glow, authoredGlow)
+    if (this.heroBloom) {
+      this.heroBloom.texture = heroTexture
+      this.heroBloom.anchor.set(HERO_ART_ROOT_X, HERO_ART_ROOT_Y)
+      this.heroBloom.scale.set(
+        HERO_ART_SCALE * this.heroVisualFacing * heroPose.scaleX * 1.035,
+        HERO_ART_SCALE * heroPose.scaleY * 1.035,
+      )
+      this.heroBloom.position.copyFrom(this.hero.position)
+      this.heroBloom.rotation = heroPose.rotation
+      this.heroBloom.alpha =
+        this.heroBloomFilter && !this.settings.reducedFlash
+          ? 0.075 + heroGlow * 0.16
+          : 0
+    }
+    if (this.heroMaterialVfx) {
+      const materialFrame = characterMaterialFrameAt({
+        actor: 'hero',
+        time: this.motionClock,
+        moving,
+        attackProgress,
+        hitProgress: heroHurtProgress,
+        deathProgress: -1,
+        fps: this.visualProfile.overlayFps,
+      })
+      const nextHeroMaterialTexture =
+        this.heroMaterialFrames[materialFrame] ??
+        this.heroMaterialFrames[0] ??
+        Texture.WHITE
+      if (this.heroMaterialVfx.texture !== nextHeroMaterialTexture) {
+        this.heroMaterialVfx.texture = nextHeroMaterialTexture
+      }
+      const materialSize =
+        attackProgress >= 0
+          ? pulseActive
+            ? 208
+            : 174
+          : heroHurtProgress >= 0
+            ? 158
+            : moving > 0.08
+              ? 142
+              : 132
+      this.heroMaterialVfx.width = materialSize
+      this.heroMaterialVfx.height = materialSize
+      this.heroMaterialVfx.position.set(
+        playerRenderX + heroPose.offsetX * 0.45,
+        playerRenderY - 12 + heroPose.offsetY * 0.45,
+      )
+      const facingAngle = Math.atan2(this.heroFacing.y, this.heroFacing.x)
+      this.heroMaterialVfx.rotation =
+        attackProgress >= 0
+          ? this.heroAttackAngle - Math.PI * 0.22
+          : moving > 0.08
+            ? facingAngle - Math.PI * 0.22
+            : Math.sin(this.motionClock * 0.72) * 0.035
+      const flashScale = this.settings.reducedFlash ? 0.48 : 1
+      this.heroMaterialVfx.alpha =
+        (0.28 + heroGlow * 0.34 + (moving > 0.08 ? 0.08 : 0)) * flashScale
+    }
+    updateCharacterMaterialFilter(this.heroMaterialFilter, {
+      time: this.motionClock,
+      intensity: 0.18 + heroGlow * 0.82,
+      crack: 0.06 + heroGlow * 0.18,
+      flash: heroHurtProgress >= 0 ? (this.settings.reducedFlash ? 0.24 : 0.62) : 0,
+      distortion:
+        this.settings.reducedShake || attackProgress < 0
+          ? 0
+          : pulseActive
+            ? 0.72
+            : 0.26,
+    })
     this.heroAura.position.set(playerRenderX, playerRenderY + 2)
     this.heroAura.rotation = this.motionClock * 0.14
     this.heroAura.scale.set(
       1 + Math.sin(this.motionClock * 2.2) * 0.018 + heroGlow * 0.18,
     )
     this.heroAura.alpha = 0.82 + heroGlow * 0.18
+    if (this.heroGroundShadow) {
+      this.heroGroundShadow.position.set(
+        playerRenderX + heroPose.offsetX * 0.18,
+        playerRenderY + 17 + heroPose.offsetY * 0.12,
+      )
+      this.heroGroundShadow.width = 76 + moving * 10 + heroGlow * 8
+      this.heroGroundShadow.height = 26 + heroGlow * 4
+      this.heroGroundShadow.rotation =
+        moving > 0.08
+          ? Math.atan2(this.heroFacing.y, this.heroFacing.x) * 0.045
+          : Math.sin(this.motionClock * 0.7) * 0.018
+      this.heroGroundShadow.alpha = 0.88
+      updateGroundShadowFilter(
+        this.heroGroundShadowFilter,
+        this.motionClock,
+        0.64 + heroGlow * 0.18,
+        0.12 + moving * 0.16,
+      )
+    }
 
     this.motionGraphics.clear()
-    this.motionGraphics
-      .ellipse(playerRenderX, playerRenderY + 16, 33, 10)
-      .fill({ color: 0x010307, alpha: 0.26 })
+    if (!this.heroGroundShadow) {
+      this.motionGraphics
+        .ellipse(playerRenderX, playerRenderY + 16, 33, 10)
+        .fill({ color: 0x010307, alpha: 0.26 })
+    }
     if (heroGlow > 0.04) {
       this.motionGraphics
         .ellipse(playerRenderX, playerRenderY + 8, 46 + heroGlow * 18, 16 + heroGlow * 6)
@@ -1142,6 +1411,10 @@ class NighttraceRuntime {
       (count, enemy) => count + (enemy.active && !enemy.isBoss ? 1 : 0),
       0,
     )
+    if (this.bossBloom) this.bossBloom.visible = false
+    if (this.bossGroundShadow) this.bossGroundShadow.visible = false
+    if (this.bossMaterialVfx) this.bossMaterialVfx.visible = false
+    let bossOnScreen = false
     for (const enemy of this.enemies) {
       if (!enemy.active && enemy.deathMotionRemaining <= 0) continue
       const renderX = lerp(enemy.previousX, enemy.x, this.interpolation)
@@ -1214,7 +1487,121 @@ class NighttraceRuntime {
       )
       enemy.sprite.tint = enemy.hitFlash > 0 ? 0xffffff : enemy.isBoss ? this.bossTint() : 0xffffff
       enemy.sprite.alpha = pose.alpha
-      if (pose.glow > 0.04) {
+      if (enemy.isBoss) {
+        bossOnScreen = true
+        const bossProfile = bossPresentation(this.bossLevel.bossId)
+        if (this.bossGroundShadow) {
+          this.bossGroundShadow.visible = true
+          this.bossGroundShadow.position.set(
+            renderX + pose.offsetX * 0.14,
+            renderY + enemy.radius * 0.56 + pose.offsetY * 0.08,
+          )
+          this.bossGroundShadow.width =
+            enemy.radius * (2.75 + pose.glow * 0.38 + enemy.phase * 0.08)
+          this.bossGroundShadow.height =
+            enemy.radius * (0.86 + pose.glow * 0.18)
+          this.bossGroundShadow.rotation = pose.rotation * 0.08
+          this.bossGroundShadow.alpha = 0.94
+          updateGroundShadowFilter(
+            this.bossGroundShadowFilter,
+            this.motionClock,
+            0.74 + pose.glow * 0.18,
+            0.24 + pose.glow * 0.34,
+          )
+        }
+        if (this.bossBloom) {
+          this.bossBloom.visible = true
+          this.bossBloom.texture = enemy.sprite.texture
+          this.bossBloom.anchor.copyFrom(enemy.sprite.anchor)
+          this.bossBloom.position.copyFrom(enemy.sprite.position)
+          this.bossBloom.rotation = enemy.sprite.rotation
+          this.bossBloom.scale.set(
+            enemy.sprite.scale.x * 1.045,
+            enemy.sprite.scale.y * 1.045,
+          )
+          this.bossBloom.tint = bossProfile.primaryColor
+          this.bossBloom.alpha =
+            this.bossBloomFilter && !this.settings.reducedFlash
+              ? 0.09 + pose.glow * 0.18
+              : 0
+        }
+        if (this.bossMaterialVfx) {
+          const materialFrame = characterMaterialFrameAt({
+            actor: 'boss',
+            time: this.motionClock,
+            moving: moveRatio,
+            attackProgress,
+            hitProgress,
+            deathProgress,
+            fps: this.visualProfile.overlayFps,
+          })
+          this.bossMaterialVfx.visible = true
+          const nextBossMaterialTexture =
+            this.bossMaterialFrames[materialFrame] ??
+            this.bossMaterialFrames[0] ??
+            Texture.WHITE
+          if (this.bossMaterialVfx.texture !== nextBossMaterialTexture) {
+            this.bossMaterialVfx.texture = nextBossMaterialTexture
+          }
+          const materialSize =
+            deathProgress >= 0
+              ? 430
+              : attackProgress >= 0
+                ? 380 + enemy.phase * 18
+                : hitProgress >= 0
+                  ? 338
+                  : moveRatio > 0.16
+                    ? 305
+                    : 328 + enemy.phase * 8
+          this.bossMaterialVfx.width = materialSize
+          this.bossMaterialVfx.height = materialSize
+          this.bossMaterialVfx.position.set(
+            renderX + pose.offsetX * 0.32,
+            renderY - enemy.radius * 0.26 + pose.offsetY * 0.32,
+          )
+          this.bossMaterialVfx.rotation =
+            attackProgress >= 0
+              ? enemy.attackMotionAngle - Math.PI * 0.22
+              : pose.rotation * 0.38
+          this.bossMaterialVfx.alpha =
+            (0.46 + pose.glow * 0.38 + enemy.phase * 0.035) *
+            (this.settings.reducedFlash ? 0.52 : 1)
+          const refractionStrength =
+            this.bossRefractionFilter &&
+            attackProgress >= 0 &&
+            !this.settings.reducedShake
+              ? clamp(pose.glow * 0.72, 0, 0.72)
+              : 0
+          updateRefractiveAtmosphereFilter(
+            this.bossRefractionFilter,
+            this.motionClock,
+            refractionStrength,
+          )
+          this.bossMaterialVfx.blendMode =
+            refractionStrength > 0.025 ? 'normal' : 'add'
+        }
+        updateCharacterMaterialFilter(this.bossMaterialFilter, {
+          time: this.motionClock,
+          intensity: 0.22 + pose.glow * 0.86 + enemy.phase * 0.05,
+          crack: clamp(
+            (1 - enemy.hp / Math.max(1, enemy.maxHp)) * 0.72 +
+              (attackProgress >= 0 ? pose.glow * 0.38 : 0),
+            0,
+            1,
+          ),
+          flash:
+            hitProgress >= 0
+              ? this.settings.reducedFlash
+                ? 0.22
+                : 0.72
+              : 0,
+          distortion:
+            this.settings.reducedShake || attackProgress < 0
+              ? 0
+              : clamp(pose.glow * 0.7, 0, 0.72),
+        })
+      }
+      if (pose.glow > 0.04 && (!enemy.isBoss || !this.bossMaterialVfx)) {
         const color = this.actorAccentColor(enemy)
         this.motionGraphics
           .ellipse(
@@ -1231,6 +1618,12 @@ class NighttraceRuntime {
           })
       }
     }
+    updateScreenGradeFilter(
+      this.screenGradeFilter,
+      this.motionClock,
+      bossOnScreen,
+      this.settings.reducedFlash ? 0.34 : bossOnScreen ? 0.62 : 0.48,
+    )
 
     this.projectileTrailGraphics.clear()
     for (const projectile of this.projectiles) {
@@ -1483,6 +1876,7 @@ class NighttraceRuntime {
     enemy.sprite.scale.set(enemy.baseScaleX * enemy.facing, enemy.baseScaleY)
     enemy.sprite.rotation = 0
     enemy.sprite.tint = 0xffffff
+    enemy.sprite.filters = null
     enemy.sprite.visible = true
     enemy.sprite.position.set(x, y)
   }
@@ -1707,9 +2101,14 @@ class NighttraceRuntime {
     enemy.sprite.scale.set(enemy.baseScaleX, enemy.baseScaleY)
     enemy.sprite.rotation = 0
     enemy.sprite.tint = this.bossTint()
+    enemy.sprite.filters = this.bossMaterialFilter
+      ? [this.bossMaterialFilter.filter]
+      : null
     enemy.sprite.visible = true
     enemy.sprite.position.set(x, y)
     this.boss = enemy
+    if (this.bossBloom) this.bossBloom.visible = true
+    if (this.bossMaterialVfx) this.bossMaterialVfx.visible = true
     this.bossIntroTimer = introDuration
     // The React HUD owns the sovereign name reveal. Keep the canvas layer focused
     // on the letterbox, shake, and particle entrance so the title is announced once.
@@ -5966,6 +6365,10 @@ class NighttraceRuntime {
         if (enemy.deathMotionRemaining <= 0) {
           enemy.sprite.visible = false
           enemy.sprite.alpha = 1
+          if (enemy.isBoss) {
+            if (this.bossBloom) this.bossBloom.visible = false
+            if (this.bossMaterialVfx) this.bossMaterialVfx.visible = false
+          }
         }
         continue
       }
@@ -6203,7 +6606,7 @@ class NighttraceRuntime {
         alpha: enemy.isBoss ? 0.32 : aerial ? 0.16 : 0.22,
       })
 
-    if (enemy.isBoss && bossProfile) {
+    if (enemy.isBoss && bossProfile && !this.bossMaterialVfx) {
       const authorityRadius = enemy.radius * (1.14 + enemy.phase * 0.055)
       const sealY = y + enemy.radius * 0.16
       const rotation = this.motionClock * (0.13 + enemy.phase * 0.015)
@@ -6249,6 +6652,7 @@ class NighttraceRuntime {
     }
 
     if (
+      !enemy.isBoss &&
       !this.settings.reducedShake &&
       attackProgress < 0 &&
       moving > 0.38 &&
@@ -7196,8 +7600,8 @@ class NighttraceRuntime {
       draw(graphics, WEAPONS[weaponId].color)
       const texture = this.app.renderer.generateTexture({
         target: graphics,
-        resolution: 2,
-        antialias: true,
+        resolution: this.visualProfile.generatedTextureResolution,
+        antialias: this.visualProfile.rendererAntialias,
       })
       this.projectileTextures.set(weaponId, texture)
       graphics.destroy()
@@ -7279,8 +7683,8 @@ class NighttraceRuntime {
     spark.circle(10, 10, 8).fill({ color: 0xffffff, alpha: 0.18 })
     this.sparkTexture = this.app.renderer.generateTexture({
       target: spark,
-      resolution: 2,
-      antialias: true,
+      resolution: this.visualProfile.generatedTextureResolution,
+      antialias: this.visualProfile.rendererAntialias,
     })
     spark.destroy()
   }
