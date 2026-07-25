@@ -142,9 +142,9 @@ const bossUptimeByWeapon: Record<WeaponId, number> = {
   'arc-choir': 1,
   'rift-seeds': 1,
   'comet-swarm': 0.9,
-  'ash-halo': 0.82,
+  'ash-halo': 0.9,
   'mirror-bow': 1,
-  'null-bell': 0.78,
+  'null-bell': 0.92,
 }
 
 /**

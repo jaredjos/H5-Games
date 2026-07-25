@@ -584,6 +584,132 @@ describe('character motion samplers', () => {
     }
   })
 
+  it('adds deterministic hit recoil without changing existing callers', () => {
+    const baseInput = {
+      id: 'maskling' as const,
+      uid: 37,
+      time: 1.19,
+      moving: 1,
+      attackProgress: -1,
+      attackAngle: Math.PI / 7,
+      attackStyle: 'none' as const,
+      reducedMotion: false,
+    }
+    const legacy = sampleEnemyMotion(baseInput)
+    const explicitlyIdle = sampleEnemyMotion({
+      ...baseInput,
+      hitProgress: -1,
+      deathProgress: -1,
+    })
+    const hit = sampleEnemyMotion({
+      ...baseInput,
+      hitProgress: 0.08,
+      reactionAngle: Math.PI,
+    })
+
+    expect(explicitlyIdle).toEqual(legacy)
+    expectFinitePose(hit)
+    expect(visualPoseDistance(hit, legacy)).toBeGreaterThan(2)
+    expect(hit.offsetX).toBeGreaterThan(legacy.offsetX)
+    expect(hit.glow).toBeGreaterThan(0.25)
+  })
+
+  it('gives horde deaths a compact fall and boss deaths a sovereign rupture', () => {
+    const hordeIdle = sampleEnemyMotion({
+      id: 'cinder-guard',
+      uid: 9,
+      time: 1.31,
+      moving: 0,
+      attackProgress: -1,
+      attackAngle: 0,
+      attackStyle: 'none',
+      reducedMotion: false,
+    })
+    const hordeDeath = sampleEnemyMotion({
+      id: 'cinder-guard',
+      uid: 9,
+      time: 1.31,
+      moving: 0,
+      attackProgress: -1,
+      attackAngle: 0,
+      attackStyle: 'none',
+      reducedMotion: false,
+      deathProgress: 0.68,
+      reactionAngle: Math.PI / 3,
+    })
+    const bossIdle = sampleBossMotion({
+      bossFrame: 5,
+      levelId: 10,
+      phase: 3,
+      time: 1.31,
+      moving: 0,
+      attackProgress: -1,
+      attackAngle: 0,
+      attackStyle: 'none',
+      reducedMotion: false,
+    })
+    const bossDeath = sampleBossMotion({
+      bossFrame: 5,
+      levelId: 10,
+      phase: 3,
+      time: 1.31,
+      moving: 0,
+      attackProgress: -1,
+      attackAngle: 0,
+      attackStyle: 'none',
+      reducedMotion: false,
+      deathProgress: 0.68,
+      reactionAngle: Math.PI / 3,
+    })
+
+    expectFinitePose(hordeDeath)
+    expectFinitePose(bossDeath)
+    expect(hordeDeath.alpha).toBeLessThan(hordeIdle.alpha)
+    expect(bossDeath.alpha).toBeGreaterThan(hordeDeath.alpha)
+    expect(bossDeath.offsetY - bossIdle.offsetY).toBeGreaterThan(
+      hordeDeath.offsetY - hordeIdle.offsetY,
+    )
+    expect(bossDeath.alpha - hordeDeath.alpha).toBeGreaterThan(0.2)
+  })
+
+  it('makes death override hit and attack while keeping reduced motion accessible', () => {
+    const full = sampleBossMotion({
+      bossFrame: 2,
+      levelId: 8,
+      phase: 3,
+      time: 1.4,
+      moving: 1,
+      attackProgress: 0.58,
+      attackAngle: Math.PI / 4,
+      attackStyle: 'boss-cluster',
+      reducedMotion: false,
+      hitProgress: 0.06,
+      deathProgress: 0.52,
+      reactionAngle: -Math.PI / 2,
+    })
+    const reduced = sampleBossMotion({
+      bossFrame: 2,
+      levelId: 8,
+      phase: 3,
+      time: 1.4,
+      moving: 1,
+      attackProgress: 0.58,
+      attackAngle: Math.PI / 4,
+      attackStyle: 'boss-cluster',
+      reducedMotion: true,
+      hitProgress: 0.06,
+      deathProgress: 0.52,
+      reactionAngle: -Math.PI / 2,
+    })
+
+    expectFinitePose(full)
+    expectFinitePose(reduced)
+    expect(Math.abs(reduced.offsetX)).toBeLessThan(Math.abs(full.offsetX))
+    expect(Math.abs(reduced.offsetY)).toBeLessThan(Math.abs(full.offsetY))
+    expect(reduced.alpha).toBeCloseTo(full.alpha)
+    expect(reduced.glow).toBeCloseTo(full.glow)
+  })
+
   it('honours reduced motion without removing the telegraph', () => {
     const full = sampleEnemyMotion({
       id: 'railjaw',

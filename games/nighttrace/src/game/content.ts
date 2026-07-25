@@ -76,14 +76,14 @@ export const WEAPONS = {
   },
   'ash-halo': {
     id: 'ash-halo',
-    name: 'Ash Halo',
-    shortName: 'Halo',
-    description: 'A crown of cinder sentinels lashes every creature close to the bearer.',
+    name: 'Graveglass Spires',
+    shortName: 'Spires',
+    description: 'Fractured nightglass erupts beneath the densest enemy cluster.',
     moduleId: 'thermal-mantle',
-    awakening: 'Cinder Seraph',
-    color: 0xff6b42,
-    cooldown: 0.36,
-    damage: 11,
+    awakening: 'Sepulchral Orchard',
+    color: 0xe35c68,
+    cooldown: 1.08,
+    damage: 34,
   },
   'mirror-bow': {
     id: 'mirror-bow',
@@ -98,14 +98,14 @@ export const WEAPONS = {
   },
   'null-bell': {
     id: 'null-bell',
-    name: 'Null Bell',
-    shortName: 'Bell',
-    description: 'A shattered midnight toll drives nightglass pressure fronts through the horde.',
+    name: 'Eclipse Harrow',
+    shortName: 'Harrow',
+    description: 'Nightglass execution gates cut across predicted enemy lanes.',
     moduleId: 'deep-capacitor',
-    awakening: 'Midnight Absolute',
-    color: 0x5f6dff,
-    cooldown: 2.2,
-    damage: 62,
+    awakening: 'Black Benediction',
+    color: 0xc269ff,
+    cooldown: 2.12,
+    damage: 64,
   },
 } satisfies Record<WeaponId, WeaponDefinition>
 
@@ -137,8 +137,8 @@ export const MODULES = {
   },
   'thermal-mantle': {
     id: 'thermal-mantle',
-    name: 'Thermal Mantle',
-    description: 'Expands the Cinder Crown and strengthens every sentinel lash.',
+    name: 'Ossuary Prism',
+    description: 'Adds eruption coverage and hardens every Graveglass impalement.',
   },
   'flux-mirror': {
     id: 'flux-mirror',
@@ -147,8 +147,8 @@ export const MODULES = {
   },
   'deep-capacitor': {
     id: 'deep-capacitor',
-    name: 'Deep Capacitor',
-    description: 'Widens Shattered Toll pressure fronts and accelerates their cadence.',
+    name: 'Eventide Vane',
+    description: 'Sharpens Eclipse Harrow prediction and amplifies every execution cut.',
   },
 } satisfies Record<ModuleId, ModuleDefinition>
 
@@ -278,7 +278,7 @@ export const LEVELS: LevelDefinition[] = [
     bossFrame: 1,
     accent: '#57b7ff',
     hazards: ['Tidal walls sweep full horizontal or vertical lanes.', 'Tide Apostle scatters staggered flood marks around the bearer.'],
-    reward: 'Ash Halo pattern and 118 Dawn Shards',
+    reward: 'Graveglass Spires pattern and 118 Dawn Shards',
     unlockWeapon: 'ash-halo',
   },
   {
@@ -312,7 +312,7 @@ export const LEVELS: LevelDefinition[] = [
     bossFrame: 4,
     accent: '#8de9ff',
     hazards: ['Angled time-shear lanes enter from either edge.', 'Chronophage surrounds the bearer with rotating clock sigils.'],
-    reward: 'Null Bell pattern and 168 Dawn Shards',
+    reward: 'Eclipse Harrow pattern and 168 Dawn Shards',
     unlockWeapon: 'null-bell',
   },
   {
@@ -371,9 +371,9 @@ const WEAPON_ICONS: Record<WeaponId, string> = {
   'arc-choir': 'ϟ',
   'rift-seeds': '◉',
   'comet-swarm': '☄',
-  'ash-halo': '⊙',
+  'ash-halo': '✥',
   'mirror-bow': '◇',
-  'null-bell': '◌',
+  'null-bell': '╫',
 }
 
 const MODULE_ICONS: Record<ModuleId, string> = {
@@ -382,9 +382,9 @@ const MODULE_ICONS: Record<ModuleId, string> = {
   'resonance-coil': '≋',
   'grav-anchor': '⌖',
   'guidance-filament': '⌁',
-  'thermal-mantle': '♨',
+  'thermal-mantle': '▴',
   'flux-mirror': '◈',
-  'deep-capacitor': '▣',
+  'deep-capacitor': '⌁',
 }
 
 const TRACE_ICONS: Record<TraceModId, string> = {

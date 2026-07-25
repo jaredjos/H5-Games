@@ -1,12 +1,12 @@
 import {
   Aperture,
-  Bell,
   CircleDot,
-  Flame,
+  Gem,
   HeartPulse,
   Orbit,
   Radio,
   RefreshCw,
+  ScanLine,
   Shield,
   Sparkles,
   Target,
@@ -137,9 +137,9 @@ const weaponIcons: Record<WeaponId, typeof Zap> = {
   'arc-choir': Zap,
   'rift-seeds': CircleDot,
   'comet-swarm': Sparkles,
-  'ash-halo': Flame,
+  'ash-halo': Gem,
   'mirror-bow': Aperture,
-  'null-bell': Bell,
+  'null-bell': ScanLine,
 }
 
 const moduleIcons: Record<ModuleId, typeof Zap> = {
@@ -148,9 +148,9 @@ const moduleIcons: Record<ModuleId, typeof Zap> = {
   'resonance-coil': Zap,
   'grav-anchor': CircleDot,
   'guidance-filament': Target,
-  'thermal-mantle': Shield,
+  'thermal-mantle': Gem,
   'flux-mirror': Sparkles,
-  'deep-capacitor': Waves,
+  'deep-capacitor': ScanLine,
 }
 
 export function WeaponGlyph({

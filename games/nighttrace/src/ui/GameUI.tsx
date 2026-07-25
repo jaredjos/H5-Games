@@ -112,9 +112,9 @@ const moduleStatLines: Record<ModuleId, string> = {
   'resonance-coil': 'JUMPS +1  ·  CHAIN +7%',
   'grav-anchor': 'FIELD +12%  ·  HOLD +0.12s',
   'guidance-filament': 'HOMING +0.8  ·  SPEED +35',
-  'thermal-mantle': 'DAMAGE +10%  ·  RADIUS +18',
+  'thermal-mantle': 'DAMAGE +10%  ·  CLUSTER REACH +14',
   'flux-mirror': 'PIERCE +1  ·  DAMAGE +8%',
-  'deep-capacitor': 'DAMAGE +13%  ·  RECOVERY +3.5%',
+  'deep-capacitor': 'DAMAGE +13%  ·  PREDICTION +0.04s',
 }
 
 const traceStatLines: Record<TraceModId, string> = {

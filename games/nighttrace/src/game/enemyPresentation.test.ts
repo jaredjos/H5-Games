@@ -6,10 +6,14 @@ import {
   BOSS_PRESENTATIONS,
   BOSS_RELEASE_TAIL_SECONDS,
   ENEMY_PRESENTATIONS,
+  HOSTILE_CRIMSON_COLOR,
+  HOSTILE_VENOM_COLOR,
+  HOSTILE_VIOLET_COLOR,
   bossImpactProgress,
   bossPresentation,
   enemyPresentation,
   sampleHostileEnvelope,
+  sampleHostileReaction,
 } from './enemyPresentation'
 
 describe('hostile presentation profiles', () => {
@@ -42,6 +46,7 @@ describe('hostile presentation profiles', () => {
       expect(profile.id).toBe(enemyId)
       expect(profile.reportName.length).toBeGreaterThan(3)
       expect(profile.paletteName.length).toBeGreaterThan(3)
+      expect(['crimson', 'violet', 'venom']).toContain(profile.colorFamily)
       expect(profile.hordeProminence).toBeGreaterThan(0)
       expect(profile.hordeProminence).toBeLessThan(1)
       expect(profile.reducedFlashScale).toBeGreaterThan(0)
@@ -54,6 +59,7 @@ describe('hostile presentation profiles', () => {
       expect(profile.id).toBe(bossId)
       expect(profile.reportName.length).toBeGreaterThan(3)
       expect(profile.paletteName.length).toBeGreaterThan(3)
+      expect(['crimson', 'violet', 'venom']).toContain(profile.colorFamily)
       expect(profile.bossProminence).toBeGreaterThan(1)
       expect(profile.reducedFlashScale).toBeGreaterThan(0)
       expect(profile.reducedFlashScale).toBeLessThan(1)
@@ -96,6 +102,26 @@ describe('hostile presentation profiles', () => {
         expect(color, profile.reportName).toBeLessThanOrEqual(0xffffff)
       }
     }
+  })
+
+  it('keeps the hostile identity inside the crimson, violet, and venom language', () => {
+    expect(HOSTILE_CRIMSON_COLOR).toBe(0xd9485c)
+    expect(HOSTILE_VIOLET_COLOR).toBe(0x9550a8)
+    expect(HOSTILE_VENOM_COLOR).toBe(0x87973b)
+
+    const enemyFamilies = new Set(
+      ALL_ENEMY_PRESENTATION_IDS.map(
+        (enemyId) => enemyPresentation(enemyId).colorFamily,
+      ),
+    )
+    const bossFamilies = new Set(
+      ALL_BOSS_PRESENTATION_IDS.map(
+        (bossId) => bossPresentation(bossId).colorFamily,
+      ),
+    )
+    expect(enemyFamilies).toEqual(new Set(['crimson', 'violet']))
+    expect(bossFamilies).toEqual(new Set(['crimson', 'violet', 'venom']))
+    expect(bossPresentation('mire-cantor').colorFamily).toBe('venom')
   })
 })
 
@@ -193,5 +219,118 @@ describe('hostile motion envelope', () => {
       full.flashScale * profile.reducedFlashScale,
       10,
     )
+  })
+})
+
+describe('hostile hit and death reactions', () => {
+  it('keeps horde hits brief while preserving an immediate readable flash', () => {
+    const impact = sampleHostileReaction({
+      kind: 'hit',
+      progress: 0.04,
+    })
+    const recovery = sampleHostileReaction({
+      kind: 'hit',
+      progress: 0.72,
+    })
+
+    expect(impact.phase).toBe('impact')
+    expect(recovery.phase).toBe('recover')
+    expect(impact.recoil).toBeGreaterThan(recovery.recoil)
+    expect(impact.flashScale).toBeGreaterThan(recovery.flashScale)
+    expect(impact.alpha).toBe(1)
+    expect(recovery.dissolve).toBe(0)
+  })
+
+  it('gives bosses a longer rupture and later dissolve than horde deaths', () => {
+    const hordeMid = sampleHostileReaction({
+      kind: 'death',
+      progress: 0.56,
+    })
+    const bossMid = sampleHostileReaction({
+      kind: 'death',
+      progress: 0.56,
+      boss: true,
+    })
+    const hordeLate = sampleHostileReaction({
+      kind: 'death',
+      progress: 0.76,
+    })
+    const bossLate = sampleHostileReaction({
+      kind: 'death',
+      progress: 0.76,
+      boss: true,
+    })
+
+    expect(hordeMid.phase).toBe('dissolve')
+    expect(bossMid.phase).toBe('collapse')
+    expect(bossMid.alpha).toBeGreaterThan(hordeMid.alpha)
+    expect(bossLate.alpha).toBeGreaterThan(hordeLate.alpha)
+    expect(bossLate.collapse).toBeGreaterThan(0.75)
+  })
+
+  it('keeps reaction channels deterministic, finite, bounded, and immutable', () => {
+    const progressValues = [
+      Number.NEGATIVE_INFINITY,
+      0,
+      0.18,
+      0.5,
+      0.82,
+      1,
+      Number.POSITIVE_INFINITY,
+      Number.NaN,
+    ]
+    for (const kind of ['hit', 'death'] as const) {
+      for (const progress of progressValues) {
+        const input = {
+          kind,
+          progress,
+          boss: true,
+          reducedFlash: false,
+          reducedFlashScale: 0.46,
+        }
+        const first = sampleHostileReaction(input)
+        const second = sampleHostileReaction(input)
+        expect(first).toEqual(second)
+        expect(Object.isFrozen(first)).toBe(true)
+        for (const value of [
+          first.progress,
+          first.recoil,
+          first.squash,
+          first.rupture,
+          first.collapse,
+          first.dissolve,
+          first.alpha,
+          first.flashScale,
+        ]) {
+          expect(Number.isFinite(value)).toBe(true)
+          expect(value).toBeGreaterThanOrEqual(0)
+          expect(value).toBeLessThanOrEqual(1)
+        }
+      }
+    }
+  })
+
+  it('reduces reaction flashes without changing physical timing', () => {
+    const full = sampleHostileReaction({
+      kind: 'death',
+      progress: 0.18,
+      boss: true,
+      reducedFlashScale: 0.4,
+    })
+    const reduced = sampleHostileReaction({
+      kind: 'death',
+      progress: 0.18,
+      boss: true,
+      reducedFlash: true,
+      reducedFlashScale: 0.4,
+    })
+
+    expect(reduced.phase).toBe(full.phase)
+    expect(reduced.recoil).toBe(full.recoil)
+    expect(reduced.squash).toBe(full.squash)
+    expect(reduced.rupture).toBe(full.rupture)
+    expect(reduced.collapse).toBe(full.collapse)
+    expect(reduced.alpha).toBe(full.alpha)
+    expect(reduced.flashScale).toBeCloseTo(full.flashScale * 0.4, 10)
   })
 })

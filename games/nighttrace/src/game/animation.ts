@@ -1,4 +1,5 @@
 import type { EnemyId } from '../shared/types'
+import { sampleHostileReaction } from './enemyPresentation'
 
 export type AttackMotionStyle =
   | 'none'
@@ -43,12 +44,22 @@ export interface HeroMotionInput extends MotionInput {
   hurtProgress: number
 }
 
-export interface EnemyMotionInput extends MotionInput {
+interface HostileReactionMotionInput {
+  /**
+   * Normalized 0..1 reaction window. Omit or pass a negative value when idle.
+   * Optional fields preserve the original motion-sampler API for existing callers.
+   */
+  hitProgress?: number
+  deathProgress?: number
+  reactionAngle?: number
+}
+
+export interface EnemyMotionInput extends MotionInput, HostileReactionMotionInput {
   id: EnemyId
   uid: number
 }
 
-export interface BossMotionInput extends MotionInput {
+export interface BossMotionInput extends MotionInput, HostileReactionMotionInput {
   bossFrame: number
   levelId: number
   phase: number
@@ -248,6 +259,83 @@ const addForwardOffset = (
   pose.offsetY += sin * forward + cos * side
 }
 
+const normalizedReactionProgress = (progress: number | undefined) =>
+  typeof progress === 'number' && Number.isFinite(progress) && progress >= 0
+    ? clamp01(progress)
+    : -1
+
+const applyHostileReactionMotion = (
+  pose: MotionPose,
+  input: HostileReactionMotionInput & Pick<MotionInput, 'attackAngle'>,
+  boss: boolean,
+  amplitude: number,
+  polarity: number,
+) => {
+  const deathProgress = normalizedReactionProgress(input.deathProgress)
+  const hitProgress = normalizedReactionProgress(input.hitProgress)
+  const reactionAngle = Number.isFinite(input.reactionAngle)
+    ? (input.reactionAngle as number)
+    : Number.isFinite(input.attackAngle)
+      ? input.attackAngle
+      : 0
+
+  if (deathProgress >= 0) {
+    const reaction = sampleHostileReaction({
+      kind: 'death',
+      progress: deathProgress,
+      boss,
+    })
+    const lift = boss ? 15 : 7
+    const fall = boss ? 24 : 13
+    const lean = boss ? 0.2 : 0.29
+    addForwardOffset(
+      pose,
+      -reaction.recoil * (boss ? 8 : 4.5) * amplitude,
+      reaction.rupture * polarity * (boss ? 4 : 2.5) * amplitude,
+      reactionAngle,
+    )
+    pose.offsetY +=
+      (-reaction.rupture * lift + reaction.collapse * fall) * amplitude
+    pose.rotation +=
+      polarity *
+      (-reaction.rupture * 0.045 + reaction.collapse * lean) *
+      amplitude
+    pose.scaleX *=
+      1 +
+      reaction.rupture * (boss ? 0.17 : 0.1) * amplitude +
+      reaction.collapse * (boss ? 0.08 : 0.12) * amplitude
+    pose.scaleY *=
+      1 +
+      reaction.rupture * (boss ? 0.1 : 0.06) * amplitude -
+      reaction.collapse * (boss ? 0.3 : 0.45) * amplitude
+    pose.alpha *= reaction.alpha
+    pose.glow = Math.max(
+      pose.glow,
+      reaction.flashScale,
+      reaction.rupture * (boss ? 0.94 : 0.64),
+    )
+    return
+  }
+
+  if (hitProgress < 0) return
+  const reaction = sampleHostileReaction({
+    kind: 'hit',
+    progress: hitProgress,
+    boss,
+  })
+  addForwardOffset(
+    pose,
+    -reaction.recoil * (boss ? 7 : 3.8) * amplitude,
+    polarity * reaction.squash * (boss ? 2.4 : 1.6) * amplitude,
+    reactionAngle,
+  )
+  pose.rotation += polarity * reaction.squash * (boss ? 0.045 : 0.065) * amplitude
+  pose.scaleX += reaction.squash * (boss ? 0.055 : 0.04) * amplitude
+  pose.scaleY -= reaction.squash * (boss ? 0.045 : 0.055) * amplitude
+  pose.alpha *= 1 - reaction.flashScale * (boss ? 0.06 : 0.1)
+  pose.glow = Math.max(pose.glow, reaction.flashScale * (boss ? 0.9 : 0.58))
+}
+
 export function motionProgress(remaining: number, duration: number) {
   if (remaining <= 0 || duration <= 0) return -1
   return clamp01(1 - remaining / duration)
@@ -371,7 +459,16 @@ export function sampleEnemyMotion(input: EnemyMotionInput): MotionPose {
   }
 
   const attack = input.attackProgress
-  if (attack < 0) return pose
+  if (attack < 0) {
+    applyHostileReactionMotion(
+      pose,
+      input,
+      false,
+      amplitude,
+      input.uid % 2 === 0 ? -1 : 1,
+    )
+    return pose
+  }
   const hit = peak(attack)
   // Keep the species cadence underneath the action, but quiet it around the
   // key pose so anticipation and release read cleanly in a crowded horde.
@@ -470,6 +567,13 @@ export function sampleEnemyMotion(input: EnemyMotionInput): MotionPose {
       break
   }
 
+  applyHostileReactionMotion(
+    pose,
+    input,
+    false,
+    amplitude,
+    input.uid % 2 === 0 ? -1 : 1,
+  )
   return pose
 }
 
@@ -712,6 +816,13 @@ export function sampleBossMotion(input: BossMotionInput): MotionPose {
   if (attack < 0) {
     pose.scaleX *= phaseWeight
     pose.scaleY *= phaseWeight
+    applyHostileReactionMotion(
+      pose,
+      input,
+      true,
+      amplitude,
+      input.levelId % 2 === 0 ? -1 : 1,
+    )
     return pose
   }
   const hit = peak(attack)
@@ -857,5 +968,12 @@ export function sampleBossMotion(input: BossMotionInput): MotionPose {
 
   pose.scaleX *= phaseWeight
   pose.scaleY *= phaseWeight
+  applyHostileReactionMotion(
+    pose,
+    input,
+    true,
+    amplitude,
+    input.levelId % 2 === 0 ? -1 : 1,
+  )
   return pose
 }

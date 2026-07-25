@@ -77,9 +77,9 @@ describe('weapon VFX profiles', () => {
       'Cathedral Voltage',
       'Eventide Viridian',
       'Perihelion Ember',
-      'Cinder Seraph',
+      'Sepulchral Orchard',
       'Infinite Prism',
-      'Midnight Absolute',
+      'Black Benediction',
     ])
     expect(new Set(paletteNames).size).toBe(ALL_WEAPON_VFX_IDS.length)
     expect(Object.isFrozen(WEAPON_VFX_PALETTE_NAMES)).toBe(true)
@@ -132,23 +132,23 @@ describe('weapon VFX profiles', () => {
 })
 
 describe('reworked area-weapon motifs', () => {
-  it('transforms Ash Halo through a sparse cinder-crown silhouette', () => {
+  it('transforms Graveglass Spires through a remote jagged orchard', () => {
     const profiles = SHOWCASE_STATES.map((state) =>
       weaponVfxMotifProfile('ash-halo', state),
     )
 
-    expect(profiles.map((profile) => profile.primaryCount)).toEqual([3, 5, 7, 8])
-    expect(profiles.map((profile) => profile.fragmentCount)).toEqual([4, 6, 8, 10])
+    expect(profiles.map((profile) => profile.primaryCount)).toEqual([2, 3, 4, 6])
+    expect(profiles.map((profile) => profile.fragmentCount)).toEqual([4, 6, 8, 12])
     expect(profiles.map((profile) => profile.awakeningSignature)).toEqual([
       null,
       null,
       null,
-      'cinder-seraph-wings',
+      'sepulchral-orchard',
     ])
     for (const profile of profiles) {
       expect(profile).toMatchObject({
-        motif: 'cinder-crown',
-        maxConcurrent: 1,
+        motif: 'graveglass-spires',
+        maxConcurrent: 2,
         concentricBandCount: 0,
         usesClosedRing: false,
       })
@@ -156,23 +156,23 @@ describe('reworked area-weapon motifs', () => {
     }
   })
 
-  it('transforms Null Bell through directional shattered-toll panes', () => {
+  it('transforms Eclipse Harrow through directional execution planes', () => {
     const profiles = SHOWCASE_STATES.map((state) =>
       weaponVfxMotifProfile('null-bell', state),
     )
 
-    expect(profiles.map((profile) => profile.primaryCount)).toEqual([4, 6, 8, 8])
-    expect(profiles.map((profile) => profile.fragmentCount)).toEqual([4, 6, 8, 12])
+    expect(profiles.map((profile) => profile.primaryCount)).toEqual([1, 2, 3, 4])
+    expect(profiles.map((profile) => profile.fragmentCount)).toEqual([3, 5, 7, 10])
     expect(profiles.map((profile) => profile.awakeningSignature)).toEqual([
       null,
       null,
       null,
-      'midnight-silence-cross',
+      'black-benediction',
     ])
     for (const profile of profiles) {
       expect(profile).toMatchObject({
-        motif: 'shattered-toll',
-        maxConcurrent: 1,
+        motif: 'eclipse-harrow',
+        maxConcurrent: 2,
         concentricBandCount: 0,
         usesClosedRing: false,
       })

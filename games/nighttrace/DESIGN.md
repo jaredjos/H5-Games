@@ -49,15 +49,38 @@ unlimited vitality; no Lab result writes rewards or progression.
 - Cyan for player energy and XP, solar gold for rewards, coral for danger, violet for shadow.
 - Painterly 2.5D assets with angular glass-and-brass code-native UI.
 - Enemy silhouettes remain readable beneath allied VFX; saturated coral is reserved for threats.
-- Area powers use one dominant silhouette: Ash Halo is a sparse warm Cinder
-  Crown, while Null Bell is a cool directional Shattered Toll. Neither stacks
-  concentric bands, and boss telegraphs render above both.
+- World-anchored powers do not orbit or follow the bearer. Graveglass Spires
+  erupts beneath the densest remote cluster; Eclipse Harrow cuts predicted
+  enemy lanes from remote nightglass gates. Each scales through four distinct
+  formations, avoids concentric clutter, and applies damage only once per target
+  even when presentation geometry overlaps.
+- Every major power owns a distinct origin, path, target, and decay grammar.
+  Anticipation reveals the landing area, impact receives peak contrast, and
+  non-persistent effects decay rapidly so boss telegraphs remain legible.
+- Valuable support relics use a persistent tapered heaven-to-ground shaft and a
+  broken landing rune. The beam is a navigation landmark, not a damage zone.
 - Horde motion accents are low-alpha and LOD-capped; boss specials may dominate
   the frame through crimson/violet seals, segmented rings, streak echoes, and
   impact cores.
 - Hostile attacks use a deterministic gather → release → aftershock envelope.
   HyperFrames motion rules inform the timing language; native PixiJS owns the
   interactive runtime.
+
+## Reference-analysis boundary
+
+The v1.6.0 presentation pass was informed by an internal analysis of a supplied
+442.19-second, 560x1312 gameplay recording at approximately 57.8 fps. The study
+identified four reusable design rules: distinguish every power by its
+origin/path/target/decay sequence; hold a vertical shaft over valuable drops;
+compress anticipation into a decisive impact and rapid decay; and identify
+bosses through geometry, directional telegraphs, and charge lanes.
+
+Audio measurements were used only to understand contrast: the gameplay pulse
+was estimated near 136 BPM (68 BPM half-time), with -26.5 LUFS integrated
+loudness, 10.3 LU loudness range, -4.3 dBFS true peak, and a gameplay spectral
+centroid around 2.3-2.9 kHz versus roughly 1.1 kHz in menus. NIGHTTRACE does not
+copy or ship any reference asset or audio. Its layered dungeon and sovereign
+music, artwork, timing, and PixiJS effects are original.
 
 ## Accessibility and performance
 

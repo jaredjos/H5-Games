@@ -101,6 +101,15 @@ import {
   type WeaponVfxStage,
   type WeaponVfxState,
 } from './weaponVfx'
+import {
+  buildReplacementWeaponPattern,
+  resolvePatternHits,
+  type ReplacementWeaponPattern,
+} from './weaponPatterns'
+import {
+  SUPPORT_PICKUP_LIFETIME_SECONDS,
+  supportPickupPresentation,
+} from './pickupPresentation'
 
 const WORLD_WIDTH = 1672
 const WORLD_HEIGHT = 941
@@ -192,6 +201,14 @@ interface EnemyEntity {
   xp: number
   contactCooldown: number
   hitFlash: number
+  hitMotionRemaining: number
+  hitMotionDuration: number
+  deathMotionRemaining: number
+  deathMotionDuration: number
+  reactionAngle: number
+  pendingContactDamage: number
+  blinkTargetX: number | null
+  blinkTargetY: number | null
   isBoss: boolean
   phase: number
   attackTimer: number
@@ -236,6 +253,7 @@ interface PickupEntity {
   previousY: number
   value: number
   age: number
+  visualSeed: number
   sprite: Sprite
 }
 
@@ -312,10 +330,10 @@ type WeaponEffectKind =
   | 'rift-impact'
   | 'comet-launch'
   | 'comet-impact'
-  | 'ash-corona'
+  | 'graveglass-eruption'
   | 'mirror-gate'
   | 'mirror-impact'
-  | 'null-toll'
+  | 'eclipse-harrow'
 
 interface WeaponEffectEntity {
   kind: WeaponEffectKind
@@ -330,6 +348,7 @@ interface WeaponEffectEntity {
   total: number
   seed: number
   points?: Vec2[]
+  pattern?: ReplacementWeaponPattern<number>
   hitPulseLife?: number
   hitPulseTotal?: number
 }
@@ -478,6 +497,7 @@ class NighttraceRuntime {
   private cameraX = WORLD_WIDTH * 0.5
   private cameraY = WORLD_HEIGHT * 0.54
   private attackVolley = 0
+  private pickupVisualSeed = 0
   private qaUpgradeGranted = false
   private readonly qaMode =
     typeof location !== 'undefined' &&
@@ -1123,14 +1143,26 @@ class NighttraceRuntime {
       0,
     )
     for (const enemy of this.enemies) {
-      if (!enemy.active) continue
+      if (!enemy.active && enemy.deathMotionRemaining <= 0) continue
       const renderX = lerp(enemy.previousX, enemy.x, this.interpolation)
       const renderY = lerp(enemy.previousY, enemy.y, this.interpolation)
-      const moveRatio = clamp(Math.hypot(enemy.vx, enemy.vy) / Math.max(1, enemy.speed), 0, 1.6)
-      const attackProgress = motionProgress(
-        enemy.attackMotionRemaining,
-        enemy.attackMotionDuration,
+      const moveRatio = enemy.active
+        ? clamp(Math.hypot(enemy.vx, enemy.vy) / Math.max(1, enemy.speed), 0, 1.6)
+        : 0
+      const hitProgress = motionProgress(
+        enemy.hitMotionRemaining,
+        enemy.hitMotionDuration,
       )
+      const deathProgress = motionProgress(
+        enemy.deathMotionRemaining,
+        enemy.deathMotionDuration,
+      )
+      const attackProgress = deathProgress >= 0
+        ? -1
+        : motionProgress(
+            enemy.attackMotionRemaining,
+            enemy.attackMotionDuration,
+          )
       const pose = enemy.isBoss
         ? sampleBossMotion({
             time: this.motionClock,
@@ -1142,6 +1174,9 @@ class NighttraceRuntime {
             bossFrame: this.bossLevel.bossFrame,
             levelId: this.bossLevel.id,
             phase: enemy.phase,
+            hitProgress,
+            deathProgress,
+            reactionAngle: enemy.reactionAngle,
           })
         : sampleEnemyMotion({
             time: this.motionClock,
@@ -1152,20 +1187,25 @@ class NighttraceRuntime {
             reducedMotion: this.settings.reducedShake,
             id: enemy.id,
             uid: enemy.uid,
+            hitProgress,
+            deathProgress,
+            reactionAngle: enemy.reactionAngle,
           })
       enemy.sprite.anchor.set(
         0.5 + pose.pivotX,
         (enemy.isBoss ? 0.62 : 0.6) + pose.pivotY,
       )
-      this.drawEnemyMotionAccent(
-        enemy,
-        renderX,
-        renderY,
-        pose,
-        moveRatio,
-        attackProgress,
-        activeHordeCount,
-      )
+      if (enemy.active) {
+        this.drawEnemyMotionAccent(
+          enemy,
+          renderX,
+          renderY,
+          pose,
+          moveRatio,
+          attackProgress,
+          activeHordeCount,
+        )
+      }
       enemy.sprite.position.set(renderX + pose.offsetX, renderY + pose.offsetY)
       enemy.sprite.rotation = pose.rotation
       enemy.sprite.scale.set(
@@ -1173,7 +1213,7 @@ class NighttraceRuntime {
         enemy.baseScaleY * pose.scaleY,
       )
       enemy.sprite.tint = enemy.hitFlash > 0 ? 0xffffff : enemy.isBoss ? this.bossTint() : 0xffffff
-      enemy.sprite.alpha = (enemy.hitFlash > 0 ? 0.82 : 1) * pose.alpha
+      enemy.sprite.alpha = pose.alpha
       if (pose.glow > 0.04) {
         const color = this.actorAccentColor(enemy)
         this.motionGraphics
@@ -1220,19 +1260,12 @@ class NighttraceRuntime {
         ? 0.9 + Math.sin(pickup.age * 4.4) * 0.1
         : 0.96
       if (supportPickup) {
-        const color = pickup.kind === 'dawnheart'
-          ? 0xff6f86
-          : pickup.kind === 'gravestar'
-            ? 0xffd978
-            : 0x70ecff
-        const pulse = 34 + Math.sin(pickup.age * 3.8) * 4
-        this.pickupAuraGraphics
-          .circle(renderX, renderY, pulse)
-          .fill({ color, alpha: 0.055 })
-          .stroke({ color, width: 3, alpha: 0.52 })
-        this.pickupAuraGraphics
-          .circle(renderX, renderY, pulse + 10)
-          .stroke({ color, width: 1, alpha: 0.2 })
+        this.drawSupportPickupBeacon(
+          this.pickupAuraGraphics,
+          pickup,
+          renderX,
+          renderY,
+        )
       }
     }
 
@@ -1319,7 +1352,9 @@ class NighttraceRuntime {
 
   private spawnEnemy() {
     if (!this.enemyFrames.length) return
-    let enemy = this.enemies.find((candidate) => !candidate.active)
+    let enemy = this.enemies.find(
+      (candidate) => !candidate.active && candidate.deathMotionRemaining <= 0,
+    )
     if (!enemy) {
       const sprite = new Sprite(this.enemyFrames[0])
       sprite.anchor.set(0.5, 0.6)
@@ -1343,6 +1378,14 @@ class NighttraceRuntime {
         xp: 3,
         contactCooldown: 0,
         hitFlash: 0,
+        hitMotionRemaining: 0,
+        hitMotionDuration: 0,
+        deathMotionRemaining: 0,
+        deathMotionDuration: 0,
+        reactionAngle: 0,
+        pendingContactDamage: 0,
+        blinkTargetX: null,
+        blinkTargetY: null,
         isBoss: false,
         phase: 1,
         attackTimer: 0,
@@ -1406,6 +1449,14 @@ class NighttraceRuntime {
     enemy.xp = Math.max(2, Math.round(2.5 * typeScale))
     enemy.contactCooldown = 0
     enemy.hitFlash = 0
+    enemy.hitMotionRemaining = 0
+    enemy.hitMotionDuration = 0
+    enemy.deathMotionRemaining = 0
+    enemy.deathMotionDuration = 0
+    enemy.reactionAngle = 0
+    enemy.pendingContactDamage = 0
+    enemy.blinkTargetX = null
+    enemy.blinkTargetY = null
     enemy.isBoss = false
     enemy.phase = 1
     enemy.facing = this.random.next() > 0.5 ? 1 : -1
@@ -1465,14 +1516,14 @@ class NighttraceRuntime {
             ]
           : weaponId === 'ash-halo'
             ? [
-                [106, -18],
-                [72, 88],
-                [-14, 118],
-                [-101, 72],
-                [-124, -24],
-                [-74, -97],
-                [22, -118],
-                [96, -71],
+                [154, -122],
+                [202, -102],
+                [254, -74],
+                [176, -42],
+                [226, -18],
+                [282, -44],
+                [194, 24],
+                [268, 38],
               ]
             : weaponId === 'comet-swarm'
               ? [
@@ -1487,14 +1538,14 @@ class NighttraceRuntime {
                 ]
             : weaponId === 'null-bell'
               ? [
-                  [168, -22],
-                  [112, 142],
-                  [-28, 176],
-                  [-158, 112],
-                  [-188, -34],
-                  [-118, -154],
-                  [24, -180],
-                  [148, -104],
+                  [142, -132],
+                  [182, -94],
+                  [224, -58],
+                  [266, -20],
+                  [174, 14],
+                  [216, 48],
+                  [260, 82],
+                  [304, 112],
                 ]
               : weaponId === 'crescent-array'
                 ? [
@@ -1543,7 +1594,9 @@ class NighttraceRuntime {
   private spawnBoss() {
     if (this.bossSpawned || !this.bossFrames.length) return
     this.bossSpawned = true
-    let enemy = this.enemies.find((candidate) => !candidate.active)
+    let enemy = this.enemies.find(
+      (candidate) => !candidate.active && candidate.deathMotionRemaining <= 0,
+    )
     if (!enemy) {
       const sprite = new Sprite(this.bossFrames[0])
       sprite.anchor.set(0.5, 0.62)
@@ -1567,6 +1620,14 @@ class NighttraceRuntime {
         xp: 0,
         contactCooldown: 0,
         hitFlash: 0,
+        hitMotionRemaining: 0,
+        hitMotionDuration: 0,
+        deathMotionRemaining: 0,
+        deathMotionDuration: 0,
+        reactionAngle: 0,
+        pendingContactDamage: 0,
+        blinkTargetX: null,
+        blinkTargetY: null,
         isBoss: true,
         phase: 1,
         attackTimer: 1.8,
@@ -1620,6 +1681,14 @@ class NighttraceRuntime {
     enemy.xp = 0
     enemy.contactCooldown = 0
     enemy.hitFlash = 0
+    enemy.hitMotionRemaining = 0
+    enemy.hitMotionDuration = 0
+    enemy.deathMotionRemaining = 0
+    enemy.deathMotionDuration = 0
+    enemy.reactionAngle = 0
+    enemy.pendingContactDamage = 0
+    enemy.blinkTargetX = null
+    enemy.blinkTargetY = null
     enemy.isBoss = true
     enemy.phase = 1
     enemy.facing = 1
@@ -1658,6 +1727,54 @@ class NighttraceRuntime {
       enemy.previousY = enemy.y
       enemy.contactCooldown = Math.max(0, enemy.contactCooldown - delta)
       enemy.hitFlash = Math.max(0, enemy.hitFlash - delta)
+
+      if (
+        enemy.blinkTargetX !== null &&
+        enemy.blinkTargetY !== null &&
+        enemy.attackMotionStyle === 'blink' &&
+        motionProgress(enemy.attackMotionRemaining, enemy.attackMotionDuration) >= 0.46
+      ) {
+        enemy.x = enemy.blinkTargetX
+        enemy.y = enemy.blinkTargetY
+        enemy.previousX = enemy.x
+        enemy.previousY = enemy.y
+        enemy.blinkTargetX = null
+        enemy.blinkTargetY = null
+        const blinkColor = this.actorAccentColor(enemy)
+        this.rings.push({
+          x: enemy.x,
+          y: enemy.y,
+          radius: 4,
+          maxRadius: 58,
+          life: 0.34,
+          total: 0.34,
+          color: blinkColor,
+          width: 4,
+        })
+        this.spawnBurst(enemy.x, enemy.y, blinkColor, 10, 150)
+      }
+
+      const contactAttackProgress = motionProgress(
+        enemy.attackMotionRemaining,
+        enemy.attackMotionDuration,
+      )
+      if (
+        enemy.pendingContactDamage > 0 &&
+        enemy.attackMotionStyle === 'melee' &&
+        contactAttackProgress >= 0.42
+      ) {
+        const releaseDx = this.player.x - enemy.x
+        const releaseDy = this.player.y - enemy.y
+        if (
+          releaseDx * releaseDx + releaseDy * releaseDy <=
+          (enemy.radius + 42) ** 2
+        ) {
+          this.damagePlayer(enemy.pendingContactDamage)
+        }
+        enemy.pendingContactDamage = 0
+      } else if (enemy.pendingContactDamage > 0 && contactAttackProgress < 0) {
+        enemy.pendingContactDamage = 0
+      }
 
       if (enemy.isBoss) {
         const healthRatio = enemy.hp / enemy.maxHp
@@ -1722,7 +1839,9 @@ class NighttraceRuntime {
           Math.atan2(dy, dx),
           enemy.isBoss,
         )
-        this.damagePlayer(enemy.damage)
+        if (enemy.attackMotionStyle === 'melee') {
+          enemy.pendingContactDamage = enemy.damage
+        }
         enemy.contactCooldown = enemy.isBoss ? 0.72 : 0.92
         if (!enemy.isBoss) {
           enemy.x -= (dx / distance) * 32
@@ -1767,19 +1886,31 @@ class NighttraceRuntime {
 
     if (enemy.id === 'chronowisp') {
       this.triggerEnemyAttack(enemy, 'blink', 0.52, angle, true)
-      const oldX = enemy.x
-      const oldY = enemy.y
       const blinkAngle = this.random.range(0, Math.PI * 2)
       const blinkDistance = this.random.range(190, 300)
-      enemy.x = clamp(this.player.x + Math.cos(blinkAngle) * blinkDistance, 52, WORLD_WIDTH - 52)
-      enemy.y = clamp(this.player.y + Math.sin(blinkAngle) * blinkDistance, 48, WORLD_HEIGHT - 48)
-      enemy.previousX = enemy.x
-      enemy.previousY = enemy.y
-      enemy.contactCooldown = 0.9
-      this.rings.push(
-        { x: oldX, y: oldY, radius: 4, maxRadius: 58, life: 0.34, total: 0.34, color: 0x8de9ff, width: 4 },
-        { x: enemy.x, y: enemy.y, radius: 4, maxRadius: 58, life: 0.34, total: 0.34, color: 0x8de9ff, width: 4 },
+      enemy.blinkTargetX = clamp(
+        this.player.x + Math.cos(blinkAngle) * blinkDistance,
+        52,
+        WORLD_WIDTH - 52,
       )
+      enemy.blinkTargetY = clamp(
+        this.player.y + Math.sin(blinkAngle) * blinkDistance,
+        48,
+        WORLD_HEIGHT - 48,
+      )
+      enemy.contactCooldown = 0.9
+      const blinkColor = this.actorAccentColor(enemy)
+      this.rings.push({
+        x: enemy.x,
+        y: enemy.y,
+        radius: 4,
+        maxRadius: 58,
+        life: 0.34,
+        total: 0.34,
+        color: blinkColor,
+        width: 4,
+      })
+      this.spawnBurst(enemy.x, enemy.y, blinkColor, 10, 130)
       enemy.attackTimer = this.random.range(5.8, 8)
       return
     }
@@ -1828,6 +1959,73 @@ class NighttraceRuntime {
       }
       this.weaponCooldowns.set(owned.id, cooldown)
     }
+  }
+
+  private castReplacementWeapon(
+    weaponId: 'ash-halo' | 'null-bell',
+    visualState: WeaponVfxState,
+    damage: number,
+    moduleRank: number,
+    seed: number,
+  ) {
+    const targets = this.enemies
+      .filter((enemy) => enemy.active)
+      .map((enemy) => ({
+        id: enemy.uid,
+        x: enemy.x,
+        y: enemy.y,
+        vx: enemy.vx,
+        vy: enemy.vy,
+        active: enemy.active,
+      }))
+    const buildInput = {
+      origin: { x: this.player.x, y: this.player.y },
+      targets,
+      stage: visualState.stage,
+      seed,
+      minimumRange: 72,
+      clusterRadius:
+        weaponId === 'ash-halo'
+          ? 160 + moduleRank * 14
+          : 192 + moduleRank * 18,
+      predictionSeconds:
+        weaponId === 'null-bell' ? 0.3 + moduleRank * 0.035 : 0,
+    } as const
+    const pattern =
+      buildReplacementWeaponPattern(weaponId, buildInput) ??
+      buildReplacementWeaponPattern(weaponId, {
+        ...buildInput,
+        minimumRange: 0,
+      })
+    if (!pattern) return undefined
+
+    const collisionTargets =
+      pattern.kind === 'eclipse-harrow'
+        ? targets.map((target) => ({
+            ...target,
+            x: target.x + target.vx * pattern.cluster.predictionSeconds,
+            y: target.y + target.vy * pattern.cluster.predictionSeconds,
+          }))
+        : targets
+    const hits = resolvePatternHits(collisionTargets, pattern.strikes)
+    const enemiesById = new Map(
+      this.enemies
+        .filter((enemy) => enemy.active)
+        .map((enemy) => [enemy.uid, enemy] as const),
+    )
+    const impacts: Vec2[] = []
+    for (const hit of hits) {
+      const enemy = enemiesById.get(hit.targetId)
+      if (!enemy?.active) continue
+      this.damageEnemy(
+        enemy,
+        damage * (1 + moduleRank * (weaponId === 'ash-halo' ? 0.1 : 0.13)),
+        weaponId,
+      )
+      if (impacts.length < 12) impacts.push({ x: enemy.x, y: enemy.y })
+    }
+
+    return { pattern, impacts }
   }
 
   private fireWeapon(owned: OwnedWeapon) {
@@ -1956,22 +2154,24 @@ class NighttraceRuntime {
         break
       }
       case 'ash-halo': {
-        const radius = 126 + rank * 16 + moduleRank * 18
-        const impacts = this.areaDamage(
-          this.player.x,
-          this.player.y,
-          radius,
-          damage * (1 + moduleRank * 0.1),
-          owned.id,
-        )
-        this.emitWeaponCastVfx(
+        const cast = this.castReplacementWeapon(
           owned.id,
           visualState,
-          angle,
-          radius,
+          damage,
+          moduleRank,
           visualSeed,
-          impacts,
         )
+        if (cast) {
+          this.emitWeaponCastVfx(
+            owned.id,
+            visualState,
+            cast.pattern.aimAngle,
+            190 + rank * 18 + moduleRank * 16,
+            visualSeed,
+            cast.impacts,
+            cast.pattern,
+          )
+        }
         break
       }
       case 'mirror-bow':
@@ -2005,81 +2205,67 @@ class NighttraceRuntime {
         }
         break
       case 'null-bell': {
-        const radius = 220 + rank * 22 + moduleRank * 14
-        const impacts = this.areaDamage(
-          this.player.x,
-          this.player.y,
-          radius,
-          damage * (1 + moduleRank * 0.13),
-          owned.id,
-        )
-        this.emitWeaponCastVfx(
+        const cast = this.castReplacementWeapon(
           owned.id,
           visualState,
-          angle,
-          radius,
+          damage,
+          moduleRank,
           visualSeed,
-          impacts,
         )
+        if (cast) {
+          this.emitWeaponCastVfx(
+            owned.id,
+            visualState,
+            cast.pattern.aimAngle,
+            280 + rank * 24 + moduleRank * 18,
+            visualSeed,
+            cast.impacts,
+            cast.pattern,
+          )
+        }
         break
       }
     }
 
     if (this.traceMods.includes('crossfire') && this.attackVolley % 4 === 0) {
-      this.spawnProjectile(
-        owned.id,
-        angle + Math.PI,
-        520,
-        damage * 0.72,
-        1,
-        0,
-        definition.color,
-        1.45,
-        visualState,
-        visualSeed + 41,
-      )
+      if (owned.id === 'ash-halo' || owned.id === 'null-bell') {
+        const echo = this.castReplacementWeapon(
+          owned.id,
+          visualState,
+          damage * 0.72,
+          moduleRank,
+          visualSeed + 41,
+        )
+        if (echo) {
+          this.emitWeaponCastVfx(
+            owned.id,
+            visualState,
+            echo.pattern.aimAngle,
+            owned.id === 'ash-halo' ? 210 : 340,
+            visualSeed + 41,
+            echo.impacts,
+            echo.pattern,
+          )
+        }
+      } else {
+        this.spawnProjectile(
+          owned.id,
+          angle + Math.PI,
+          520,
+          damage * 0.72,
+          1,
+          0,
+          definition.color,
+          1.45,
+          visualState,
+          visualSeed + 41,
+        )
+      }
     }
-    this.audio.play('shot', owned.id === 'null-bell' ? 0.65 : 0.22)
+    this.audio.playWeaponCue(owned.id)
   }
 
   private pushWeaponEffect(effect: WeaponEffectEntity) {
-    if (effect.kind === 'ash-corona' || effect.kind === 'null-toll') {
-      const existing = this.weaponEffects.find(
-        (candidate) => candidate.kind === effect.kind,
-      )
-      if (existing) {
-        existing.visualState = effect.visualState
-        existing.radius = effect.radius
-        existing.maxRadius = effect.maxRadius
-        existing.points = effect.points
-        existing.hitPulseLife = effect.hitPulseLife
-        existing.hitPulseTotal = effect.hitPulseTotal
-
-        if (effect.kind === 'ash-corona') {
-          // Keep the field alive without rewinding its breathing phase on
-          // every rapid cast. The short hit accent is refreshed separately.
-          existing.life = effect.life
-          existing.total = effect.total
-        } else {
-          const existingProgress = clamp(
-            1 - existing.life / Math.max(existing.total, 0.001),
-            0,
-            1,
-          )
-          // Let an active pressure wave finish. A dense cooldown build may
-          // retrigger only after the previous toll has entered its decay.
-          if (existingProgress >= 0.72) {
-            existing.x = effect.x
-            existing.y = effect.y
-            existing.angle = effect.angle
-            existing.seed = effect.seed
-            existing.life = effect.life
-            existing.total = effect.total
-          }
-        }
-        return
-      }
-    }
     if (this.weaponEffects.length >= 72) {
       let shortestIndex = 0
       for (let index = 1; index < this.weaponEffects.length; index += 1) {
@@ -2099,6 +2285,7 @@ class NighttraceRuntime {
     radius: number,
     seed: number,
     points: Vec2[] = [],
+    pattern?: ReplacementWeaponPattern<number>,
   ) {
     const kind: Record<WeaponId, WeaponEffectKind | undefined> = {
       'helio-lance': 'helio-gate',
@@ -2106,9 +2293,9 @@ class NighttraceRuntime {
       'arc-choir': undefined,
       'rift-seeds': 'rift-cast',
       'comet-swarm': 'comet-launch',
-      'ash-halo': 'ash-corona',
+      'ash-halo': 'graveglass-eruption',
       'mirror-bow': 'mirror-gate',
-      'null-bell': 'null-toll',
+      'null-bell': 'eclipse-harrow',
     }
     const effectKind = kind[weaponId]
     if (!effectKind) return
@@ -2118,25 +2305,26 @@ class NighttraceRuntime {
       'arc-choir': 0.5,
       'rift-seeds': 0.58,
       'comet-swarm': 0.42,
-      'ash-halo': visualState.stage === 'final' ? 0.74 : 0.56,
+      'ash-halo': visualState.stage === 'final' ? 1.04 : 0.86,
       'mirror-bow': 0.5,
-      'null-bell': visualState.stage === 'final' ? 1.08 : 0.86,
+      'null-bell': visualState.stage === 'final' ? 1.24 : 1.02,
     }[weaponId] ?? 0.5
     const hitPulseTotal =
-      weaponId === 'ash-halo' ? 0.24 : weaponId === 'null-bell' ? 0.34 : undefined
+      weaponId === 'ash-halo' ? 0.38 : weaponId === 'null-bell' ? 0.46 : undefined
     this.pushWeaponEffect({
       kind: effectKind,
       weaponId,
       visualState,
-      x: this.player.x,
-      y: this.player.y,
-      angle,
+      x: pattern?.aimPoint.x ?? this.player.x,
+      y: pattern?.aimPoint.y ?? this.player.y,
+      angle: pattern?.aimAngle ?? angle,
       radius: Math.max(24, radius * 0.22),
       maxRadius: Math.max(54, radius),
       life: duration,
       total: duration,
       seed,
       points: points.slice(0, 12),
+      pattern,
       hitPulseLife: hitPulseTotal,
       hitPulseTotal,
     })
@@ -2389,7 +2577,10 @@ class NighttraceRuntime {
       pickup.previousX = pickup.x
       pickup.previousY = pickup.y
       pickup.age += delta
-      if (pickup.age > (pickup.kind === 'xp' ? 32 : 42)) {
+      if (
+        pickup.age >
+        (pickup.kind === 'xp' ? 32 : SUPPORT_PICKUP_LIFETIME_SECONDS)
+      ) {
         pickup.active = false
         pickup.sprite.visible = false
         continue
@@ -2680,6 +2871,12 @@ class NighttraceRuntime {
     if (critical) damage *= 1.75
     enemy.hp -= damage
     enemy.hitFlash = 0.055
+    enemy.hitMotionDuration = enemy.isBoss ? 0.22 : 0.16
+    enemy.hitMotionRemaining = enemy.hitMotionDuration
+    enemy.reactionAngle = Math.atan2(
+      this.player.y - enemy.y,
+      this.player.x - enemy.x,
+    )
     if (trackWeaponDamage) {
       this.weaponDamage.set(weaponId, (this.weaponDamage.get(weaponId) ?? 0) + damage)
     }
@@ -2716,7 +2913,17 @@ class NighttraceRuntime {
       // Remove lethal targets before any chained proc so a neighboring fracture
       // cannot recurse into the same death and award it twice.
       enemy.active = false
-      enemy.sprite.visible = false
+      enemy.vx = 0
+      enemy.vy = 0
+      enemy.pendingContactDamage = 0
+      enemy.blinkTargetX = null
+      enemy.blinkTargetY = null
+      enemy.attackMotionRemaining = 0
+      enemy.attackMotionDuration = 0
+      enemy.attackMotionStyle = 'none'
+      enemy.deathMotionDuration = wasBoss ? 1 : 0.42
+      enemy.deathMotionRemaining = enemy.deathMotionDuration
+      enemy.sprite.visible = true
     }
     if (lethal && !wasBoss) {
       // Settle the primary defeat before chained fractures. If a fracture also
@@ -2870,6 +3077,7 @@ class NighttraceRuntime {
         previousY: 0,
         value: 1,
         age: 0,
+        visualSeed: 0,
         sprite,
       }
       this.pickups.push(pickup)
@@ -2882,6 +3090,8 @@ class NighttraceRuntime {
     pickup.previousY = y
     pickup.value = value
     pickup.age = 0
+    pickup.visualSeed = this.pickupVisualSeed
+    this.pickupVisualSeed += 1
     const supportPickup = kind !== 'xp'
     const frameIndex = kind === 'dawnheart'
       ? 2
@@ -2910,17 +3120,7 @@ class NighttraceRuntime {
     pickup.sprite.position.set(x, y)
     if (supportPickup) {
       const color = kind === 'dawnheart' ? 0xff6f86 : kind === 'gravestar' ? 0xffd978 : 0x70ecff
-      this.rings.push({
-        x,
-        y,
-        radius: 8,
-        maxRadius: 92,
-        life: 0.72,
-        total: 0.72,
-        color,
-        width: 5,
-      })
-      this.spawnBurst(x, y, color, 16, 170)
+      this.spawnBurst(x, y, color, 12, 150)
     }
   }
 
@@ -3952,6 +4152,197 @@ class NighttraceRuntime {
     graphics.stroke({ color, width, alpha })
   }
 
+  private drawSupportPickupBeacon(
+    graphics: Graphics,
+    pickup: PickupEntity,
+    x: number,
+    y: number,
+  ) {
+    if (pickup.kind === 'xp') return
+    const presentation = supportPickupPresentation(
+      pickup.kind,
+      pickup.age,
+      pickup.visualSeed,
+      {
+        reducedFlash: this.settings.reducedFlash,
+        highContrast: this.settings.highContrastPickups,
+      },
+    )
+    const beamTop = y - presentation.beamHeight
+    const halfBody = presentation.beamBodyWidth * 0.5
+    const halfCore = presentation.beamCoreWidth * 0.5
+
+    graphics
+      .poly(
+        [
+          x - halfBody,
+          y + 10,
+          x - halfBody * 0.18,
+          beamTop,
+          x + halfBody * 0.18,
+          beamTop,
+          x + halfBody,
+          y + 10,
+        ],
+        true,
+      )
+      .fill({
+        color: presentation.primaryColor,
+        alpha: presentation.beamBodyAlpha * 0.34,
+      })
+    graphics
+      .poly(
+        [
+          x - halfCore,
+          y + 8,
+          x - halfCore * 0.28,
+          beamTop - 12,
+          x + halfCore * 0.28,
+          beamTop - 12,
+          x + halfCore,
+          y + 8,
+        ],
+        true,
+      )
+      .fill({
+        color: presentation.coreColor,
+        alpha: presentation.beamCoreAlpha,
+      })
+
+    const flare = 8 + presentation.arrival * 8 + presentation.warning * 5
+    graphics
+      .poly(
+        [
+          x,
+          beamTop - flare * 1.45,
+          x + flare * 0.42,
+          beamTop,
+          x,
+          beamTop + flare * 1.45,
+          x - flare * 0.42,
+          beamTop,
+        ],
+        true,
+      )
+      .fill({
+        color: presentation.coreColor,
+        alpha: presentation.beamCoreAlpha * 0.82,
+      })
+
+    const runeRadius = 30 * presentation.runeScale
+    const runePoints: Vec2[] = []
+    for (let corner = 0; corner < 4; corner += 1) {
+      const angle =
+        presentation.runeRotation + Math.PI * 0.25 + corner * Math.PI * 0.5
+      runePoints.push({
+        x: x + Math.cos(angle) * runeRadius,
+        y: y + Math.sin(angle) * runeRadius * 0.58,
+      })
+    }
+    for (let side = 0; side < runePoints.length; side += 1) {
+      const start = runePoints[side]
+      const end = runePoints[(side + 1) % runePoints.length]
+      this.drawPolyline(
+        graphics,
+        [
+          { x: lerp(start.x, end.x, 0.08), y: lerp(start.y, end.y, 0.08) },
+          { x: lerp(start.x, end.x, 0.38), y: lerp(start.y, end.y, 0.38) },
+        ],
+        presentation.primaryColor,
+        2.2,
+        presentation.groundGlowAlpha,
+      )
+      this.drawPolyline(
+        graphics,
+        [
+          { x: lerp(start.x, end.x, 0.62), y: lerp(start.y, end.y, 0.62) },
+          { x: lerp(start.x, end.x, 0.92), y: lerp(start.y, end.y, 0.92) },
+        ],
+        presentation.coreColor,
+        1.4,
+        presentation.groundGlowAlpha * 0.86,
+      )
+    }
+
+    if (pickup.kind === 'dawnheart') {
+      for (const side of [-1, 1]) {
+        graphics
+          .moveTo(x, y + 8)
+          .lineTo(x + side * 11, y - 4)
+          .lineTo(x + side * 21, y + 1)
+          .stroke({
+            color: side > 0 ? presentation.coreColor : presentation.primaryColor,
+            width: 2.2,
+            alpha: presentation.groundGlowAlpha * 0.92,
+          })
+      }
+    } else if (pickup.kind === 'gravestar') {
+      const star: number[] = []
+      for (let point = 0; point < 8; point += 1) {
+        const angle = presentation.runeRotation * 0.4 + point * Math.PI * 0.25
+        const radius = point % 2 === 0 ? 14 : 4.5
+        star.push(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius)
+      }
+      graphics
+        .poly(star, true)
+        .fill({
+          color: presentation.shadowColor,
+          alpha: presentation.groundGlowAlpha * 0.52,
+        })
+        .stroke({
+          color: presentation.coreColor,
+          width: 1.6,
+          alpha: presentation.groundGlowAlpha,
+        })
+    } else {
+      graphics
+        .poly(
+          [
+            x - 4,
+            y - 16,
+            x + 7,
+            y - 3,
+            x + 1,
+            y - 3,
+            x + 5,
+            y + 15,
+            x - 8,
+            y + 1,
+            x - 1,
+            y + 1,
+          ],
+          true,
+        )
+        .fill({
+          color: presentation.coreColor,
+          alpha: presentation.groundGlowAlpha,
+        })
+    }
+
+    for (const fragment of presentation.fragments) {
+      const orbit =
+        fragment.distance +
+        Math.sin(pickup.age * 1.9 + fragment.phase) * 4
+      const fragmentX =
+        x + Math.cos(fragment.angle + pickup.age * 0.16) * orbit
+      const fragmentY =
+        y -
+        8 +
+        Math.sin(fragment.angle + pickup.age * 0.16) * orbit * 0.46 -
+        Math.sin(pickup.age * 2.7 + fragment.phase) * 5
+      this.drawDiamondGlyph(
+        graphics,
+        fragmentX,
+        fragmentY,
+        fragment.size,
+        fragment.angle + pickup.age * 0.3,
+        presentation.coreColor,
+        presentation.fragmentAlpha,
+        true,
+      )
+    }
+  }
+
   private drawWeaponEffects() {
     this.weaponVfxGraphics.clear()
     const graphics = this.weaponVfxGraphics
@@ -3960,10 +4351,6 @@ class NighttraceRuntime {
       if (effect.life <= 0) {
         this.weaponEffects.splice(index, 1)
         continue
-      }
-      if (effect.kind === 'ash-corona') {
-        effect.x = this.player.x
-        effect.y = this.player.y
       }
       const progress = clamp(1 - effect.life / effect.total, 0, 1)
       const attack = clamp(progress / 0.14, 0, 1)
@@ -4348,7 +4735,240 @@ class NighttraceRuntime {
           )
           break
         }
-        case 'ash-corona': {
+        case 'graveglass-eruption': {
+          const pattern = effect.pattern
+          if (pattern?.kind === 'graveglass-spires') {
+            const now = progress * effect.total
+            const reducedScale = this.settings.reducedFlash ? 0.66 : 1
+            for (const strike of pattern.strikes) {
+              const localTime = now - strike.delay
+              if (localTime < 0) continue
+              const warning = clamp(localTime / 0.18, 0, 1)
+              const eruption = clamp((localTime - 0.14) / 0.2, 0, 1)
+              const resolve = 1 - clamp((localTime - 0.58) / 0.34, 0, 1)
+              const strikeAlpha = resolve * reducedScale
+              const fissureRadius = strike.radius * (0.48 + warning * 0.52)
+              const fissureRotation =
+                effect.angle * 0.18 +
+                effect.seed * 0.013 +
+                strike.index * 0.73
+
+              for (let crack = 0; crack < 4 + stage; crack += 1) {
+                const crackAngle =
+                  fissureRotation +
+                  (Math.PI * 2 * crack) / (4 + stage) +
+                  Math.sin((effect.seed + strike.index * 31 + crack * 17) * 0.61) *
+                    0.14
+                const inner = fissureRadius * (0.14 + (crack % 2) * 0.08)
+                const middle = fissureRadius * (0.48 + (crack % 3) * 0.06)
+                const outer = fissureRadius * (0.78 + (crack % 2) * 0.14)
+                const bend = (crack % 2 ? -1 : 1) * fissureRadius * 0.13
+                const normalX = -Math.sin(crackAngle)
+                const normalY = Math.cos(crackAngle)
+                this.drawPolyline(
+                  graphics,
+                  [
+                    {
+                      x: strike.center.x + Math.cos(crackAngle) * inner,
+                      y: strike.center.y + Math.sin(crackAngle) * inner * 0.68,
+                    },
+                    {
+                      x:
+                        strike.center.x +
+                        Math.cos(crackAngle) * middle +
+                        normalX * bend,
+                      y:
+                        strike.center.y +
+                        Math.sin(crackAngle) * middle * 0.68 +
+                        normalY * bend * 0.68,
+                    },
+                    {
+                      x: strike.center.x + Math.cos(crackAngle) * outer,
+                      y: strike.center.y + Math.sin(crackAngle) * outer * 0.68,
+                    },
+                  ],
+                  crack % 2 ? profile.secondaryColor : profile.accentColor,
+                  1.4 + stage * 0.22,
+                  warning * strikeAlpha * (0.42 + eruption * 0.38),
+                )
+              }
+
+              if (strike.parentIndex !== null) {
+                const parent = pattern.strikes[strike.parentIndex]
+                const branchAlpha =
+                  clamp((localTime - 0.05) / 0.2, 0, 1) * strikeAlpha * 0.64
+                const midpoint = {
+                  x:
+                    lerp(parent.center.x, strike.center.x, 0.5) +
+                    Math.sin((effect.seed + strike.index * 19) * 0.9) * 9,
+                  y:
+                    lerp(parent.center.y, strike.center.y, 0.5) +
+                    Math.cos((effect.seed + strike.index * 23) * 0.7) * 7,
+                }
+                this.drawPolyline(
+                  graphics,
+                  [parent.center, midpoint, strike.center],
+                  profile.accentColor,
+                  2 + stage * 0.35,
+                  branchAlpha,
+                )
+                this.drawPolyline(
+                  graphics,
+                  [parent.center, midpoint, strike.center],
+                  profile.coreColor,
+                  0.75,
+                  branchAlpha * 0.72,
+                )
+              }
+
+              if (eruption <= 0) continue
+              const growth = 1 - (1 - eruption) ** 3
+              const baseWidth = 20 + stage * 4.8
+              const spireHeight = (58 + stage * 18 + (strike.index % 3) * 8) * growth
+              const lean =
+                Math.sin((effect.seed + strike.index * 41) * 0.57) *
+                (8 + stage * 2)
+              const baseY = strike.center.y + 8
+              const spirePoints = [
+                strike.center.x - baseWidth,
+                baseY,
+                strike.center.x - baseWidth * 0.36,
+                baseY - spireHeight * 0.48,
+                strike.center.x + lean,
+                baseY - spireHeight,
+                strike.center.x + baseWidth * 0.42,
+                baseY - spireHeight * 0.38,
+                strike.center.x + baseWidth,
+                baseY,
+              ]
+              graphics
+                .poly(spirePoints, true)
+                .fill({
+                  color: 0x090b12,
+                  alpha: strikeAlpha * (0.88 + eruption * 0.1),
+                })
+                .stroke({
+                  color:
+                    strike.index % 2
+                      ? profile.secondaryColor
+                      : profile.accentColor,
+                  width: 2.2 + stage * 0.5,
+                  alpha: strikeAlpha * 0.86,
+                })
+              graphics
+                .poly(
+                  [
+                    strike.center.x - baseWidth * 0.36,
+                    baseY - spireHeight * 0.48,
+                    strike.center.x + lean,
+                    baseY - spireHeight,
+                    strike.center.x + baseWidth * 0.18,
+                    baseY - spireHeight * 0.24,
+                    strike.center.x - baseWidth * 0.12,
+                    baseY - spireHeight * 0.08,
+                  ],
+                  true,
+                )
+                .fill({
+                  color:
+                    strike.index % 2
+                      ? profile.secondaryColor
+                      : profile.accentColor,
+                  alpha: strikeAlpha * 0.22,
+                })
+              graphics
+                .poly(
+                  [
+                    strike.center.x + lean,
+                    baseY - spireHeight,
+                    strike.center.x + baseWidth * 0.42,
+                    baseY - spireHeight * 0.38,
+                    strike.center.x + baseWidth * 0.12,
+                    baseY - spireHeight * 0.12,
+                  ],
+                  true,
+                )
+                .fill({
+                  color: profile.coreColor,
+                  alpha: strikeAlpha * 0.16,
+                })
+              graphics
+                .moveTo(strike.center.x + lean, baseY - spireHeight)
+                .lineTo(
+                  strike.center.x - baseWidth * 0.12,
+                  baseY - spireHeight * 0.08,
+                )
+                .stroke({
+                  color: profile.coreColor,
+                  width: 1.5 + stage * 0.28,
+                  alpha: strikeAlpha * (0.62 + eruption * 0.28),
+                })
+              graphics
+                .poly(
+                  [
+                    strike.center.x - baseWidth * 1.28,
+                    baseY + 2,
+                    strike.center.x,
+                    baseY - baseWidth * 0.42,
+                    strike.center.x + baseWidth * 1.28,
+                    baseY + 2,
+                    strike.center.x,
+                    baseY + baseWidth * 0.46,
+                  ],
+                  true,
+                )
+                .fill({
+                  color: profile.glowColor,
+                  alpha: strikeAlpha * (0.04 + eruption * 0.08),
+                })
+
+              for (let shard = 0; shard < 2 + stage; shard += 1) {
+                const shardAngle =
+                  fissureRotation +
+                  (Math.PI * 2 * shard) / (2 + stage) +
+                  eruption * 0.22
+                const shardDistance =
+                  strike.radius * (0.3 + eruption * (0.42 + shard * 0.05))
+                this.drawDiamondGlyph(
+                  graphics,
+                  strike.center.x + Math.cos(shardAngle) * shardDistance,
+                  strike.center.y +
+                    Math.sin(shardAngle) * shardDistance * 0.62 -
+                    eruption * (5 + shard * 2),
+                  2.8 + stage * 0.7,
+                  shardAngle,
+                  shard % 2 ? profile.secondaryColor : profile.coreColor,
+                  strikeAlpha * 0.72,
+                  true,
+                )
+              }
+            }
+
+            const impactAlpha =
+              clamp(
+                (effect.hitPulseLife ?? 0) /
+                  Math.max(effect.hitPulseTotal ?? 1, 0.001),
+                0,
+                1,
+              ) * (this.settings.reducedFlash ? 0.62 : 1)
+            for (let hit = 0; hit < Math.min(effect.points?.length ?? 0, 4 + stage * 2); hit += 1) {
+              const target = effect.points?.[hit]
+              if (!target) continue
+              this.drawStarburst(
+                graphics,
+                target.x,
+                target.y,
+                5 + stage,
+                2,
+                12 + stage * 4,
+                effect.seed * 0.03 + hit,
+                hit % 2 ? profile.secondaryColor : profile.coreColor,
+                1.4 + stage * 0.22,
+                impactAlpha * 0.84,
+              )
+            }
+            break
+          }
           const motif = weaponVfxMotifProfile('ash-halo', state)
           const crownCycle =
             ((this.motionClock * (0.38 + stage * 0.035) +
@@ -4601,7 +5221,266 @@ class NighttraceRuntime {
           )
           break
         }
-        case 'null-toll': {
+        case 'eclipse-harrow': {
+          const pattern = effect.pattern
+          if (pattern?.kind === 'eclipse-harrow') {
+            const now = progress * effect.total
+            const reducedScale = this.settings.reducedFlash ? 0.62 : 1
+            for (const strike of pattern.strikes) {
+              const localTime = now - strike.delay
+              if (localTime < 0) continue
+              const gather = clamp(localTime / 0.2, 0, 1)
+              const release = clamp((localTime - 0.18) / 0.16, 0, 1)
+              const afterglow = 1 - clamp((localTime - 0.48) / 0.42, 0, 1)
+              const alpha = afterglow * reducedScale
+              const dx = strike.end.x - strike.start.x
+              const dy = strike.end.y - strike.start.y
+              const length = Math.max(1, Math.hypot(dx, dy))
+              const directionX = dx / length
+              const directionY = dy / length
+              const normalX = -directionY
+              const normalY = directionX
+              const width = strike.radius * (0.72 + gather * 0.28)
+              const lane = [
+                strike.start.x + normalX * width,
+                strike.start.y + normalY * width,
+                strike.end.x + normalX * width,
+                strike.end.y + normalY * width,
+                strike.end.x - normalX * width,
+                strike.end.y - normalY * width,
+                strike.start.x - normalX * width,
+                strike.start.y - normalY * width,
+              ]
+
+              graphics
+                .poly(lane, true)
+                .fill({
+                  color: 0x070712,
+                  alpha: gather * alpha * (0.24 + release * 0.14),
+                })
+              graphics
+                .poly(
+                  [
+                    strike.start.x + normalX * width * 0.58,
+                    strike.start.y + normalY * width * 0.58,
+                    strike.end.x + normalX * width * 0.58,
+                    strike.end.y + normalY * width * 0.58,
+                    strike.end.x - normalX * width * 0.58,
+                    strike.end.y - normalY * width * 0.58,
+                    strike.start.x - normalX * width * 0.58,
+                    strike.start.y - normalY * width * 0.58,
+                  ],
+                  true,
+                )
+                .fill({
+                  color: profile.accentColor,
+                  alpha: gather * alpha * (0.035 + release * 0.045),
+                })
+              const visibleEdges = stage >= 2
+                ? [strike.index % 2 ? -1 : 1]
+                : [-1, 1]
+              for (const side of visibleEdges) {
+                const edgeStart = {
+                  x: strike.start.x + normalX * width * side,
+                  y: strike.start.y + normalY * width * side,
+                }
+                const edgeEnd = {
+                  x: strike.end.x + normalX * width * side,
+                  y: strike.end.y + normalY * width * side,
+                }
+                this.drawPolyline(
+                  graphics,
+                  [edgeStart, edgeEnd],
+                  side > 0 ? profile.secondaryColor : profile.accentColor,
+                  1.8 + stage * 0.24,
+                  gather * alpha * (0.3 + release * 0.16),
+                )
+              }
+
+              const showGateArches =
+                stage <= 1 ||
+                (stage === 2 && strike.role === 'center-lane')
+              if (showGateArches) {
+                const gateHeight = 20 + stage * 7
+                for (const gateT of [0.08, 0.92]) {
+                  const gateX = lerp(strike.start.x, strike.end.x, gateT)
+                  const gateY = lerp(strike.start.y, strike.end.y, gateT)
+                  const gateHalf = width * (0.62 + stage * 0.06)
+                  const left = {
+                    x: gateX - normalX * gateHalf,
+                    y: gateY - normalY * gateHalf,
+                  }
+                  const right = {
+                    x: gateX + normalX * gateHalf,
+                    y: gateY + normalY * gateHalf,
+                  }
+                  const apex = {
+                    x: gateX + directionX * gateHeight,
+                    y: gateY + directionY * gateHeight,
+                  }
+                  this.drawPolyline(
+                    graphics,
+                    [left, apex, right],
+                    profile.secondaryColor,
+                    2 + stage * 0.38,
+                    gather * alpha * 0.74,
+                  )
+                  graphics
+                    .moveTo(left.x, left.y)
+                    .lineTo(
+                      left.x - directionX * gateHeight * 0.72,
+                      left.y - directionY * gateHeight * 0.72,
+                    )
+                    .moveTo(right.x, right.y)
+                    .lineTo(
+                      right.x - directionX * gateHeight * 0.72,
+                      right.y - directionY * gateHeight * 0.72,
+                    )
+                    .stroke({
+                      color: profile.accentColor,
+                      width: 1.5 + stage * 0.24,
+                      alpha: gather * alpha * 0.58,
+                    })
+                }
+              }
+
+              if (release > 0) {
+                const cutEnd = {
+                  x: lerp(strike.start.x, strike.end.x, 1 - (1 - release) ** 3),
+                  y: lerp(strike.start.y, strike.end.y, 1 - (1 - release) ** 3),
+                }
+                this.drawPolyline(
+                  graphics,
+                  [strike.start, cutEnd],
+                  profile.glowColor,
+                  16 + stage * 2.8,
+                  Math.sin(release * Math.PI) * alpha * 0.12,
+                )
+                this.drawPolyline(
+                  graphics,
+                  [strike.start, cutEnd],
+                  profile.coreColor,
+                  3.2 + stage * 0.46,
+                  Math.sin(release * Math.PI * 0.82) * alpha,
+                )
+
+                const fractureCount = stage >= 2 ? 2 : 1
+                for (let fracture = 0; fracture < fractureCount; fracture += 1) {
+                  const fractureT =
+                    0.36 + fracture * 0.34 +
+                    Math.sin((effect.seed + strike.index * 17 + fracture * 23) * 0.81) *
+                      0.025
+                  if (fractureT > release) continue
+                  const fractureX = lerp(strike.start.x, strike.end.x, fractureT)
+                  const fractureY = lerp(strike.start.y, strike.end.y, fractureT)
+                  const side = fracture % 2 ? -1 : 1
+                  const fractureLength = width * (0.5 + (fracture % 3) * 0.17)
+                  this.drawPolyline(
+                    graphics,
+                    [
+                      { x: fractureX, y: fractureY },
+                      {
+                        x:
+                          fractureX +
+                          normalX * fractureLength * side +
+                          directionX * fractureLength * 0.2,
+                        y:
+                          fractureY +
+                          normalY * fractureLength * side +
+                          directionY * fractureLength * 0.2,
+                      },
+                    ],
+                    fracture % 2 ? profile.secondaryColor : profile.accentColor,
+                    1.2 + stage * 0.16,
+                    alpha * 0.42,
+                  )
+                }
+              }
+            }
+
+            if (stage === 3) {
+              const crownGather = clamp(now / 0.26, 0, 1)
+              const crownFade = 1 - clamp((now - 0.68) / 0.42, 0, 1)
+              const center = pattern.aimPoint
+              const width = 84 + crownGather * 42
+              const height = 74 + crownGather * 34
+              const left = { x: center.x - width, y: center.y + 24 }
+              const right = { x: center.x + width, y: center.y + 24 }
+              const apex = { x: center.x, y: center.y - height }
+              graphics
+                .poly(
+                  [
+                    left.x,
+                    left.y,
+                    center.x - width * 0.46,
+                    center.y - height * 0.62,
+                    apex.x,
+                    apex.y,
+                    center.x + width * 0.46,
+                    center.y - height * 0.62,
+                    right.x,
+                    right.y,
+                    center.x,
+                    center.y + 42,
+                  ],
+                  true,
+                )
+                .fill({
+                  color: 0x05060d,
+                  alpha: crownGather * crownFade * reducedScale * 0.26,
+                })
+              this.drawPolyline(
+                graphics,
+                [
+                  left,
+                  {
+                    x: center.x - width * 0.46,
+                    y: center.y - height * 0.62,
+                  },
+                  apex,
+                  {
+                    x: center.x + width * 0.46,
+                    y: center.y - height * 0.62,
+                  },
+                  right,
+                ],
+                profile.secondaryColor,
+                3.6,
+                crownGather * crownFade * reducedScale * 0.68,
+              )
+              graphics
+                .moveTo(apex.x, apex.y)
+                .lineTo(center.x, center.y + 42)
+                .stroke({
+                  color: profile.coreColor,
+                  width: 2.2,
+                  alpha: crownGather * crownFade * reducedScale * 0.5,
+                })
+            }
+
+            const impactAlpha =
+              clamp(
+                (effect.hitPulseLife ?? 0) /
+                  Math.max(effect.hitPulseTotal ?? 1, 0.001),
+                0,
+                1,
+              ) * reducedScale
+            for (let hit = 0; hit < Math.min(effect.points?.length ?? 0, 5 + stage * 2); hit += 1) {
+              const target = effect.points?.[hit]
+              if (!target) continue
+              this.drawDiamondGlyph(
+                graphics,
+                target.x,
+                target.y,
+                6 + stage * 1.5,
+                effect.angle + Math.PI * 0.25,
+                hit % 2 ? profile.secondaryColor : profile.coreColor,
+                impactAlpha * 0.84,
+                true,
+              )
+            }
+            break
+          }
           const motif = weaponVfxMotifProfile('null-bell', state)
           const glyphAttack = clamp(progress / 0.1, 0, 1)
           const glyphDecay = 1 - clamp((progress - 0.34) / 0.32, 0, 1)
@@ -5081,6 +5960,15 @@ class NighttraceRuntime {
     this.heroAttackRemaining = Math.max(0, this.heroAttackRemaining - delta)
     this.heroHurtRemaining = Math.max(0, this.heroHurtRemaining - delta)
     for (const enemy of this.enemies) {
+      enemy.hitMotionRemaining = Math.max(0, enemy.hitMotionRemaining - delta)
+      if (enemy.deathMotionRemaining > 0) {
+        enemy.deathMotionRemaining = Math.max(0, enemy.deathMotionRemaining - delta)
+        if (enemy.deathMotionRemaining <= 0) {
+          enemy.sprite.visible = false
+          enemy.sprite.alpha = 1
+        }
+        continue
+      }
       if (!enemy.active) continue
       enemy.attackMotionRemaining = Math.max(0, enemy.attackMotionRemaining - delta)
       if (enemy.attackMotionRemaining <= 0) enemy.attackMotionStyle = 'none'

@@ -22,9 +22,9 @@ const SHOWCASE_CAPTURE_SECONDS: Readonly<Record<WeaponId, number>> = Object.free
   'arc-choir': 0.96,
   'rift-seeds': 1.5,
   'comet-swarm': 1.12,
-  'ash-halo': 1.02,
+  'ash-halo': 0.9,
   'mirror-bow': 1.08,
-  'null-bell': 1.12,
+  'null-bell': 1.43,
 })
 
 export function showcaseCaptureSeconds(weaponId: WeaponId) {

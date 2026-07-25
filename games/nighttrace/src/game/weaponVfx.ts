@@ -34,17 +34,17 @@ export interface WeaponVfxProfile {
 }
 
 export type ReworkedAreaWeaponId = 'ash-halo' | 'null-bell'
-export type WeaponVfxMotif = 'cinder-crown' | 'shattered-toll'
+export type WeaponVfxMotif = 'graveglass-spires' | 'eclipse-harrow'
 export type WeaponVfxAwakeningSignature =
-  | 'cinder-seraph-wings'
-  | 'midnight-silence-cross'
+  | 'sepulchral-orchard'
+  | 'black-benediction'
 
 export interface WeaponVfxMotifProfile {
   motif: WeaponVfxMotif
   primaryCount: number
   fragmentCount: number
   awakeningSignature: WeaponVfxAwakeningSignature | null
-  maxConcurrent: 1
+  maxConcurrent: number
   concentricBandCount: 0
   usesClosedRing: false
 }
@@ -66,9 +66,9 @@ export const WEAPON_VFX_PALETTE_NAMES = Object.freeze({
   'arc-choir': 'Cathedral Voltage',
   'rift-seeds': 'Eventide Viridian',
   'comet-swarm': 'Perihelion Ember',
-  'ash-halo': 'Cinder Seraph',
+  'ash-halo': 'Sepulchral Orchard',
   'mirror-bow': 'Infinite Prism',
-  'null-bell': 'Midnight Absolute',
+  'null-bell': 'Black Benediction',
 } as const satisfies Readonly<Record<WeaponId, string>>)
 
 interface WeaponVfxBaseProfile extends WeaponVfxProfile {
@@ -146,16 +146,16 @@ const BASE_PROFILES = Object.freeze({
     segmentCount: 3,
   }),
   'ash-halo': Object.freeze({
-    coreColor: 0xfff2c9,
-    glowColor: 0xff6b42,
-    accentColor: 0xff3828,
-    secondaryColor: 0xffd06a,
-    trailLengthScale: 0.54,
-    trailWidthScale: 1.24,
-    projectileScale: 1,
-    orbitCount: 3,
-    particleCount: 6,
-    segmentCount: 8,
+    coreColor: 0xfff1e6,
+    glowColor: 0xe35c68,
+    accentColor: 0x9b1f38,
+    secondaryColor: 0xffa975,
+    trailLengthScale: 0.62,
+    trailWidthScale: 1.16,
+    projectileScale: 1.02,
+    orbitCount: 0,
+    particleCount: 7,
+    segmentCount: 6,
   }),
   'mirror-bow': Object.freeze({
     coreColor: 0xffffff,
@@ -170,16 +170,16 @@ const BASE_PROFILES = Object.freeze({
     segmentCount: 2,
   }),
   'null-bell': Object.freeze({
-    coreColor: 0xf0f1ff,
-    glowColor: 0x747bff,
-    accentColor: 0x8b78ff,
-    secondaryColor: 0xb6a0ff,
-    trailLengthScale: 0.58,
-    trailWidthScale: 1.3,
-    projectileScale: 1.06,
-    orbitCount: 1,
-    particleCount: 6,
-    segmentCount: 8,
+    coreColor: 0xfff0ff,
+    glowColor: 0xc269ff,
+    accentColor: 0x872354,
+    secondaryColor: 0xff79b5,
+    trailLengthScale: 0.78,
+    trailWidthScale: 1.18,
+    projectileScale: 1.04,
+    orbitCount: 0,
+    particleCount: 7,
+    segmentCount: 5,
   }),
 } satisfies Readonly<Record<WeaponId, WeaponVfxBaseProfile>>)
 
@@ -192,16 +192,16 @@ const STAGE_INDEX: Readonly<Record<WeaponVfxStage, number>> = Object.freeze({
 
 const REWORKED_AREA_MOTIFS = Object.freeze({
   'ash-halo': Object.freeze({
-    motif: 'cinder-crown',
-    primaryCounts: Object.freeze([3, 5, 7, 8]),
-    fragmentCounts: Object.freeze([4, 6, 8, 10]),
-    awakeningSignature: 'cinder-seraph-wings',
+    motif: 'graveglass-spires',
+    primaryCounts: Object.freeze([2, 3, 4, 6]),
+    fragmentCounts: Object.freeze([4, 6, 8, 12]),
+    awakeningSignature: 'sepulchral-orchard',
   }),
   'null-bell': Object.freeze({
-    motif: 'shattered-toll',
-    primaryCounts: Object.freeze([4, 6, 8, 8]),
-    fragmentCounts: Object.freeze([4, 6, 8, 12]),
-    awakeningSignature: 'midnight-silence-cross',
+    motif: 'eclipse-harrow',
+    primaryCounts: Object.freeze([1, 2, 3, 4]),
+    fragmentCounts: Object.freeze([3, 5, 7, 10]),
+    awakeningSignature: 'black-benediction',
   }),
 } as const satisfies Readonly<Record<
   ReworkedAreaWeaponId,
@@ -315,7 +315,7 @@ export function weaponVfxMotifProfile(
     fragmentCount: definition.fragmentCounts[stageIndex],
     awakeningSignature:
       state.stage === 'final' ? definition.awakeningSignature : null,
-    maxConcurrent: 1,
+    maxConcurrent: 2,
     concentricBandCount: 0,
     usesClosedRing: false,
   })

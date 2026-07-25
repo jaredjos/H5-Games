@@ -16,14 +16,15 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.3.1` — runtime-captured upgrade documentation plus stronger, species-specific horde locomotion, attack anticipation/release poses, sovereign motion profiles, responsive shadows, footfalls, hover trails, and compact attack accents
 - `v1.4.0` — a complete eight-weapon visual overhaul with stage-aware silhouettes, cast gates, impact punctuation, mastery density, awakened signatures, deterministic 32-state capture evidence, and landscape-phone validation
 - `v1.5.0` — public Combat Lab and Boss Trials modes, isolated ten-boss progression, configurable no-limit testing, hostile-palette horde/boss motion graphics, mode-aware HUD/results, and expanded desktop/mobile validation
-- `v1.5.1` — Ash Halo and Null Bell clarity rework: non-concentric Cinder Crown and Shattered Toll silhouettes, continuous rapid-fire motion, a distinct Final Bell silence cross, refreshed runtime proofs, and desktop/mobile validation
+- `v1.5.1` — the former area-power clarity experiment: non-concentric silhouettes, continuous rapid-fire motion, refreshed runtime proofs, and desktop/mobile validation
 - `v1.5.2` — a complete ten-boss animation pass with sovereign-specific idle and locomotion signatures, normal melee wind-up/release/recovery, dynamic pivots and afterimages, plus distinct level-specific special-action VFX
+- `v1.6.0` — Graveglass Spires and Eclipse Harrow replace the former area powers with remote-world targeting, four-stage branch/lane formations, one-hit overlap safety, persistent heaven-to-ground relic beacons, and an original layered dungeon/boss score
 
 ## Runtime guide and visual evidence
 
-- [Combat Systems Codex (PDF)](https://jaredjos.github.io/H5-Games/nighttrace/docs/NIGHTTRACE_Combat_Systems_Codex.pdf) — the core combat reference; use the current upgrade-state sheet below for the v1.5.1 Halo and Bell silhouettes
+- [Combat Systems Codex (PDF)](https://jaredjos.github.io/H5-Games/nighttrace/docs/NIGHTTRACE_Combat_Systems_Codex.pdf) — the v1.6.0 combat, upgrade, pickup, boss, difficulty, music, and mobile reference
 - [Upgrade states: Helio Lance through Rift Seeds](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-01.png)
-- [Upgrade states: Comet Swarm through Null Bell](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-02.png)
+- [Upgrade states: Comet Swarm through Eclipse Harrow](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-02.png)
 - [Capture manifest](https://jaredjos.github.io/H5-Games/nighttrace/docs/capture-manifest.json) — deterministic loadouts, local-only routes, viewport, file hashes, and capture method for all 32 real gameplay frames
 
 ## One-click Windows start
@@ -123,22 +124,25 @@ gold, and prismatic weapon palette. The motion language was designed with
 HyperFrames guidance, while all interactive rendering remains deterministic
 native PixiJS for seek-safe gameplay and performance.
 
-Each weapon now has a full four-stage visual identity. Helio Lance builds from
+Each weapon has a full four-stage visual identity. Helio Lance builds from
 a focused solar rail into a crowned spear gate; Crescent Array grows into an
 eclipsed orbit wheel; Arc Choir forms cathedral-like lightning geometry; Rift
 Seeds compress into dark singularities; Comet Swarm gains ember-rich curved
-wakes; Ash Halo becomes a sparse Cinder Crown of ember sentinels and seraph-wing
-fans; Mirror Bow refracts through prismatic lanes; and Null Bell resolves as
-directional Shattered Toll panes with a Final silence cross. Neither area power
-uses stacked circular bands. Cast, travel, impact, decay, mastery density, and awakening
-punctuation are authored separately while damage, cooldowns, target counts,
-collision radii, and encounter balance remain unchanged.
+wakes; Graveglass Spires fractures the floor beneath the densest remote cluster;
+Mirror Bow refracts through prismatic lanes; and Eclipse Harrow stages
+nightglass execution gates across predicted enemy lanes. Graveglass scales
+through 2 / 3 / 4 / 6-spire branches and Harrow through 1 / 2 / 3 / 4-lane
+formations across Solo, Combined, Mastered, and Final. Neither follows the
+bearer or uses stacked circular bands, and overlapping strikes damage a target
+only once per cast. Cast warning, impact, decay, mastery density, and awakening
+punctuation are authored separately so boss telegraphs remain readable.
 
-Boss arrivals shift the ambient score into a heavier combat state,
-phase changes and attacks receive restrained stingers, and every run ends on a
-dedicated victory or defeat cue that finishes before the results screen appears.
-The music slider starts at 50%, while the ambient and boss music buses are mixed
-at approximately twice the former default output.
+NIGHTTRACE now uses an original layered dungeon score and a separate,
+more-intense sovereign arrangement. Boss arrivals crossfade into the combat
+layer, phase changes and attacks receive restrained accents, and every run ends
+on a dedicated victory or defeat cadence before the results screen. The music
+slider starts at 50%, while ambient and boss buses retain the louder v1.2 mix.
+No reference-game audio or visual asset is included.
 
 ## Game modes
 
@@ -200,9 +204,9 @@ safe-corridor grids, or final eclipse sequence.
 | 2 | Glassreed Mire | 4:30 | Mire Cantor | Arc Choir |
 | 3 | Shattered Arcade | 5:00 | Railjaw Prime | Rift Seeds |
 | 4 | Prism Garden | 5:00 | Mirror Matron | Comet Swarm |
-| 5 | Drowned Docks | 5:30 | Tide Apostle | Ash Halo |
+| 5 | Drowned Docks | 5:30 | Tide Apostle | Graveglass Spires |
 | 6 | Stormrail | 6:00 | Storm Engine | Mirror Bow |
-| 7 | Hourglass Vault | 6:00 | Chronophage | Null Bell |
+| 7 | Hourglass Vault | 6:00 | Chronophage | Eclipse Harrow |
 | 8 | Cinder Foundry | 6:30 | Furnace Titan | Masterwork module cache |
 | 9 | Void Observatory | 7:00 | The Cartographer | Astrarium sigil |
 | 10 | Crown of Dawn | 7:30 | The Sun-Eater | Crown of Dawn relic |
@@ -217,6 +221,9 @@ the boss window. Dawnheart restores 14% vitality, Gravestar gathers existing XP
 motes, and Pulse Core restores 35 Pulse charge. A relic only appears when its
 effect would be useful, spawns outside automatic pickup range, and remains
 visually distinct through a dedicated atlas frame and persistent aura.
+In v1.6.0, every support relic also projects a tapered vertical light shaft onto
+a broken landing rune. That heaven-to-ground beacon persists until collection
+or expiry, making a valuable drop readable even when the horde fills the arena.
 
 Victories relight the next sector, recover weapon patterns, and can earn three mastery seals: clear, Trace, and Aegis. Failed runs do not unlock the next sector, but they still return earned and performance-based Dawn Shards.
 
