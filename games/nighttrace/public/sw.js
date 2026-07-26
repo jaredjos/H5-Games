@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.7.1'
+const CACHE_VERSION = 'v1.7.2'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
 const ASSET_CACHE = `${CACHE_PREFIX}assets-${CACHE_VERSION}`
@@ -156,6 +156,10 @@ self.addEventListener('fetch', (event) => {
   if (resourcePath === undefined) return
 
   if (request.mode === 'navigate') {
+    if (resourcePath.startsWith('review/')) {
+      event.respondWith(staleWhileRevalidate(request))
+      return
+    }
     event.respondWith(navigationResponse(request))
     return
   }
