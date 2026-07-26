@@ -1,0 +1,1457 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Nighttrace Remote Spell Choreography</title>
+    <script src="./.media/vendor/gsap.min.js"></script>
+    <script src="./.media/eclipse-harrow-precast-v2.js"></script>
+    <script src="./.media/eclipse-harrow-ultimate-v2.js"></script>
+    <script src="./.media/graveglass-spires-precast-v2.js"></script>
+    <script src="./.media/graveglass-spires-ultimate-v2.js"></script>
+    <script src="./.media/arena.js"></script>
+    <script src="./.media/hero.js"></script>
+    <script src="./.media/enemies.js"></script>
+    <style>
+      :root {
+        --ink: #f2f3f5;
+        --muted: #9eacb6;
+        --grave-deep: #21070d;
+        --grave-mid: #741b2e;
+        --grave-hot: #ff5a68;
+        --grave-warning: #e15b51;
+        --eclipse-deep: #1a0924;
+        --eclipse-mid: #6b175e;
+        --eclipse-hot: #ff4fcb;
+        --eclipse-cut: #ffd6f4;
+        --loot-mid: #c98224;
+        --loot-hot: #fff1b3;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        margin: 0;
+        overflow: hidden;
+        background: #020305;
+        color: var(--ink);
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+
+      .scene-content,
+      .scene-world,
+      .arena-layer,
+      .scene-grade,
+      .scene-vignette {
+        position: absolute;
+        inset: 0;
+      }
+
+      .scene-content {
+        overflow: hidden;
+      }
+
+      .scene-world {
+        transform-origin: 50% 50%;
+      }
+
+      .authored-camera,
+      .authored-plate,
+      .authored-reveal,
+      .spell-light,
+      .impact-wash,
+      .material-dust {
+        position: absolute;
+        inset: -2%;
+        width: 104%;
+        height: 104%;
+      }
+
+      .authored-camera {
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        transform-origin: 50% 50%;
+        will-change: transform;
+      }
+
+      .graveglass-scene > .scene-content > .scene-world,
+      .eclipse-scene > .scene-content > .scene-world {
+        display: none;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .authored-plate,
+      .authored-reveal {
+        object-fit: cover;
+        pointer-events: none;
+        user-select: none;
+        will-change: transform, opacity, clip-path;
+      }
+
+      .authored-plate {
+        z-index: 1;
+      }
+
+      .authored-plate.final {
+        z-index: 7;
+        opacity: 0;
+      }
+
+      .authored-reveal {
+        z-index: 6;
+        opacity: 0;
+      }
+
+      .grave-reveal-a {
+        clip-path: circle(0% at 72% 31%);
+      }
+
+      .grave-reveal-b {
+        clip-path: circle(0% at 61% 46%);
+      }
+
+      .grave-reveal-c {
+        clip-path: circle(0% at 81% 56%);
+      }
+
+      .grave-reveal-d {
+        clip-path: circle(0% at 68% 70%);
+      }
+
+      .harrow-reveal-a {
+        clip-path: inset(100% 46% 0 31%);
+      }
+
+      .harrow-reveal-b {
+        clip-path: inset(100% 27% 0 50%);
+      }
+
+      .harrow-reveal-c {
+        clip-path: inset(100% 5% 0 69%);
+      }
+
+      .harrow-reveal-d {
+        clip-path: polygon(0 62%, 0 47%, 100% 18%, 100% 34%);
+      }
+
+      .spell-light {
+        z-index: 8;
+        opacity: 0;
+        pointer-events: none;
+        mix-blend-mode: screen;
+      }
+
+      .grave-light {
+        background:
+          radial-gradient(circle at 72% 48%, rgba(255, 233, 218, 0.7) 0 1.5%, rgba(255, 86, 79, 0.34) 5%, rgba(91, 8, 18, 0.12) 25%, transparent 48%),
+          linear-gradient(125deg, transparent 48%, rgba(255, 74, 74, 0.12) 68%, transparent 86%);
+      }
+
+      .harrow-light {
+        background:
+          radial-gradient(circle at 79% 38%, rgba(255, 238, 250, 0.7) 0 1.2%, rgba(255, 95, 205, 0.27) 8%, transparent 32%),
+          linear-gradient(153deg, transparent 38%, rgba(255, 226, 249, 0.38) 48%, rgba(255, 67, 192, 0.12) 51%, transparent 60%);
+      }
+
+      .impact-wash {
+        z-index: 9;
+        opacity: 0;
+        pointer-events: none;
+        mix-blend-mode: screen;
+      }
+
+      .grave-impact-wash {
+        background: radial-gradient(circle at 70% 50%, rgba(255, 248, 238, 0.82), rgba(255, 76, 64, 0.32) 8%, transparent 36%);
+      }
+
+      .harrow-impact-wash {
+        background: linear-gradient(151deg, transparent 35%, rgba(255, 247, 253, 0.9) 48.5%, rgba(255, 88, 207, 0.34) 50.5%, transparent 62%);
+      }
+
+      .material-dust {
+        z-index: 10;
+        opacity: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(ellipse at 74% 53%, rgba(147, 57, 57, 0.18), transparent 42%),
+          radial-gradient(ellipse at 68% 70%, rgba(0, 0, 0, 0.46), transparent 44%);
+        transform-origin: 72% 54%;
+      }
+
+      .eclipse-scene .material-dust {
+        background:
+          radial-gradient(ellipse at 79% 44%, rgba(123, 42, 106, 0.16), transparent 44%),
+          radial-gradient(ellipse at 74% 66%, rgba(0, 0, 0, 0.44), transparent 46%);
+        transform-origin: 78% 48%;
+      }
+
+      .spell-particle-field {
+        position: absolute;
+        z-index: 12;
+        left: var(--origin-x);
+        top: var(--origin-y);
+        width: 0;
+        height: 0;
+        pointer-events: none;
+      }
+
+      .spell-particle {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: var(--particle-w);
+        height: var(--particle-h);
+        opacity: 0;
+        background: linear-gradient(145deg, var(--particle-core), var(--particle-mid) 34%, #050508 78%);
+        clip-path: polygon(50% 0, 100% 33%, 70% 100%, 21% 80%, 0 28%);
+        box-shadow: 0 0 12px color-mix(in srgb, var(--particle-mid) 70%, transparent);
+        will-change: transform, opacity;
+      }
+
+      .grave-particles {
+        --origin-x: 72%;
+        --origin-y: 52%;
+        --particle-core: #fff0df;
+        --particle-mid: #ff554d;
+      }
+
+      .harrow-particles {
+        --origin-x: 77%;
+        --origin-y: 47%;
+        --particle-core: #fff0fb;
+        --particle-mid: #fa56c5;
+      }
+
+      .phase-rail {
+        position: absolute;
+        z-index: 32;
+        left: 62px;
+        bottom: 54px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 15px;
+        border: 1px solid rgba(209, 219, 226, 0.22);
+        background: rgba(2, 4, 7, 0.78);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
+        backdrop-filter: blur(12px);
+      }
+
+      .phase-node {
+        min-width: 132px;
+        color: #7f8c95;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .phase-node::before {
+        content: "";
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        margin-right: 9px;
+        border: 1px solid currentColor;
+        transform: rotate(45deg);
+      }
+
+      .graveglass-scene .phase-node.active {
+        color: #ffaaa0;
+        text-shadow: 0 0 14px rgba(255, 74, 74, 0.5);
+      }
+
+      .eclipse-scene .phase-node.active {
+        color: #ffb4e5;
+        text-shadow: 0 0 14px rgba(255, 84, 198, 0.5);
+      }
+
+      .material-stamp {
+        position: absolute;
+        z-index: 32;
+        right: 62px;
+        bottom: 54px;
+        padding: 12px 14px;
+        border-top: 1px solid currentColor;
+        color: #8c9aa3;
+        background: linear-gradient(90deg, transparent, rgba(2, 4, 7, 0.72));
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.13em;
+        text-align: right;
+        text-transform: uppercase;
+      }
+
+      .graveglass-scene .material-stamp {
+        color: #c98382;
+      }
+
+      .eclipse-scene .material-stamp {
+        color: #c284b5;
+      }
+
+      .arena-layer {
+        background:
+          linear-gradient(rgba(3, 5, 8, 0.14), rgba(3, 5, 8, 0.42)),
+          var(--review-arena, none) center / cover no-repeat;
+        filter: saturate(0.72) contrast(1.1) brightness(0.64);
+        transform-origin: 50% 50%;
+      }
+
+      .scene-grade {
+        pointer-events: none;
+        mix-blend-mode: screen;
+      }
+
+      .graveglass-scene .scene-grade {
+        background: linear-gradient(115deg, transparent 36%, rgba(116, 27, 46, 0.13) 66%, rgba(33, 7, 13, 0.28));
+      }
+
+      .eclipse-scene .scene-grade {
+        background: linear-gradient(118deg, transparent 34%, rgba(107, 23, 94, 0.13) 64%, rgba(26, 9, 36, 0.3));
+      }
+
+      .loot-scene .scene-grade {
+        background: linear-gradient(110deg, rgba(4, 7, 10, 0.1) 42%, rgba(201, 130, 36, 0.1) 72%, rgba(10, 9, 6, 0.28));
+      }
+
+      .scene-vignette {
+        pointer-events: none;
+        background:
+          linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 18%, transparent 76%, rgba(0, 0, 0, 0.6)),
+          linear-gradient(90deg, rgba(0, 0, 0, 0.4), transparent 16%, transparent 82%, rgba(0, 0, 0, 0.34));
+      }
+
+      .scene-header {
+        position: absolute;
+        z-index: 30;
+        top: 52px;
+        left: 62px;
+        display: grid;
+        gap: 4px;
+        max-width: 950px;
+        pointer-events: none;
+      }
+
+      .scene-index {
+        color: var(--muted);
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      .spell-title {
+        margin: 0;
+        font-family: "League Gothic", sans-serif;
+        font-size: 88px;
+        font-weight: 400;
+        line-height: 0.92;
+        letter-spacing: 0.025em;
+        text-transform: uppercase;
+      }
+
+      .graveglass-scene .spell-title {
+        color: #ff9a94;
+        text-shadow: 0 0 26px rgba(255, 90, 104, 0.22);
+      }
+
+      .eclipse-scene .spell-title {
+        color: #f9a6e4;
+        text-shadow: 0 0 26px rgba(255, 79, 203, 0.22);
+      }
+
+      .loot-scene .spell-title {
+        color: var(--loot-hot);
+        text-shadow: 0 0 28px rgba(255, 241, 179, 0.24);
+      }
+
+      .phase-copy {
+        color: #c0cad1;
+        font-size: 14px;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+
+      .origin-note {
+        position: absolute;
+        z-index: 28;
+        right: 62px;
+        top: 62px;
+        padding-top: 8px;
+        border-top: 2px solid currentColor;
+        color: #aab6be;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-align: right;
+        text-transform: uppercase;
+      }
+
+      .actor,
+      .hero {
+        position: absolute;
+        z-index: 12;
+        background-repeat: no-repeat;
+        pointer-events: none;
+        transform-origin: center bottom;
+      }
+
+      .hero {
+        left: 270px;
+        top: 716px;
+        width: 220px;
+        height: 220px;
+        background-image: var(--review-hero, none);
+        background-position: 50% 0%;
+        background-size: 300% 200%;
+        transform: scale(0.62);
+      }
+
+      .actor {
+        width: 126px;
+        height: 126px;
+        background-image: var(--review-enemies, none);
+        background-position: var(--sprite-x, 0%) var(--sprite-y, 0%);
+        background-size: 300% 200%;
+        opacity: 0.84;
+      }
+
+      .actor-a { --sprite-x: 0%; --sprite-y: 0%; }
+      .actor-b { --sprite-x: 50%; --sprite-y: 0%; }
+      .actor-c { --sprite-x: 0%; --sprite-y: 100%; }
+      .actor-d { --sprite-x: 50%; --sprite-y: 100%; }
+      .actor-e { --sprite-x: 100%; --sprite-y: 100%; }
+
+      .hero-ground {
+        position: absolute;
+        z-index: 8;
+        left: 312px;
+        top: 877px;
+        width: 106px;
+        height: 26px;
+        background: rgba(0, 0, 0, 0.62);
+        filter: blur(9px);
+        transform: skewX(-18deg);
+      }
+
+      .target-bracket {
+        position: absolute;
+        z-index: 9;
+        width: 58px;
+        height: 58px;
+        border-top: 3px solid currentColor;
+        border-left: 3px solid currentColor;
+        color: var(--grave-warning);
+        opacity: 0;
+      }
+
+      .target-bracket::after {
+        content: "";
+        position: absolute;
+        right: -3px;
+        bottom: -3px;
+        width: 30px;
+        height: 30px;
+        border-right: 3px solid currentColor;
+        border-bottom: 3px solid currentColor;
+      }
+
+      .grave-sigil {
+        position: absolute;
+        z-index: 7;
+        inset: 0;
+        overflow: visible;
+        pointer-events: none;
+      }
+
+      .grave-fault,
+      .grave-rune {
+        fill: none;
+        stroke: var(--grave-hot);
+        stroke-linecap: square;
+        stroke-linejoin: bevel;
+        filter: drop-shadow(0 0 8px rgba(255, 90, 104, 0.7));
+      }
+
+      .grave-fault {
+        stroke-width: 4;
+        stroke-dasharray: 460;
+        stroke-dashoffset: 460;
+      }
+
+      .grave-rune {
+        stroke-width: 2.5;
+        stroke-dasharray: 210;
+        stroke-dashoffset: 210;
+        opacity: 0.74;
+      }
+
+      .spire {
+        position: absolute;
+        z-index: 16;
+        width: var(--spire-w);
+        height: var(--spire-h);
+        transform-origin: 50% 100%;
+      }
+
+      .spire-body {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(92deg, #08070a 0 34%, #3a0a16 35% 61%, #f85c6d 64%, #1b0710 71% 100%);
+        clip-path: polygon(50% 0, 66% 18%, 91% 79%, 73% 100%, 29% 100%, 8% 77%, 35% 22%);
+        filter:
+          drop-shadow(0 0 11px rgba(255, 90, 104, 0.48))
+          drop-shadow(0 22px 18px rgba(0, 0, 0, 0.7));
+        transform: rotate(var(--spire-r, 0deg));
+      }
+
+      .spire-body::after {
+        content: "";
+        position: absolute;
+        left: 51%;
+        top: 11%;
+        width: 3px;
+        height: 76%;
+        background: linear-gradient(transparent, #ffd2d0 28%, #ff5a68 74%, transparent);
+        box-shadow: 0 0 9px #ff5a68;
+        transform: rotate(-4deg);
+      }
+
+      .eruption-slab {
+        position: absolute;
+        z-index: 10;
+        width: 220px;
+        height: 88px;
+        background: linear-gradient(90deg, transparent, rgba(255, 90, 104, 0.55), transparent);
+        clip-path: polygon(0 52%, 25% 42%, 39% 8%, 56% 41%, 82% 31%, 100% 53%, 78% 65%, 57% 100%, 38% 66%, 17% 76%);
+        filter: blur(1px) drop-shadow(0 0 14px rgba(255, 90, 104, 0.6));
+        transform-origin: center;
+      }
+
+      .glass-fragment,
+      .eclipse-fragment,
+      .loot-mote {
+        position: absolute;
+        z-index: 19;
+        width: var(--size, 18px);
+        height: calc(var(--size, 18px) * 1.8);
+        opacity: 0;
+        transform-origin: center;
+      }
+
+      .glass-fragment {
+        background: linear-gradient(145deg, #ffd1cf, #ff5a68 24%, #3b0815 62%, #07070a);
+        border: 1px solid rgba(255, 209, 207, 0.46);
+        box-shadow: 0 0 8px rgba(255, 90, 104, 0.65);
+        transform: skewX(-14deg);
+      }
+
+      .gate {
+        position: absolute;
+        z-index: 13;
+        width: 170px;
+        height: 290px;
+        transform-origin: 50% 100%;
+      }
+
+      .gate svg {
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        filter: drop-shadow(0 0 12px rgba(255, 79, 203, 0.64));
+      }
+
+      .gate-frame,
+      .gate-bars {
+        fill: rgba(8, 4, 14, 0.64);
+        stroke: var(--eclipse-hot);
+        stroke-linecap: square;
+        stroke-linejoin: bevel;
+      }
+
+      .gate-frame {
+        stroke-width: 5;
+        stroke-dasharray: 760;
+        stroke-dashoffset: 760;
+      }
+
+      .gate-bars {
+        fill: none;
+        stroke-width: 2.4;
+        stroke-dasharray: 330;
+        stroke-dashoffset: 330;
+        opacity: 0.72;
+      }
+
+      .lane-guide,
+      .harrow-cut,
+      .black-seam {
+        position: absolute;
+        z-index: 14;
+        left: 850px;
+        transform: rotate(24deg);
+        transform-origin: 0 50%;
+      }
+
+      .lane-guide {
+        width: 900px;
+        height: 8px;
+        background: linear-gradient(90deg, transparent, rgba(255, 79, 203, 0.85) 18%, rgba(255, 214, 244, 0.9) 52%, transparent);
+        box-shadow: 0 0 16px rgba(255, 79, 203, 0.5);
+        opacity: 0;
+      }
+
+      .lane-guide-a { top: 492px; }
+      .lane-guide-b { top: 574px; }
+
+      .harrow-cut {
+        z-index: 21;
+        top: 466px;
+        width: 1020px;
+        height: 156px;
+        background:
+          linear-gradient(
+            180deg,
+            transparent 0 34%,
+            rgba(255, 79, 203, 0.2) 36%,
+            rgba(255, 214, 244, 0.94) 47%,
+            #ffffff 50%,
+            rgba(255, 214, 244, 0.9) 53%,
+            rgba(107, 23, 94, 0.22) 65%,
+            transparent 68%
+          );
+        clip-path: polygon(0 47%, 96% 3%, 100% 52%, 4% 100%);
+        filter:
+          drop-shadow(0 0 14px rgba(255, 214, 244, 0.72))
+          drop-shadow(0 0 34px rgba(255, 79, 203, 0.54));
+        opacity: 0;
+      }
+
+      .black-seam {
+        z-index: 18;
+        top: 530px;
+        width: 950px;
+        height: 24px;
+        background: linear-gradient(90deg, transparent, #06020a 12%, #1a0924 86%, transparent);
+        border-top: 2px solid rgba(255, 79, 203, 0.58);
+        border-bottom: 1px solid rgba(255, 214, 244, 0.34);
+        box-shadow: 0 0 12px rgba(255, 79, 203, 0.36);
+        opacity: 0;
+      }
+
+      .eclipse-fragment {
+        background: linear-gradient(145deg, #ffd6f4, #6b175e 32%, #0a0610 72%);
+        border: 1px solid rgba(255, 214, 244, 0.42);
+        box-shadow: 0 0 8px rgba(255, 79, 203, 0.62);
+        transform: skewX(16deg);
+      }
+
+      .loot-relic {
+        position: absolute;
+        z-index: 19;
+        left: 1264px;
+        top: 696px;
+        width: 96px;
+        height: 132px;
+        background:
+          linear-gradient(145deg, #fff1b3 0 3%, #c98224 4% 11%, #17110a 13% 68%, #5b350d 72%, #090806 100%);
+        clip-path: polygon(50% 0, 87% 24%, 100% 76%, 66% 100%, 27% 96%, 0 68%, 12% 20%);
+        filter:
+          drop-shadow(0 0 12px rgba(255, 241, 179, 0.72))
+          drop-shadow(0 18px 16px rgba(0, 0, 0, 0.84));
+        transform-origin: 50% 100%;
+      }
+
+      .loot-relic::after {
+        content: "";
+        position: absolute;
+        left: 46px;
+        top: 26px;
+        width: 6px;
+        height: 72px;
+        background: linear-gradient(transparent, #fff 22%, #ffc75c 65%, transparent);
+        box-shadow: 0 0 10px #fff1b3;
+        transform: skewX(-11deg);
+      }
+
+      .loot-cracks {
+        position: absolute;
+        z-index: 15;
+        inset: 0;
+        overflow: visible;
+      }
+
+      .loot-cracks path {
+        fill: none;
+        stroke: #fff1b3;
+        stroke-width: 3;
+        stroke-linecap: square;
+        stroke-linejoin: bevel;
+        stroke-dasharray: 220;
+        stroke-dashoffset: 220;
+        filter: drop-shadow(0 0 7px rgba(255, 241, 179, 0.7));
+      }
+
+      .beam-group {
+        position: absolute;
+        z-index: 17;
+        left: 1168px;
+        top: 62px;
+        width: 292px;
+        height: 730px;
+        transform-origin: 50% 100%;
+      }
+
+      .heaven-beam,
+      .heaven-core {
+        position: absolute;
+        inset: 0;
+        transform-origin: 50% 100%;
+      }
+
+      .heaven-beam {
+        background: linear-gradient(90deg, transparent, rgba(201, 130, 36, 0.18) 20%, rgba(255, 241, 179, 0.74) 49%, rgba(201, 130, 36, 0.18) 80%, transparent);
+        clip-path: polygon(48.5% 0, 51.5% 0, 75% 100%, 25% 100%);
+        filter:
+          blur(2px)
+          drop-shadow(0 0 28px rgba(255, 241, 179, 0.72));
+      }
+
+      .heaven-core {
+        left: 105px;
+        width: 82px;
+        background: linear-gradient(90deg, transparent, #fff 46%, #fff 54%, transparent);
+        clip-path: polygon(47% 0, 53% 0, 66% 100%, 34% 100%);
+        filter: blur(0.6px) drop-shadow(0 0 18px #fff1b3);
+      }
+
+      .loot-shard {
+        position: absolute;
+        z-index: 24;
+        width: var(--w);
+        height: var(--h);
+        background: linear-gradient(145deg, #ffffff, #fff1b3 24%, #c98224 56%, #151009);
+        clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+        filter: drop-shadow(0 0 12px rgba(255, 241, 179, 0.92));
+      }
+
+      .loot-mote {
+        width: 5px;
+        height: var(--h, 24px);
+        background: linear-gradient(#fff, #e9aa43, transparent);
+        box-shadow: 0 0 9px rgba(255, 241, 179, 0.82);
+        border-radius: 3px 3px 0 0;
+      }
+
+      .rare-copy {
+        position: absolute;
+        z-index: 29;
+        left: 1460px;
+        top: 788px;
+        display: grid;
+        gap: 2px;
+        color: var(--loot-hot);
+        text-transform: uppercase;
+      }
+
+      .rare-copy strong {
+        font-family: "League Gothic", sans-serif;
+        font-size: 54px;
+        font-weight: 400;
+        letter-spacing: 0.035em;
+      }
+
+      .rare-copy span {
+        color: #c8b581;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+      }
+    </style>
+  </head>
+  <body>
+    <main
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="11.4"
+      data-width="1920"
+      data-height="1080"
+      data-fps="30"
+    >
+      <section
+        id="graveglass"
+        class="scene clip graveglass-scene"
+        data-start="0"
+        data-duration="4.05"
+        data-track-index="1"
+      >
+        <div class="scene-content">
+          <div class="authored-camera grave-camera">
+            <img
+              class="authored-plate precast"
+              data-media-key="graveglass-spires-precast-v2"
+              alt=""
+            />
+            <img class="authored-reveal grave-reveal-a" data-media-key="graveglass-spires-ultimate-v2" alt="" />
+            <img class="authored-reveal grave-reveal-b" data-media-key="graveglass-spires-ultimate-v2" alt="" />
+            <img class="authored-reveal grave-reveal-c" data-media-key="graveglass-spires-ultimate-v2" alt="" />
+            <img class="authored-reveal grave-reveal-d" data-media-key="graveglass-spires-ultimate-v2" alt="" />
+            <img
+              class="authored-plate final"
+              data-media-key="graveglass-spires-ultimate-v2"
+              alt=""
+            />
+            <div class="spell-light grave-light"></div>
+            <div class="impact-wash grave-impact-wash"></div>
+            <div class="material-dust"></div>
+            <div class="spell-particle-field grave-particles" aria-hidden="true"></div>
+          </div>
+          <div class="scene-world">
+            <div class="arena-layer"></div>
+            <div class="scene-grade"></div>
+            <div class="hero-ground"></div>
+            <div class="hero"></div>
+
+            <div class="actor actor-a grave-enemy" style="left: 1120px; top: 314px"></div>
+            <div class="actor actor-b grave-enemy" style="left: 1328px; top: 264px"></div>
+            <div class="actor actor-c grave-enemy" style="left: 1530px; top: 342px"></div>
+            <div class="actor actor-d grave-enemy" style="left: 1226px; top: 548px"></div>
+            <div class="actor actor-e grave-enemy" style="left: 1498px; top: 574px"></div>
+
+            <svg class="grave-sigil" viewBox="0 0 1920 1080" aria-hidden="true">
+              <path id="grave-warning-primary" class="grave-fault" d="M 1020 634 L 1128 546 L 1202 584 L 1274 454 L 1376 518 L 1458 404 L 1580 494 L 1688 436" />
+              <path class="grave-fault" d="M 1104 714 L 1186 630 L 1278 674 L 1368 572 L 1462 640 L 1574 548 L 1690 602" />
+              <path class="grave-rune" d="M 1112 544 L 1160 490 L 1208 544 L 1160 590 M 1308 484 L 1360 420 L 1414 484 L 1360 544" />
+              <path class="grave-rune" d="M 1454 566 L 1510 502 L 1566 566 L 1510 632 M 1220 680 L 1280 616 L 1340 680" />
+            </svg>
+
+            <div class="target-bracket" style="left: 1102px; top: 470px"></div>
+            <div class="target-bracket" style="left: 1332px; top: 402px"></div>
+            <div class="target-bracket" style="left: 1510px; top: 500px"></div>
+
+            <div class="eruption-slab" style="left: 1054px; top: 640px"></div>
+            <div class="eruption-slab" style="left: 1260px; top: 604px"></div>
+            <div class="eruption-slab" style="left: 1450px; top: 648px"></div>
+
+            <div class="spire" style="left: 1084px; top: 420px; --spire-w: 112px; --spire-h: 300px; --spire-r: -6deg"><div class="spire-body"></div></div>
+            <div id="grave-spire-primary" class="spire" style="left: 1274px; top: 314px; --spire-w: 126px; --spire-h: 390px; --spire-r: 3deg"><div class="spire-body"></div></div>
+            <div class="spire" style="left: 1468px; top: 448px; --spire-w: 102px; --spire-h: 278px; --spire-r: 7deg"><div class="spire-body"></div></div>
+            <div class="spire" style="left: 1198px; top: 546px; --spire-w: 82px; --spire-h: 218px; --spire-r: -9deg"><div class="spire-body"></div></div>
+            <div class="spire" style="left: 1574px; top: 388px; --spire-w: 94px; --spire-h: 324px; --spire-r: 4deg"><div class="spire-body"></div></div>
+
+            <div class="glass-fragment" style="left: 1320px; top: 480px; --size: 22px" data-dx="-188" data-dy="-116" data-rot="-68"></div>
+            <div class="glass-fragment" style="left: 1348px; top: 510px; --size: 15px" data-dx="194" data-dy="-148" data-rot="82"></div>
+            <div class="glass-fragment" style="left: 1238px; top: 572px; --size: 18px" data-dx="-162" data-dy="78" data-rot="-104"></div>
+            <div class="glass-fragment" style="left: 1492px; top: 548px; --size: 20px" data-dx="174" data-dy="88" data-rot="126"></div>
+            <div class="glass-fragment" style="left: 1160px; top: 534px; --size: 13px" data-dx="-126" data-dy="-42" data-rot="-142"></div>
+            <div class="glass-fragment" style="left: 1576px; top: 496px; --size: 17px" data-dx="124" data-dy="-94" data-rot="96"></div>
+            <div class="glass-fragment" style="left: 1380px; top: 620px; --size: 12px" data-dx="46" data-dy="148" data-rot="178"></div>
+            <div class="glass-fragment" style="left: 1290px; top: 420px; --size: 11px" data-dx="-34" data-dy="-176" data-rot="-24"></div>
+          </div>
+
+          <header class="scene-header">
+            <span class="scene-index">Study 01 / Remote Cluster</span>
+            <h1 class="spell-title">Graveglass Spires</h1>
+            <span class="phase-copy">Warning → Eruption → Fragment resolve</span>
+          </header>
+          <div class="origin-note">Origin: enemy cluster<br />Hero remains outside the cast locus</div>
+          <div class="phase-rail" aria-hidden="true">
+            <span class="phase-node phase-warning">01 Warning</span>
+            <span class="phase-node phase-impact">02 Eruption</span>
+            <span class="phase-node phase-resolve">03 Resolve</span>
+          </div>
+          <div class="material-stamp">Authored stone · emissive fault · smoke · debris</div>
+          <div class="scene-vignette"></div>
+        </div>
+      </section>
+
+      <section
+        id="eclipse"
+        class="scene clip eclipse-scene"
+        data-start="4.05"
+        data-duration="4.4"
+        data-track-index="1"
+      >
+        <div class="scene-content">
+          <div class="authored-camera eclipse-camera">
+            <img
+              class="authored-plate precast"
+              data-media-key="eclipse-harrow-precast-v2"
+              alt=""
+            />
+            <img class="authored-reveal harrow-reveal-a" data-media-key="eclipse-harrow-ultimate-v2" alt="" />
+            <img class="authored-reveal harrow-reveal-b" data-media-key="eclipse-harrow-ultimate-v2" alt="" />
+            <img class="authored-reveal harrow-reveal-c" data-media-key="eclipse-harrow-ultimate-v2" alt="" />
+            <img class="authored-reveal harrow-reveal-d" data-media-key="eclipse-harrow-ultimate-v2" alt="" />
+            <img
+              class="authored-plate final"
+              data-media-key="eclipse-harrow-ultimate-v2"
+              alt=""
+            />
+            <div class="spell-light harrow-light"></div>
+            <div class="impact-wash harrow-impact-wash"></div>
+            <div class="material-dust"></div>
+            <div class="spell-particle-field harrow-particles" aria-hidden="true"></div>
+          </div>
+          <div class="scene-world eclipse-world">
+            <div class="arena-layer"></div>
+            <div class="scene-grade"></div>
+            <div class="hero-ground"></div>
+            <div class="hero"></div>
+
+            <div class="actor actor-a eclipse-enemy" style="left: 1024px; top: 306px"></div>
+            <div class="actor actor-b eclipse-enemy" style="left: 1238px; top: 420px"></div>
+            <div class="actor actor-c eclipse-enemy" style="left: 1438px; top: 534px"></div>
+            <div class="actor actor-d eclipse-enemy" style="left: 1634px; top: 638px"></div>
+            <div class="actor actor-e eclipse-enemy" style="left: 1392px; top: 294px"></div>
+
+            <div id="eclipse-gate-primary" class="gate" style="left: 1000px; top: 272px">
+              <svg viewBox="0 0 170 290" aria-hidden="true">
+                <path class="gate-frame" d="M 18 278 L 18 92 L 85 12 L 152 92 L 152 278 L 126 252 L 126 108 L 85 58 L 44 108 L 44 252 Z" />
+                <path class="gate-bars" d="M 62 80 L 62 260 M 85 56 L 85 264 M 108 80 L 108 260" />
+              </svg>
+            </div>
+            <div class="gate" style="left: 1272px; top: 420px">
+              <svg viewBox="0 0 170 290" aria-hidden="true">
+                <path class="gate-frame" d="M 18 278 L 18 92 L 85 12 L 152 92 L 152 278 L 126 252 L 126 108 L 85 58 L 44 108 L 44 252 Z" />
+                <path class="gate-bars" d="M 62 80 L 62 260 M 85 56 L 85 264 M 108 80 L 108 260" />
+              </svg>
+            </div>
+            <div class="gate" style="left: 1518px; top: 548px">
+              <svg viewBox="0 0 170 290" aria-hidden="true">
+                <path class="gate-frame" d="M 18 278 L 18 92 L 85 12 L 152 92 L 152 278 L 126 252 L 126 108 L 85 58 L 44 108 L 44 252 Z" />
+                <path class="gate-bars" d="M 62 80 L 62 260 M 85 56 L 85 264 M 108 80 L 108 260" />
+              </svg>
+            </div>
+
+            <div class="lane-guide lane-guide-a"></div>
+            <div class="lane-guide lane-guide-b"></div>
+            <div class="harrow-cut"></div>
+            <div class="black-seam"></div>
+
+            <div class="eclipse-fragment" style="left: 1148px; top: 492px; --size: 20px" data-dx="-112" data-dy="-96" data-rot="-78"></div>
+            <div class="eclipse-fragment" style="left: 1280px; top: 546px; --size: 14px" data-dx="-48" data-dy="118" data-rot="116"></div>
+            <div class="eclipse-fragment" style="left: 1426px; top: 612px; --size: 18px" data-dx="64" data-dy="-122" data-rot="-138"></div>
+            <div class="eclipse-fragment" style="left: 1550px; top: 670px; --size: 22px" data-dx="118" data-dy="88" data-rot="152"></div>
+            <div class="eclipse-fragment" style="left: 1342px; top: 504px; --size: 11px" data-dx="76" data-dy="-72" data-rot="64"></div>
+            <div class="eclipse-fragment" style="left: 1640px; top: 716px; --size: 15px" data-dx="96" data-dy="-42" data-rot="-92"></div>
+          </div>
+
+          <header class="scene-header">
+            <span class="scene-index">Study 02 / Predicted Lane</span>
+            <h1 class="spell-title">Eclipse Harrow</h1>
+            <span class="phase-copy">Gate gather → Planar cut → Black-glass resolve</span>
+          </header>
+          <div class="origin-note">Origin: remote travel lane<br />Cut follows predicted enemy motion</div>
+          <div class="phase-rail" aria-hidden="true">
+            <span class="phase-node phase-warning">01 Gather</span>
+            <span class="phase-node phase-impact">02 Harrow</span>
+            <span class="phase-node phase-resolve">03 Seal</span>
+          </div>
+          <div class="material-stamp">Authored ironwork · stained light · glass · smoke</div>
+          <div class="scene-vignette"></div>
+        </div>
+      </section>
+
+      <section
+        id="rare-drop"
+        class="scene clip loot-scene"
+        data-start="8.45"
+        data-duration="2.95"
+        data-track-index="1"
+      >
+        <div class="scene-content">
+          <div class="scene-world loot-world">
+            <div class="arena-layer"></div>
+            <div class="scene-grade"></div>
+            <div class="hero-ground"></div>
+            <div class="hero"></div>
+
+            <div class="actor actor-a" style="left: 1030px; top: 434px"></div>
+            <div class="actor actor-c" style="left: 1524px; top: 438px"></div>
+            <div class="actor actor-d" style="left: 1658px; top: 670px"></div>
+
+            <svg class="loot-cracks" viewBox="0 0 1920 1080" aria-hidden="true">
+              <path d="M 1312 808 L 1228 846 L 1174 824 M 1312 808 L 1398 850 L 1462 822" />
+              <path d="M 1312 808 L 1268 884 L 1294 940 M 1312 808 L 1374 894 L 1352 948" />
+            </svg>
+
+            <div class="beam-group">
+              <div class="heaven-beam"></div>
+              <div class="heaven-core"></div>
+            </div>
+
+            <div class="loot-relic"></div>
+            <div class="loot-shard" style="left: 1274px; top: 566px; --w: 46px; --h: 74px"></div>
+            <div class="loot-shard" style="left: 1362px; top: 492px; --w: 32px; --h: 52px"></div>
+            <div class="loot-shard" style="left: 1218px; top: 446px; --w: 26px; --h: 44px"></div>
+
+            <div class="loot-mote" style="left: 1194px; top: 692px; --h: 28px" data-dx="-26" data-dy="-186"></div>
+            <div class="loot-mote" style="left: 1242px; top: 724px; --h: 20px" data-dx="-10" data-dy="-242"></div>
+            <div class="loot-mote" style="left: 1288px; top: 680px; --h: 30px" data-dx="8" data-dy="-204"></div>
+            <div class="loot-mote" style="left: 1332px; top: 714px; --h: 18px" data-dx="24" data-dy="-266"></div>
+            <div class="loot-mote" style="left: 1384px; top: 690px; --h: 24px" data-dx="38" data-dy="-218"></div>
+          </div>
+
+          <header class="scene-header">
+            <span class="scene-index">Study 03 / Rare Drop</span>
+            <h1 class="spell-title">Heavenly Beam</h1>
+            <span class="phase-copy">Drop confirm → Tapered reveal → Rare hold</span>
+          </header>
+          <div class="origin-note">Origin: defeated-enemy drop<br />Never attached to the hero</div>
+          <div class="rare-copy"><strong>Rare drop</strong><span>Remote reward confirmation</span></div>
+          <div class="scene-vignette"></div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      window.__timelines = window.__timelines || {}
+      const tl = gsap.timeline({ paused: true })
+      const reviewMedia = window.__nighttraceReviewMedia || {}
+      document.documentElement.style.setProperty("--review-arena", `url("${reviewMedia.arena}")`)
+      document.documentElement.style.setProperty("--review-hero", `url("${reviewMedia.hero}")`)
+      document.documentElement.style.setProperty("--review-enemies", `url("${reviewMedia.enemies}")`)
+      const authoredImages = Array.from(document.querySelectorAll("[data-media-key]"))
+      authoredImages.forEach((image) => {
+        const mediaKey = image.dataset.mediaKey
+        const source = reviewMedia[mediaKey]
+        if (source) image.src = source
+      })
+
+      const graveFragments = Array.from(document.querySelectorAll("#graveglass .glass-fragment"))
+      const eclipseFragments = Array.from(document.querySelectorAll("#eclipse .eclipse-fragment"))
+      const lootMotes = Array.from(document.querySelectorAll("#rare-drop .loot-mote"))
+
+      const prand = (value) => {
+        const x = Math.sin(value * 127.1 + 311.7) * 43758.5453
+        return x - Math.floor(x)
+      }
+
+      const buildSpellParticles = (selector, count, seed, direction, cone) => {
+        const field = document.querySelector(selector)
+        const particles = []
+        for (let index = 0; index < count; index += 1) {
+          const element = document.createElement("div")
+          element.className = "spell-particle"
+          const width = 5 + prand(seed + index * 7 + 1) * 10
+          const height = width * (1.35 + prand(seed + index * 11 + 2) * 1.5)
+          element.style.setProperty("--particle-w", `${width}px`)
+          element.style.setProperty("--particle-h", `${height}px`)
+          field.appendChild(element)
+          const angle = direction + (prand(seed + index * 13 + 3) * 2 - 1) * cone
+          const speed = 150 + prand(seed + index * 17 + 4) * 360
+          particles.push({
+            element,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            spin: (prand(seed + index * 19 + 5) * 2 - 1) * 620,
+            originX: (prand(seed + index * 23 + 6) * 2 - 1) * 88,
+            originY: (prand(seed + index * 29 + 7) * 2 - 1) * 54,
+          })
+        }
+        return particles
+      }
+
+      const addSpellBurst = (particles, start, duration, gravity) => {
+        const driver = { t: 0 }
+        tl.fromTo(
+          driver,
+          { t: 0 },
+          {
+            t: 1,
+            duration,
+            ease: "none",
+            onUpdate: () => {
+              const seconds = driver.t * duration
+              const fadeIn = Math.min(1, driver.t / 0.08)
+              const fadeOut = Math.min(1, (1 - driver.t) / 0.28)
+              const opacity = driver.t === 0 ? 0 : Math.min(fadeIn, fadeOut)
+              particles.forEach((particle) => {
+                const x = particle.originX + particle.vx * seconds
+                const y =
+                  particle.originY +
+                  particle.vy * seconds +
+                  0.5 * gravity * seconds * seconds
+                particle.element.style.transform =
+                  `translate(${x}px, ${y}px) rotate(${particle.spin * seconds}deg)`
+                particle.element.style.opacity = String(opacity * 0.86)
+              })
+            },
+          },
+          start,
+        )
+      }
+
+      const graveMaterialParticles = buildSpellParticles(
+        "#graveglass .grave-particles",
+        28,
+        43,
+        -Math.PI / 2,
+        1.34,
+      )
+      const harrowMaterialParticles = buildSpellParticles(
+        "#eclipse .harrow-particles",
+        24,
+        91,
+        -Math.PI * 0.82,
+        1.05,
+      )
+
+      tl.fromTo(
+        "#graveglass .grave-camera",
+        { scale: 1.035 },
+        { scale: 1.095, duration: 4.05, ease: "none" },
+        0,
+      )
+      tl.fromTo(
+        "#graveglass .phase-rail, #graveglass .material-stamp",
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" },
+        0.18,
+      )
+      tl.fromTo(
+        "#graveglass .phase-warning",
+        { color: "#7f8c95", opacity: 0.5 },
+        { color: "#ffaaa0", opacity: 1, duration: 0.32, ease: "power2.out" },
+        0.38,
+      )
+      tl.fromTo(
+        "#graveglass .grave-light",
+        { opacity: 0, scale: 0.72 },
+        { opacity: 0.62, scale: 1.08, duration: 0.62, ease: "power3.in" },
+        0.62,
+      )
+      tl.fromTo(
+        "#graveglass .grave-reveal-a",
+        { opacity: 0, clipPath: "circle(0% at 72% 31%)" },
+        { opacity: 1, clipPath: "circle(24% at 72% 31%)", duration: 0.42, ease: "expo.out" },
+        0.98,
+      )
+      tl.fromTo(
+        "#graveglass .grave-reveal-b",
+        { opacity: 0, clipPath: "circle(0% at 61% 46%)" },
+        { opacity: 1, clipPath: "circle(27% at 61% 46%)", duration: 0.44, ease: "expo.out" },
+        1.06,
+      )
+      tl.fromTo(
+        "#graveglass .grave-reveal-c",
+        { opacity: 0, clipPath: "circle(0% at 81% 56%)" },
+        { opacity: 1, clipPath: "circle(25% at 81% 56%)", duration: 0.42, ease: "expo.out" },
+        1.14,
+      )
+      tl.fromTo(
+        "#graveglass .grave-reveal-d",
+        { opacity: 0, clipPath: "circle(0% at 68% 70%)" },
+        { opacity: 1, clipPath: "circle(26% at 68% 70%)", duration: 0.44, ease: "expo.out" },
+        1.22,
+      )
+      tl.fromTo(
+        "#graveglass .grave-impact-wash",
+        { opacity: 0, scale: 0.72 },
+        { opacity: 0.92, scale: 1.04, duration: 0.1, ease: "power4.out" },
+        1.2,
+      )
+      tl.to(
+        "#graveglass .grave-impact-wash",
+        { opacity: 0, scale: 1.2, duration: 0.32, ease: "power3.out" },
+        1.3,
+      )
+      tl.fromTo(
+        "#graveglass .material-dust",
+        { opacity: 0, scale: 0.7 },
+        { opacity: 0.7, scale: 1.08, duration: 0.58, ease: "power2.out" },
+        1.18,
+      )
+      tl.fromTo(
+        "#graveglass .authored-plate.final",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.42, ease: "power2.out" },
+        1.44,
+      )
+      tl.to("#graveglass .grave-camera", { x: -13, duration: 0.055, ease: "power4.out" }, 1.23)
+      tl.to("#graveglass .grave-camera", { x: 10, duration: 0.06, ease: "power4.out" }, 1.285)
+      tl.to("#graveglass .grave-camera", { x: 0, duration: 0.13, ease: "power2.out" }, 1.345)
+      tl.to(
+        "#graveglass .phase-warning",
+        { color: "#7f8c95", opacity: 0.5, duration: 0.16, ease: "power1.out" },
+        1.05,
+      )
+      tl.fromTo(
+        "#graveglass .phase-impact",
+        { color: "#7f8c95", opacity: 0.5 },
+        { color: "#ffaaa0", opacity: 1, duration: 0.24, ease: "power2.out" },
+        1.05,
+      )
+      tl.to(
+        "#graveglass .phase-impact",
+        { color: "#7f8c95", opacity: 0.5, duration: 0.18, ease: "power1.out" },
+        2.08,
+      )
+      tl.fromTo(
+        "#graveglass .phase-resolve",
+        { color: "#7f8c95", opacity: 0.5 },
+        { color: "#ffaaa0", opacity: 1, duration: 0.26, ease: "power2.out" },
+        2.06,
+      )
+      tl.to(
+        "#graveglass .material-dust",
+        { opacity: 0.2, scale: 1.2, duration: 1.15, ease: "power2.out" },
+        1.76,
+      )
+      tl.to(
+        "#graveglass .grave-light",
+        { opacity: 0.18, scale: 1.16, duration: 1.45, ease: "power2.out" },
+        1.58,
+      )
+      addSpellBurst(graveMaterialParticles, 1.18, 1.2, 420)
+
+      tl.fromTo(
+        "#eclipse .eclipse-camera",
+        { scale: 1.03 },
+        { scale: 1.1, duration: 4.4, ease: "none" },
+        4.05,
+      )
+      tl.fromTo(
+        "#eclipse .phase-rail, #eclipse .material-stamp",
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" },
+        4.22,
+      )
+      tl.fromTo(
+        "#eclipse .phase-warning",
+        { color: "#7f8c95", opacity: 0.5 },
+        { color: "#ffb4e5", opacity: 1, duration: 0.32, ease: "power2.out" },
+        4.42,
+      )
+      tl.fromTo(
+        "#eclipse .harrow-light",
+        { opacity: 0, scale: 0.78 },
+        { opacity: 0.48, scale: 1.06, duration: 0.72, ease: "power3.in" },
+        4.66,
+      )
+      tl.fromTo(
+        "#eclipse .harrow-reveal-a",
+        { opacity: 0, clipPath: "inset(100% 46% 0 31%)" },
+        { opacity: 1, clipPath: "inset(0% 46% 0 31%)", duration: 0.58, ease: "expo.out" },
+        4.76,
+      )
+      tl.fromTo(
+        "#eclipse .harrow-reveal-b",
+        { opacity: 0, clipPath: "inset(100% 27% 0 50%)" },
+        { opacity: 1, clipPath: "inset(0% 27% 0 50%)", duration: 0.58, ease: "expo.out" },
+        4.92,
+      )
+      tl.fromTo(
+        "#eclipse .harrow-reveal-c",
+        { opacity: 0, clipPath: "inset(100% 5% 0 69%)" },
+        { opacity: 1, clipPath: "inset(0% 5% 0 69%)", duration: 0.58, ease: "expo.out" },
+        5.08,
+      )
+      tl.fromTo(
+        "#eclipse .harrow-reveal-d",
+        { opacity: 0, clipPath: "polygon(0 55%, 0 55%, 100% 26%, 100% 26%)" },
+        { opacity: 1, clipPath: "polygon(0 62%, 0 47%, 100% 18%, 100% 34%)", duration: 0.34, ease: "expo.out" },
+        5.58,
+      )
+      tl.fromTo(
+        "#eclipse .harrow-impact-wash",
+        { opacity: 0, scale: 0.82 },
+        { opacity: 1, scale: 1.04, duration: 0.09, ease: "power4.out" },
+        5.66,
+      )
+      tl.to(
+        "#eclipse .harrow-impact-wash",
+        { opacity: 0, scale: 1.16, duration: 0.34, ease: "power3.out" },
+        5.75,
+      )
+      tl.fromTo(
+        "#eclipse .material-dust",
+        { opacity: 0, scale: 0.76 },
+        { opacity: 0.66, scale: 1.08, duration: 0.62, ease: "power2.out" },
+        5.54,
+      )
+      tl.fromTo(
+        "#eclipse .authored-plate.final",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.48, ease: "power2.out" },
+        5.88,
+      )
+      tl.to("#eclipse .eclipse-camera", { x: -15, duration: 0.05, ease: "power4.out" }, 5.69)
+      tl.to("#eclipse .eclipse-camera", { x: 12, duration: 0.06, ease: "power4.out" }, 5.74)
+      tl.to("#eclipse .eclipse-camera", { x: 0, duration: 0.14, ease: "power2.out" }, 5.8)
+      tl.to(
+        "#eclipse .phase-warning",
+        { color: "#7f8c95", opacity: 0.5, duration: 0.16, ease: "power1.out" },
+        5.5,
+      )
+      tl.fromTo(
+        "#eclipse .phase-impact",
+        { color: "#7f8c95", opacity: 0.5 },
+        { color: "#ffb4e5", opacity: 1, duration: 0.24, ease: "power2.out" },
+        5.48,
+      )
+      tl.to(
+        "#eclipse .phase-impact",
+        { color: "#7f8c95", opacity: 0.5, duration: 0.18, ease: "power1.out" },
+        6.6,
+      )
+      tl.fromTo(
+        "#eclipse .phase-resolve",
+        { color: "#7f8c95", opacity: 0.5 },
+        { color: "#ffb4e5", opacity: 1, duration: 0.26, ease: "power2.out" },
+        6.58,
+      )
+      tl.to(
+        "#eclipse .material-dust",
+        { opacity: 0.18, scale: 1.2, duration: 1.2, ease: "power2.out" },
+        6.18,
+      )
+      tl.to(
+        "#eclipse .harrow-light",
+        { opacity: 0.15, scale: 1.15, duration: 1.48, ease: "power2.out" },
+        6.18,
+      )
+      addSpellBurst(harrowMaterialParticles, 5.62, 1.18, 260)
+
+      tl.fromTo("#graveglass .scene-content", { opacity: 0 }, { opacity: 1, duration: 0.18, ease: "power2.out" }, 0)
+      tl.fromTo("#graveglass .arena-layer", { scale: 1.025, x: 0, y: 0 }, { scale: 1.065, x: -18, y: 8, duration: 4.05, ease: "none" }, 0)
+      tl.fromTo("#graveglass .scene-header", { opacity: 0, y: -22 }, { opacity: 1, y: 0, duration: 0.48, ease: "power3.out" }, 0.12)
+      tl.fromTo("#graveglass .origin-note", { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.42, ease: "power3.out" }, 0.2)
+      tl.to("#graveglass .grave-fault", { strokeDashoffset: 0, duration: 0.7, stagger: 0.08, ease: "power2.out" }, 0.3)
+      tl.to("#graveglass .grave-rune", { strokeDashoffset: 0, duration: 0.58, stagger: 0.07, ease: "power2.out" }, 0.45)
+      tl.fromTo("#graveglass .target-bracket", { opacity: 0, scale: 1.3 }, { opacity: 0.88, scale: 1, duration: 0.34, stagger: 0.08, ease: "power3.out" }, 0.56)
+      tl.fromTo("#graveglass .eruption-slab", { opacity: 0, scaleX: 0.08, scaleY: 0.5 }, { opacity: 0.88, scaleX: 1, scaleY: 1, duration: 0.36, stagger: 0.09, ease: "expo.out" }, 1.03)
+      tl.fromTo(
+        "#graveglass .spire",
+        { opacity: 0, scaleY: 0.04, y: 92 },
+        { opacity: 1, scaleY: 1, y: 0, duration: 0.42, stagger: { each: 0.09, from: "center" }, ease: "expo.out" },
+        1.12,
+      )
+      tl.to("#graveglass .grave-enemy", { y: -14, scale: 0.9, duration: 0.12, stagger: 0.04, ease: "power4.in" }, 1.46)
+      tl.to("#graveglass .grave-enemy", { y: 0, scale: 1, duration: 0.24, stagger: 0.04, ease: "back.out(1.5)" }, 1.58)
+      graveFragments.forEach((fragment, index) => {
+        const dx = Number(fragment.dataset.dx)
+        const dy = Number(fragment.dataset.dy)
+        const rotation = Number(fragment.dataset.rot)
+        tl.fromTo(
+          fragment,
+          { opacity: 0, x: 0, y: 0, scale: 0.12, rotation: rotation * -0.2 },
+          { opacity: 0.92, x: dx, y: dy, scale: 1, rotation, duration: 0.72 + (index % 3) * 0.08, ease: "power3.out" },
+          1.42 + index * 0.035,
+        )
+      })
+      tl.to("#graveglass .target-bracket", { opacity: 0, scale: 0.76, duration: 0.28, ease: "power2.in" }, 1.62)
+      tl.to("#graveglass .eruption-slab", { opacity: 0.2, scaleX: 1.18, duration: 0.62, ease: "power2.out" }, 1.48)
+      tl.to("#graveglass .spire", { scaleY: 0.72, opacity: 0.72, y: 36, duration: 0.78, stagger: 0.04, ease: "power2.inOut" }, 2.56)
+      tl.to(graveFragments, { opacity: 0.2, y: "+=42", duration: 0.72, stagger: 0.025, ease: "power2.in" }, 2.72)
+      tl.to("#graveglass .grave-fault, #graveglass .grave-rune", { opacity: 0.2, duration: 0.72, ease: "power2.in" }, 2.78)
+      tl.to("#graveglass .scene-content", { opacity: 0, duration: 0.28, ease: "power2.in" }, 3.72)
+      tl.set("#graveglass .scene-content", { opacity: 0 }, 4.05)
+
+      tl.fromTo("#eclipse .scene-content", { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "power2.out" }, 4.05)
+      tl.fromTo("#eclipse .arena-layer", { scale: 1.05, x: 20, y: -4 }, { scale: 1.085, x: -18, y: 10, duration: 4.4, ease: "none" }, 4.05)
+      tl.fromTo("#eclipse .scene-header", { opacity: 0, y: -22 }, { opacity: 1, y: 0, duration: 0.48, ease: "power3.out" }, 4.17)
+      tl.fromTo("#eclipse .origin-note", { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.42, ease: "power3.out" }, 4.24)
+      tl.fromTo("#eclipse .gate", { opacity: 0, scaleY: 0.06, y: 72 }, { opacity: 1, scaleY: 1, y: 0, duration: 0.58, stagger: 0.18, ease: "expo.out" }, 4.32)
+      tl.to("#eclipse .gate-frame", { strokeDashoffset: 0, duration: 0.72, stagger: 0.16, ease: "power2.out" }, 4.38)
+      tl.to("#eclipse .gate-bars", { strokeDashoffset: 0, duration: 0.52, stagger: 0.16, ease: "power2.out" }, 4.58)
+      tl.fromTo("#eclipse .lane-guide", { opacity: 0, scaleX: 0.03 }, { opacity: 0.8, scaleX: 1, duration: 0.55, stagger: 0.13, ease: "expo.out" }, 5.05)
+      tl.to("#eclipse .eclipse-enemy", { y: -10, scale: 0.94, duration: 0.22, stagger: 0.035, ease: "power2.in" }, 5.5)
+      tl.fromTo("#eclipse .harrow-cut", { opacity: 0, scaleX: 0.02, x: -46 }, { opacity: 1, scaleX: 1, x: 0, duration: 0.28, ease: "expo.out" }, 5.88)
+      tl.to("#eclipse .eclipse-world", { x: -9, duration: 0.055, ease: "power4.out" }, 6.03)
+      tl.to("#eclipse .eclipse-world", { x: 7, duration: 0.06, ease: "power4.out" }, 6.085)
+      tl.to("#eclipse .eclipse-world", { x: 0, duration: 0.1, ease: "power2.out" }, 6.145)
+      tl.to("#eclipse .eclipse-enemy", { x: 14, y: -24, scale: 0.88, duration: 0.13, stagger: 0.025, ease: "power4.in" }, 5.99)
+      tl.to("#eclipse .eclipse-enemy", { x: 0, y: 0, scale: 1, duration: 0.28, stagger: 0.025, ease: "back.out(1.35)" }, 6.16)
+      tl.fromTo("#eclipse .black-seam", { opacity: 0, scaleX: 0.04 }, { opacity: 0.92, scaleX: 1, duration: 0.5, ease: "power3.out" }, 6.18)
+      eclipseFragments.forEach((fragment, index) => {
+        const dx = Number(fragment.dataset.dx)
+        const dy = Number(fragment.dataset.dy)
+        const rotation = Number(fragment.dataset.rot)
+        tl.fromTo(
+          fragment,
+          { opacity: 0, x: 0, y: 0, scale: 0.12, rotation: rotation * -0.2 },
+          { opacity: 0.86, x: dx, y: dy, scale: 1, rotation, duration: 0.66 + (index % 2) * 0.1, ease: "power3.out" },
+          6.17 + index * 0.045,
+        )
+      })
+      tl.to("#eclipse .harrow-cut", { opacity: 0, scaleY: 0.3, duration: 0.46, ease: "power2.in" }, 6.34)
+      tl.to("#eclipse .lane-guide", { opacity: 0.15, scaleY: 0.4, duration: 0.5, ease: "power2.in" }, 6.48)
+      tl.to("#eclipse .gate", { opacity: 0.34, scaleX: 0.88, duration: 0.62, stagger: 0.08, ease: "power2.inOut" }, 6.72)
+      tl.to(eclipseFragments, { opacity: 0.3, y: "-=26", duration: 0.84, stagger: 0.035, ease: "power2.inOut" }, 7.15)
+      tl.to("#eclipse .black-seam", { opacity: 0.48, scaleY: 0.72, duration: 0.82, ease: "power2.inOut" }, 7.22)
+      tl.to("#eclipse .scene-content", { opacity: 0, duration: 0.3, ease: "power2.in" }, 8.13)
+      tl.set("#eclipse .scene-content", { opacity: 0 }, 8.45)
+
+      tl.fromTo("#rare-drop .scene-content", { opacity: 0 }, { opacity: 1, duration: 0.22, ease: "power2.out" }, 8.45)
+      tl.fromTo("#rare-drop .arena-layer", { scale: 1.045, x: 8, y: -4 }, { scale: 1.075, x: -12, y: 5, duration: 2.95, ease: "none" }, 8.45)
+      tl.fromTo("#rare-drop .scene-header", { opacity: 0, y: -22 }, { opacity: 1, y: 0, duration: 0.46, ease: "power3.out" }, 8.54)
+      tl.fromTo("#rare-drop .origin-note", { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" }, 8.62)
+      tl.fromTo("#rare-drop .loot-relic", { opacity: 0, scale: 0.38, y: 44, rotation: -26 }, { opacity: 1, scale: 1, y: 0, rotation: 0, duration: 0.46, ease: "back.out(1.45)" }, 8.66)
+      tl.to("#rare-drop .loot-cracks path", { strokeDashoffset: 0, duration: 0.46, stagger: 0.08, ease: "power2.out" }, 8.79)
+      tl.fromTo("#rare-drop .beam-group", { opacity: 0, scaleY: 0.02 }, { opacity: 1, scaleY: 1, duration: 0.58, ease: "expo.out" }, 9.02)
+      tl.fromTo("#rare-drop .heaven-core", { opacity: 0, scaleX: 0.2 }, { opacity: 1, scaleX: 1, duration: 0.34, ease: "power4.out" }, 9.19)
+      tl.fromTo("#rare-drop .loot-shard", { opacity: 0, scale: 0.28, y: 72, rotation: -34 }, { opacity: 1, scale: 1, y: 0, rotation: 0, duration: 0.52, stagger: 0.12, ease: "back.out(1.35)" }, 9.33)
+      lootMotes.forEach((mote, index) => {
+        const dx = Number(mote.dataset.dx)
+        const dy = Number(mote.dataset.dy)
+        tl.fromTo(
+          mote,
+          { opacity: 0, x: 0, y: 0, scaleY: 0.3 },
+          { opacity: 0.9, x: dx, y: dy, scaleY: 1, duration: 1.15 + (index % 2) * 0.18, ease: "power2.out" },
+          9.36 + index * 0.09,
+        )
+      })
+      tl.fromTo("#rare-drop .rare-copy", { opacity: 0, x: 26 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, 9.68)
+      tl.to("#rare-drop .heaven-beam", { opacity: 0.42, scaleX: 0.76, duration: 1.12, ease: "power2.inOut" }, 10.12)
+      tl.to("#rare-drop .heaven-core", { opacity: 0.68, scaleX: 0.72, duration: 1.05, ease: "power2.inOut" }, 10.18)
+      tl.to("#rare-drop .loot-shard", { y: "-=44", duration: 1.12, stagger: 0.08, ease: "power1.inOut" }, 10.08)
+      tl.to(lootMotes, { opacity: 0.12, y: "-=72", duration: 0.5, stagger: 0.04, ease: "power2.in" }, 10.68)
+
+      window.__timelines.main = tl
+
+      const localPreviewAt = new URLSearchParams(window.location.search).get("previewAt")
+      if (
+        localPreviewAt !== null &&
+        (
+          window.location.protocol === "file:" ||
+          ["localhost", "127.0.0.1"].includes(window.location.hostname)
+        )
+      ) {
+        tl.seek(Math.max(0, Math.min(11.4, Number(localPreviewAt) || 0)))
+      } else {
+        Promise.all(
+          authoredImages.map((image) =>
+            typeof image.decode === "function" ? image.decode() : Promise.resolve(),
+          ),
+        )
+          .catch(() => undefined)
+          .then(() => tl.repeat(-1).repeatDelay(1.15).play(0))
+      }
+    </script>
+  </body>
+</html>
