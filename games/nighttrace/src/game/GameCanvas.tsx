@@ -104,8 +104,15 @@ import {
 import {
   buildReplacementWeaponPattern,
   resolvePatternHits,
+  type CapsulePatternStrike,
+  type CirclePatternStrike,
   type ReplacementWeaponPattern,
 } from './weaponPatterns'
+import {
+  replacementCosmeticUnit,
+  replacementWeaponPresentationForVfxStage,
+  type ReplacementWeaponPresentationProfile,
+} from './replacementWeaponPresentation'
 import {
   SUPPORT_PICKUP_LIFETIME_SECONDS,
   supportPickupPresentation,
@@ -424,6 +431,7 @@ class NighttraceRuntime {
   private readonly ringGraphics = new Graphics()
   private readonly motionGraphics = new Graphics()
   private readonly projectileTrailGraphics = new Graphics()
+  private readonly weaponVfxAdditiveGraphics = new Graphics()
   private readonly weaponVfxGraphics = new Graphics()
   private readonly heroAura = new Graphics()
   private readonly screenEffects = new Container()
@@ -702,8 +710,10 @@ class NighttraceRuntime {
       this.pickupLayer.addChild(this.pickupAuraGraphics)
       this.enemyLayer.addChild(this.motionGraphics)
       this.projectileLayer.addChild(this.projectileTrailGraphics)
+      this.weaponVfxAdditiveGraphics.blendMode = 'add'
       this.effectLayer.addChild(
         this.motionEchoLayer,
+        this.weaponVfxAdditiveGraphics,
         this.weaponVfxGraphics,
         this.telegraphGraphics,
         this.ringGraphics,
@@ -4392,6 +4402,678 @@ class NighttraceRuntime {
     graphics.stroke({ color, width, alpha })
   }
 
+  private drawGraveglassPresentation(
+    graphics: Graphics,
+    glow: Graphics,
+    effect: WeaponEffectEntity,
+    strike: CirclePatternStrike,
+    localTime: number,
+    stage: number,
+    presentation: ReplacementWeaponPresentationProfile,
+  ) {
+    const palette = presentation.palette
+    const reducedScale = this.settings.reducedFlash ? 0.66 : 1
+    const warning = clamp(localTime / (0.2 * presentation.cast.durationScale), 0, 1)
+    const eruption = clamp(
+      (localTime - 0.12) / (0.22 * presentation.cast.durationScale),
+      0,
+      1,
+    )
+    const resolve =
+      1 -
+      clamp(
+        (localTime - 0.57 * presentation.impact.durationScale) /
+          (0.36 * presentation.impact.durationScale),
+        0,
+        1,
+      )
+    if (warning <= 0 || resolve <= 0) return
+
+    const alpha =
+      resolve *
+      reducedScale *
+      presentation.material.opacity
+    const growth = 1 - (1 - eruption) ** 3
+    const footprint =
+      strike.radius *
+      (0.54 + warning * 0.46) *
+      presentation.cast.footprintScale
+    const seed = effect.seed + strike.index * 131
+
+    graphics
+      .ellipse(
+        strike.center.x,
+        strike.center.y + 7,
+        footprint * 0.98,
+        footprint * 0.54,
+      )
+      .fill({
+        color: palette.shadowColor,
+        alpha: this.protectedEffectAlphaAt(
+          strike.center.x,
+          strike.center.y,
+          alpha * (0.34 + eruption * 0.22),
+          'dark',
+        ),
+      })
+    graphics
+      .ellipse(
+        strike.center.x,
+        strike.center.y + 7,
+        footprint * 0.82,
+        footprint * 0.43,
+      )
+      .fill({
+        color: palette.secondaryColor,
+        alpha: this.protectedEffectAlphaAt(
+          strike.center.x,
+          strike.center.y,
+          alpha * (0.08 + eruption * 0.05),
+          'bright',
+        ),
+      })
+    glow
+      .ellipse(
+        strike.center.x,
+        strike.center.y + 5,
+        footprint * 1.08,
+        footprint * 0.62,
+      )
+      .fill({
+        color: palette.glowColor,
+        alpha: alpha * (0.028 + eruption * 0.052),
+      })
+
+    const fissureCount = Math.min(
+      12,
+      Math.max(5, presentation.cast.layerCount + 2),
+    )
+    for (let fissure = 0; fissure < fissureCount; fissure += 1) {
+      const angle =
+        effect.angle * 0.16 +
+        (Math.PI * 2 * fissure) / fissureCount +
+        (replacementCosmeticUnit(seed, fissure, 0) - 0.5) * 0.32
+      const normalX = -Math.sin(angle)
+      const normalY = Math.cos(angle)
+      const inner = footprint * (0.08 + replacementCosmeticUnit(seed, fissure, 1) * 0.12)
+      const middle = footprint * (0.42 + replacementCosmeticUnit(seed, fissure, 2) * 0.16)
+      const outer = footprint * (0.76 + replacementCosmeticUnit(seed, fissure, 3) * 0.22)
+      const bend =
+        (replacementCosmeticUnit(seed, fissure, 4) - 0.5) *
+        footprint *
+        0.22
+      const points = [
+        {
+          x: strike.center.x + Math.cos(angle) * inner,
+          y: strike.center.y + Math.sin(angle) * inner * 0.58,
+        },
+        {
+          x: strike.center.x + Math.cos(angle) * middle + normalX * bend,
+          y:
+            strike.center.y +
+            Math.sin(angle) * middle * 0.58 +
+            normalY * bend * 0.58,
+        },
+        {
+          x: strike.center.x + Math.cos(angle) * outer,
+          y: strike.center.y + Math.sin(angle) * outer * 0.58,
+        },
+      ]
+      this.drawPolyline(
+        glow,
+        points,
+        palette.glowColor,
+        7 + stage * 1.4,
+        warning * alpha * (0.055 + eruption * 0.055),
+      )
+      this.drawPolyline(
+        graphics,
+        points,
+        fissure % 3 === 0 ? palette.coreColor : palette.accentColor,
+        1.15 + stage * 0.22,
+        warning * alpha * (0.54 + eruption * 0.3),
+      )
+    }
+
+    if (eruption <= 0) return
+    const spireCount = 1 + Math.min(2, stage)
+    for (let spire = spireCount - 1; spire >= 0; spire -= 1) {
+      const localSeed = seed + spire * 53
+      const lateral =
+        spire === 0
+          ? 0
+          : (spire % 2 ? -1 : 1) *
+            footprint *
+            (0.19 + replacementCosmeticUnit(localSeed, spire, 0) * 0.1)
+      const baseX =
+        strike.center.x +
+        lateral +
+        (replacementCosmeticUnit(localSeed, spire, 1) - 0.5) * 10
+      const baseY =
+        strike.center.y +
+        9 +
+        spire * 3 +
+        (replacementCosmeticUnit(localSeed, spire, 2) - 0.5) * 6
+      const width =
+        (18 + stage * 3.6) *
+        (spire === 0 ? 1 : 0.62) *
+        presentation.material.depth
+      const height =
+        (72 + stage * 19) *
+        (spire === 0 ? 1 : 0.68) *
+        growth *
+        (0.9 + replacementCosmeticUnit(localSeed, spire, 3) * 0.2)
+      const lean =
+        (replacementCosmeticUnit(localSeed, spire, 4) - 0.5) *
+        (18 + stage * 3)
+      const body = [
+        baseX - width,
+        baseY,
+        baseX - width * 0.62,
+        baseY - height * 0.4,
+        baseX + lean,
+        baseY - height,
+        baseX + width * 0.54,
+        baseY - height * 0.32,
+        baseX + width,
+        baseY,
+      ]
+      glow
+        .poly(body, true)
+        .fill({
+          color: palette.glowColor,
+          alpha: alpha * (0.045 + presentation.intensity * 0.035),
+        })
+      graphics
+        .poly(body, true)
+        .fill({
+          color: palette.shadowColor,
+          alpha: this.protectedEffectAlphaAt(
+            baseX,
+            baseY,
+            alpha * 0.96,
+            'dark',
+          ),
+        })
+        .stroke({
+          color: spire % 2 ? palette.secondaryColor : palette.accentColor,
+          width: 1.5 + stage * 0.34,
+          alpha: alpha * 0.88,
+        })
+      graphics
+        .poly(
+          [
+            baseX - width * 0.62,
+            baseY - height * 0.4,
+            baseX + lean,
+            baseY - height,
+            baseX + width * 0.12,
+            baseY - height * 0.08,
+            baseX - width * 0.24,
+            baseY - height * 0.14,
+          ],
+          true,
+        )
+        .fill({
+          color: palette.secondaryColor,
+          alpha: alpha * (0.3 + presentation.material.surfaceContrast * 0.18),
+        })
+      graphics
+        .poly(
+          [
+            baseX + lean,
+            baseY - height,
+            baseX + width * 0.54,
+            baseY - height * 0.32,
+            baseX + width * 0.12,
+            baseY - height * 0.08,
+          ],
+          true,
+        )
+        .fill({
+          color: palette.accentColor,
+          alpha: alpha * (0.2 + presentation.material.coreLuminance * 0.16),
+        })
+      graphics
+        .moveTo(baseX + lean, baseY - height)
+        .lineTo(baseX - width * 0.06, baseY - height * 0.08)
+        .stroke({
+          color: palette.coreColor,
+          width: 0.9 + stage * 0.22,
+          alpha: alpha * presentation.material.edgeLuminance * 0.9,
+        })
+
+      const veinCount = 1 + Math.floor(presentation.material.fractureDensity * 3)
+      for (let vein = 0; vein < veinCount; vein += 1) {
+        const veinT = (vein + 1) / (veinCount + 1)
+        const veinY = lerp(baseY - height * 0.1, baseY - height * 0.76, veinT)
+        const veinX =
+          lerp(baseX - width * 0.16, baseX + lean * 0.72, veinT) +
+          (replacementCosmeticUnit(localSeed, vein, 8) - 0.5) * width * 0.46
+        graphics
+          .moveTo(veinX - width * 0.2, veinY + height * 0.055)
+          .lineTo(veinX, veinY)
+          .lineTo(veinX + width * 0.12, veinY - height * 0.075)
+          .stroke({
+            color: vein % 2 ? palette.glowColor : palette.coreColor,
+            width: 0.7 + stage * 0.12,
+            alpha: alpha * 0.7,
+          })
+      }
+    }
+
+    const particleCount = capDecorativeDensity(
+      presentation.particles.count,
+      effect.visualState.stage,
+    )
+    for (let particle = 0; particle < particleCount; particle += 1) {
+      const delay =
+        0.08 +
+        replacementCosmeticUnit(seed, particle, 10) *
+          0.2 *
+          presentation.trail.turbulence
+      const life =
+        0.28 *
+        presentation.particles.lifetimeScale *
+        (0.74 + replacementCosmeticUnit(seed, particle, 11) * 0.52)
+      const particleProgress = clamp((localTime - delay) / life, 0, 1)
+      if (particleProgress <= 0 || particleProgress >= 1) continue
+      const angle =
+        replacementCosmeticUnit(seed, particle, 12) * Math.PI * 2
+      const speed =
+        (42 + replacementCosmeticUnit(seed, particle, 13) * 88) *
+        presentation.particles.velocityScale
+      const distance = speed * particleProgress
+      const x = strike.center.x + Math.cos(angle) * distance
+      const y =
+        strike.center.y +
+        Math.sin(angle) * distance * 0.48 -
+        Math.sin(particleProgress * Math.PI) * (22 + stage * 8)
+      const size =
+        (1.8 + replacementCosmeticUnit(seed, particle, 14) * 3.8) *
+        presentation.particles.sizeScale *
+        (1 - particleProgress * 0.55)
+      const particleAlpha =
+        Math.sin(particleProgress * Math.PI) * alpha
+      this.drawDiamondGlyph(
+        glow,
+        x,
+        y,
+        size * 2.4,
+        angle,
+        palette.glowColor,
+        particleAlpha * 0.12,
+        true,
+      )
+      this.drawDiamondGlyph(
+        graphics,
+        x,
+        y,
+        size,
+        angle,
+        particle % 4 === 0 ? palette.coreColor : palette.accentColor,
+        particleAlpha * 0.88,
+        true,
+      )
+    }
+  }
+
+  private drawEclipseGate(
+    graphics: Graphics,
+    glow: Graphics,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    stage: number,
+    alpha: number,
+    seed: number,
+    presentation: ReplacementWeaponPresentationProfile,
+  ) {
+    const palette = presentation.palette
+    const half = width * 0.5
+    const body = [
+      x - half,
+      y + 6,
+      x - half,
+      y - height * 0.46,
+      x - half * 0.78,
+      y - height * 0.79,
+      x,
+      y - height,
+      x + half * 0.78,
+      y - height * 0.79,
+      x + half,
+      y - height * 0.46,
+      x + half,
+      y + 6,
+    ]
+    glow
+      .poly(body, true)
+      .fill({
+        color: palette.glowColor,
+        alpha: alpha * (0.055 + presentation.intensity * 0.025),
+      })
+    graphics
+      .poly(body, true)
+      .fill({
+        color: palette.shadowColor,
+        alpha: this.protectedEffectAlphaAt(x, y, alpha * 0.94, 'dark'),
+      })
+      .stroke({
+        color: palette.secondaryColor,
+        width: 1.4 + stage * 0.3,
+        alpha: alpha * 0.86,
+      })
+
+    const opening = [
+      x - half * 0.55,
+      y + 2,
+      x - half * 0.55,
+      y - height * 0.38,
+      x - half * 0.38,
+      y - height * 0.64,
+      x,
+      y - height * 0.8,
+      x + half * 0.38,
+      y - height * 0.64,
+      x + half * 0.55,
+      y - height * 0.38,
+      x + half * 0.55,
+      y + 2,
+    ]
+    graphics
+      .poly(opening, true)
+      .fill({
+        color: 0x020106,
+        alpha: this.protectedEffectAlphaAt(x, y, alpha * 0.92, 'dark'),
+      })
+      .stroke({
+        color: palette.accentColor,
+        width: 1 + stage * 0.18,
+        alpha: alpha * 0.76,
+      })
+
+    const pillarWidth = Math.max(3, width * 0.1)
+    for (const side of [-1, 1]) {
+      const pillarX = x + side * half * 0.76
+      graphics
+        .rect(pillarX - pillarWidth * 0.5, y - height * 0.72, pillarWidth, height * 0.78)
+        .fill({
+          color: side > 0 ? palette.secondaryColor : palette.accentColor,
+          alpha: alpha * 0.52,
+        })
+      graphics
+        .poly(
+          [
+            pillarX - pillarWidth,
+            y - height * 0.72,
+            pillarX,
+            y - height * (0.93 + replacementCosmeticUnit(seed, side + 2, 0) * 0.06),
+            pillarX + pillarWidth,
+            y - height * 0.72,
+          ],
+          true,
+        )
+        .fill({ color: palette.shadowColor, alpha: alpha * 0.94 })
+        .stroke({
+          color: palette.glowColor,
+          width: 0.9 + stage * 0.14,
+          alpha: alpha * 0.62,
+        })
+    }
+
+    const barCount = 3 + stage
+    for (let bar = 0; bar < barCount; bar += 1) {
+      const barT = (bar + 1) / (barCount + 1)
+      const barX = lerp(x - half * 0.46, x + half * 0.46, barT)
+      const arch =
+        1 -
+        Math.abs((barX - x) / Math.max(1, half * 0.46))
+      graphics
+        .moveTo(barX, y)
+        .lineTo(barX, y - height * (0.48 + arch * 0.23))
+        .stroke({
+          color: bar % 2 ? palette.secondaryColor : palette.accentColor,
+          width: 0.75 + stage * 0.11,
+          alpha: alpha * 0.58,
+        })
+    }
+
+    const roseY = y - height * 0.5
+    const roseRadius = width * (0.09 + stage * 0.008)
+    glow
+      .circle(x, roseY, roseRadius * 2.4)
+      .fill({ color: palette.glowColor, alpha: alpha * 0.07 })
+    graphics
+      .circle(x, roseY, roseRadius)
+      .fill({ color: palette.accentColor, alpha: alpha * 0.26 })
+      .stroke({
+        color: palette.coreColor,
+        width: 0.9 + stage * 0.12,
+        alpha: alpha * 0.82,
+      })
+    for (let spoke = 0; spoke < 4 + stage; spoke += 1) {
+      const angle = (Math.PI * 2 * spoke) / (4 + stage)
+      graphics
+        .moveTo(x, roseY)
+        .lineTo(
+          x + Math.cos(angle) * roseRadius,
+          roseY + Math.sin(angle) * roseRadius,
+        )
+    }
+    graphics.stroke({
+      color: palette.coreColor,
+      width: 0.55 + stage * 0.08,
+      alpha: alpha * 0.7,
+    })
+  }
+
+  private drawEclipsePresentation(
+    graphics: Graphics,
+    glow: Graphics,
+    effect: WeaponEffectEntity,
+    strike: CapsulePatternStrike,
+    localTime: number,
+    stage: number,
+    presentation: ReplacementWeaponPresentationProfile,
+  ) {
+    const palette = presentation.palette
+    const reducedScale = this.settings.reducedFlash ? 0.62 : 1
+    const gather = clamp(
+      localTime / (0.22 * presentation.cast.durationScale),
+      0,
+      1,
+    )
+    const release = clamp(
+      (localTime - 0.16) / (0.18 * presentation.cast.durationScale),
+      0,
+      1,
+    )
+    const afterglow =
+      1 -
+      clamp(
+        (localTime - 0.48 * presentation.impact.durationScale) /
+          (0.44 * presentation.impact.durationScale),
+        0,
+        1,
+      )
+    if (gather <= 0 || afterglow <= 0) return
+
+    const alpha =
+      afterglow *
+      reducedScale *
+      presentation.material.opacity
+    const dx = strike.end.x - strike.start.x
+    const dy = strike.end.y - strike.start.y
+    const length = Math.max(1, Math.hypot(dx, dy))
+    const directionX = dx / length
+    const directionY = dy / length
+    const normalX = -directionY
+    const normalY = directionX
+    const width =
+      strike.radius *
+      presentation.cast.footprintScale *
+      (0.78 + gather * 0.22)
+    const lane = [
+      strike.start.x + normalX * width,
+      strike.start.y + normalY * width,
+      strike.end.x + normalX * width,
+      strike.end.y + normalY * width,
+      strike.end.x - normalX * width,
+      strike.end.y - normalY * width,
+      strike.start.x - normalX * width,
+      strike.start.y - normalY * width,
+    ]
+    graphics
+      .poly(lane, true)
+      .fill({
+        color: palette.shadowColor,
+        alpha: this.protectedSegmentEffectAlpha(
+          strike.start,
+          strike.end,
+          gather * alpha * (0.3 + release * 0.16),
+          'dark',
+        ),
+      })
+    graphics
+      .poly(
+        [
+          strike.start.x + normalX * width * 0.66,
+          strike.start.y + normalY * width * 0.66,
+          strike.end.x + normalX * width * 0.66,
+          strike.end.y + normalY * width * 0.66,
+          strike.end.x - normalX * width * 0.66,
+          strike.end.y - normalY * width * 0.66,
+          strike.start.x - normalX * width * 0.66,
+          strike.start.y - normalY * width * 0.66,
+        ],
+        true,
+      )
+      .fill({
+        color: palette.secondaryColor,
+        alpha: this.protectedSegmentEffectAlpha(
+          strike.start,
+          strike.end,
+          gather * alpha * (0.075 + release * 0.07),
+          'bright',
+        ),
+      })
+
+    if (release > 0) {
+      const beamEnd = {
+        x: lerp(strike.start.x, strike.end.x, 1 - (1 - release) ** 3),
+        y: lerp(strike.start.y, strike.end.y, 1 - (1 - release) ** 3),
+      }
+      const cutAlpha =
+        Math.sin(release * Math.PI * 0.84) *
+        alpha
+      this.drawPolyline(
+        glow,
+        [strike.start, beamEnd],
+        palette.glowColor,
+        (22 + stage * 4.2) * presentation.trail.widthScale,
+        cutAlpha * (0.11 + presentation.trail.secondaryRibbonAlpha * 0.05),
+      )
+      this.drawPolyline(
+        glow,
+        [strike.start, beamEnd],
+        palette.coreColor,
+        5 + stage * 0.8,
+        cutAlpha * 0.22,
+      )
+      this.drawPolyline(
+        graphics,
+        [strike.start, beamEnd],
+        palette.coreColor,
+        2 + stage * 0.44,
+        cutAlpha * 0.92,
+      )
+    }
+
+    const gateCount = stage <= 1 ? 2 : 1
+    for (let gate = 0; gate < gateCount; gate += 1) {
+      const gateT =
+        gateCount === 1
+          ? 0.12 + (strike.index % 3) * 0.07
+          : gate === 0
+            ? 0.1
+            : 0.9
+      const gateX = lerp(strike.start.x, strike.end.x, gateT)
+      const gateY = lerp(strike.start.y, strike.end.y, gateT)
+      const gateGrowth = 1 - (1 - gather) ** 3
+      this.drawEclipseGate(
+        graphics,
+        glow,
+        gateX,
+        gateY,
+        width * (1.34 + stage * 0.08),
+        (32 + stage * 10) * gateGrowth * presentation.material.depth,
+        stage,
+        alpha * gather,
+        effect.seed + strike.index * 97 + gate * 19,
+        presentation,
+      )
+    }
+
+    const fragmentCount = capDecorativeDensity(
+      presentation.particles.count,
+      effect.visualState.stage,
+    )
+    for (let fragment = 0; fragment < fragmentCount; fragment += 1) {
+      const fragmentSeed = effect.seed + strike.index * 137
+      const birth =
+        0.12 +
+        replacementCosmeticUnit(fragmentSeed, fragment, 0) * 0.25
+      const life =
+        0.34 *
+        presentation.particles.lifetimeScale *
+        (0.72 + replacementCosmeticUnit(fragmentSeed, fragment, 1) * 0.5)
+      const fragmentProgress = clamp((localTime - birth) / life, 0, 1)
+      if (fragmentProgress <= 0 || fragmentProgress >= 1) continue
+      const t = replacementCosmeticUnit(fragmentSeed, fragment, 2)
+      const side = replacementCosmeticUnit(fragmentSeed, fragment, 3) < 0.5 ? -1 : 1
+      const drift =
+        width *
+        side *
+        (0.24 + replacementCosmeticUnit(fragmentSeed, fragment, 4) * 0.82) *
+        fragmentProgress
+      const x =
+        lerp(strike.start.x, strike.end.x, t) +
+        normalX * drift +
+        directionX * fragmentProgress * 18
+      const y =
+        lerp(strike.start.y, strike.end.y, t) +
+        normalY * drift -
+        Math.sin(fragmentProgress * Math.PI) * (10 + stage * 4)
+      const fragmentAlpha =
+        Math.sin(fragmentProgress * Math.PI) * alpha
+      const size =
+        (1.5 + replacementCosmeticUnit(fragmentSeed, fragment, 5) * 3.2) *
+        presentation.particles.sizeScale
+      this.drawDiamondGlyph(
+        glow,
+        x,
+        y,
+        size * 2.8,
+        effect.angle + fragmentProgress,
+        palette.glowColor,
+        fragmentAlpha * 0.1,
+        true,
+      )
+      this.drawDiamondGlyph(
+        graphics,
+        x,
+        y,
+        size,
+        effect.angle + fragmentProgress,
+        fragment % 3 === 0 ? palette.coreColor : palette.accentColor,
+        fragmentAlpha * 0.84,
+        true,
+      )
+    }
+  }
+
   private drawSupportPickupBeacon(
     graphics: Graphics,
     pickup: PickupEntity,
@@ -4645,9 +5327,13 @@ class NighttraceRuntime {
   }
 
   private drawWeaponEffects() {
+    this.weaponVfxAdditiveGraphics.clear()
     this.weaponVfxGraphics.clear()
+    const additiveGraphics = this.weaponVfxAdditiveGraphics
     const graphics = this.weaponVfxGraphics
-    graphics.alpha = this.currentSceneVfxEnergyScale()
+    const energyScale = this.currentSceneVfxEnergyScale()
+    additiveGraphics.alpha = energyScale
+    graphics.alpha = energyScale
     for (let index = this.weaponEffects.length - 1; index >= 0; index -= 1) {
       const effect = this.weaponEffects[index]
       if (effect.life <= 0) {
@@ -5064,9 +5750,22 @@ class NighttraceRuntime {
           if (pattern?.kind === 'graveglass-spires') {
             const now = progress * effect.total
             const reducedScale = this.settings.reducedFlash ? 0.66 : 1
+            const presentation = replacementWeaponPresentationForVfxStage(
+              'ash-halo',
+              state.stage,
+            )
             for (const strike of pattern.strikes) {
               const localTime = now - strike.delay
               if (localTime < 0) continue
+              this.drawGraveglassPresentation(
+                graphics,
+                additiveGraphics,
+                effect,
+                strike,
+                localTime,
+                stage,
+                presentation,
+              )
               const warning = clamp(localTime / 0.18, 0, 1)
               const eruption = clamp((localTime - 0.14) / 0.2, 0, 1)
               const resolve = 1 - clamp((localTime - 0.58) / 0.34, 0, 1)
@@ -5557,9 +6256,22 @@ class NighttraceRuntime {
           if (pattern?.kind === 'eclipse-harrow') {
             const now = progress * effect.total
             const reducedScale = this.settings.reducedFlash ? 0.62 : 1
+            const presentation = replacementWeaponPresentationForVfxStage(
+              'null-bell',
+              state.stage,
+            )
             for (const strike of pattern.strikes) {
               const localTime = now - strike.delay
               if (localTime < 0) continue
+              this.drawEclipsePresentation(
+                graphics,
+                additiveGraphics,
+                effect,
+                strike,
+                localTime,
+                stage,
+                presentation,
+              )
               const gather = clamp(localTime / 0.2, 0, 1)
               const release = clamp((localTime - 0.18) / 0.16, 0, 1)
               const afterglow = 1 - clamp((localTime - 0.48) / 0.42, 0, 1)
@@ -5636,53 +6348,6 @@ class NighttraceRuntime {
                   1.8 + stage * 0.24,
                   gather * alpha * (0.3 + release * 0.16),
                 )
-              }
-
-              const showGateArches =
-                stage <= 1 ||
-                (stage === 2 && strike.role === 'center-lane')
-              if (showGateArches) {
-                const gateHeight = 20 + stage * 7
-                for (const gateT of [0.08, 0.92]) {
-                  const gateX = lerp(strike.start.x, strike.end.x, gateT)
-                  const gateY = lerp(strike.start.y, strike.end.y, gateT)
-                  const gateHalf = width * (0.62 + stage * 0.06)
-                  const left = {
-                    x: gateX - normalX * gateHalf,
-                    y: gateY - normalY * gateHalf,
-                  }
-                  const right = {
-                    x: gateX + normalX * gateHalf,
-                    y: gateY + normalY * gateHalf,
-                  }
-                  const apex = {
-                    x: gateX + directionX * gateHeight,
-                    y: gateY + directionY * gateHeight,
-                  }
-                  this.drawPolyline(
-                    graphics,
-                    [left, apex, right],
-                    profile.secondaryColor,
-                    2 + stage * 0.38,
-                    gather * alpha * 0.74,
-                  )
-                  graphics
-                    .moveTo(left.x, left.y)
-                    .lineTo(
-                      left.x - directionX * gateHeight * 0.72,
-                      left.y - directionY * gateHeight * 0.72,
-                    )
-                    .moveTo(right.x, right.y)
-                    .lineTo(
-                      right.x - directionX * gateHeight * 0.72,
-                      right.y - directionY * gateHeight * 0.72,
-                    )
-                    .stroke({
-                      color: profile.accentColor,
-                      width: 1.5 + stage * 0.24,
-                      alpha: gather * alpha * 0.58,
-                    })
-                }
               }
 
               if (release > 0) {
