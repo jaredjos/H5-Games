@@ -2,7 +2,7 @@
 
 ## Shipping target
 
-NIGHTTRACE v1.7.1 is an installable mobile web app suitable for HTTPS static
+NIGHTTRACE v1.7.2 is an installable mobile web app suitable for HTTPS static
 hosting and Add to Home Screen on current Android and iOS browsers. Menus remain
 usable in portrait; combat is landscape-first and pauses behind an accessible
 rotate gate when required. It supports safe-area insets, 44 px minimum touch
