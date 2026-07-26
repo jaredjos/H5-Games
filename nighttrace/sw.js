@@ -77,7 +77,9 @@ async function precacheShell() {
 }
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(precacheShell())
+  event.waitUntil(
+    precacheShell().then(() => self.skipWaiting()),
+  )
 })
 
 self.addEventListener('activate', (event) => {
