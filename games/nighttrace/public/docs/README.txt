@@ -1,4 +1,4 @@
-NIGHTTRACE v1.7.1 bundled runtime documentation
+NIGHTTRACE v1.7.2 bundled runtime documentation
 
 NIGHTTRACE_Combat_Systems_Codex.pdf
   Full player-facing and implementation-derived reference for weapon states,
