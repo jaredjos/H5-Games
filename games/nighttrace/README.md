@@ -20,6 +20,9 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.5.2` — a complete ten-boss animation pass with sovereign-specific idle and locomotion signatures, normal melee wind-up/release/recovery, dynamic pivots and afterimages, plus distinct level-specific special-action VFX
 - `v1.6.0` — Graveglass Spires and Eclipse Harrow replace the former area powers with remote-world targeting, four-stage branch/lane formations, one-hit overlap safety, persistent heaven-to-ground relic beacons, and an original layered dungeon/boss score
 
+- `v1.7.0` — experimental hero and sovereign material-VFX pass
+- `v1.7.1` — visual-clarity rescue: full-resolution hero and boss art, retired ghost overlays, protected actor layering, bounded maximum-load effects, curved Crescent projectiles, hostile boss atmosphere, and DPR-3 mobile validation
+
 ## Runtime guide and visual evidence
 
 - [Combat Systems Codex (PDF)](https://jaredjos.github.io/H5-Games/nighttrace/docs/NIGHTTRACE_Combat_Systems_Codex.pdf) — the v1.6.0 combat, upgrade, pickup, boss, difficulty, music, and mobile reference

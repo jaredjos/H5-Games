@@ -1,5 +1,4 @@
 import {
-  BlurFilter,
   Filter,
   GlProgram,
   UniformGroup,
@@ -263,15 +262,14 @@ export function updateCharacterMaterialFilter(
   material.uniforms.uniforms.uDistortion = state.distortion
 }
 
-export function createCharacterBloomFilter(profile: CharacterVisualProfile) {
-  if (profile.bloomStrength <= 0) return undefined
-  return new BlurFilter({
-    strength: profile.bloomStrength,
-    quality: 1,
-    kernelSize: 5,
-    resolution: profile.bloomResolution,
-    padding: 24,
-  })
+export function createCharacterBloomFilter(
+  profile: CharacterVisualProfile,
+): Filter | undefined {
+  // A blurred duplicate of the complete actor softened the silhouette and
+  // costume detail. Bloom remains disabled until it is replaced with a
+  // thresholded bright-pass that isolates authored emissive pixels.
+  void profile
+  return undefined
 }
 
 export interface RefractiveAtmosphereFilter {
@@ -336,7 +334,7 @@ export function createScreenGradeFilter(
         fragment: SCREEN_GRADE_FRAGMENT,
       }),
       resources: { screenGradeUniforms: uniforms },
-      resolution: 1,
+      resolution: 'inherit',
     }),
     uniforms,
   }

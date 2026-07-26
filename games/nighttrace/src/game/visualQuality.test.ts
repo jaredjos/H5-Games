@@ -39,17 +39,40 @@ describe('character visual quality tiers', () => {
     ).toBe('mobile')
   })
 
-  it('gives mobile a real smaller atlas and bounded GPU work', () => {
-    expect(CHARACTER_VISUAL_PROFILES.mobile.atlasVariant).toBe('mobile')
-    expect(CHARACTER_VISUAL_PROFILES.mobile.rendererResolutionCap).toBeLessThan(
-      CHARACTER_VISUAL_PROFILES.cinematic.rendererResolutionCap,
-    )
-    expect(CHARACTER_VISUAL_PROFILES.mobile.generatedTextureResolution).toBeLessThan(
-      CHARACTER_VISUAL_PROFILES.cinematic.generatedTextureResolution,
-    )
-    expect(CHARACTER_VISUAL_PROFILES.mobile.rendererAntialias).toBe(false)
-    expect(CHARACTER_VISUAL_PROFILES.mobile.refraction).toBe(false)
-    expect(CHARACTER_VISUAL_PROFILES.mobile.bloomStrength).toBe(0)
+  it('keeps every tier at a crisp full-resolution floor', () => {
+    const tiers = [
+      CHARACTER_VISUAL_PROFILES.mobile,
+      CHARACTER_VISUAL_PROFILES.balanced,
+      CHARACTER_VISUAL_PROFILES.cinematic,
+    ]
+
+    for (const profile of tiers) {
+      expect(profile.atlasVariant).toBe('desktop')
+      expect(profile.rendererResolutionCap).toBeGreaterThanOrEqual(2)
+      expect(profile.rendererAntialias).toBe(true)
+      expect(profile.generatedTextureResolution).toBeGreaterThanOrEqual(2)
+      expect(profile.materialFilterResolution).toBe('inherit')
+      expect(profile.bloomStrength).toBe(0)
+      expect(profile.refraction).toBe(false)
+      expect(profile.screenGrade).toBe(false)
+    }
+  })
+
+  it('never decreases raster quality as capability increases', () => {
+    const tiers = [
+      CHARACTER_VISUAL_PROFILES.mobile,
+      CHARACTER_VISUAL_PROFILES.balanced,
+      CHARACTER_VISUAL_PROFILES.cinematic,
+    ]
+
+    for (let index = 1; index < tiers.length; index += 1) {
+      expect(tiers[index].rendererResolutionCap).toBeGreaterThanOrEqual(
+        tiers[index - 1].rendererResolutionCap,
+      )
+      expect(tiers[index].generatedTextureResolution).toBeGreaterThanOrEqual(
+        tiers[index - 1].generatedTextureResolution,
+      )
+    }
   })
 })
 

@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.6.0`
+- Current web release: `v1.7.1`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -99,6 +99,8 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.5.1`: former area-power clarity experiment, rapid-fire motion continuity, and refreshed runtime proofs.
 - `v1.5.2`: ten-signature sovereign choreography with distinct idle, locomotion, melee, and level-specific special-action VFX.
 - `v1.6.0`: Graveglass Spires, Eclipse Harrow, remote-world targeting, rare-drop light shafts, original layered music, and refreshed deterministic evidence.
+- `v1.7.0`: experimental hero and sovereign material-VFX pass.
+- `v1.7.1`: full-resolution actor rescue, protected actor layering, bounded maximum-load effects, hostile boss atmosphere, and desktop/DPR-3 mobile visual validation.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

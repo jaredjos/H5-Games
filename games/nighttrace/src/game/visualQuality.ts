@@ -14,7 +14,12 @@ export interface CharacterVisualProfile {
   readonly rendererResolutionCap: number
   readonly rendererAntialias: boolean
   readonly generatedTextureResolution: number
-  readonly materialFilterResolution: number
+  /**
+   * Actor material passes must inherit the renderer resolution. Giving them an
+   * independent numeric resolution silently rasterizes the hero and bosses into
+   * a smaller intermediate texture before compositing them back into the scene.
+   */
+  readonly materialFilterResolution: 'inherit'
   readonly bloomStrength: number
   readonly bloomResolution: number
   readonly overlayFps: number
@@ -31,35 +36,37 @@ export const CHARACTER_VISUAL_PROFILES: Readonly<
     rendererResolutionCap: 2,
     rendererAntialias: true,
     generatedTextureResolution: 2,
-    materialFilterResolution: 1,
-    bloomStrength: 6,
-    bloomResolution: 0.65,
+    materialFilterResolution: 'inherit',
+    bloomStrength: 0,
+    bloomResolution: 1,
     overlayFps: 12,
-    refraction: true,
-    screenGrade: true,
+    refraction: false,
+    screenGrade: false,
     atmosphericParticles: 1,
   }),
   balanced: Object.freeze({
     atlasVariant: 'desktop',
-    rendererResolutionCap: 1.5,
+    rendererResolutionCap: 2,
     rendererAntialias: true,
-    generatedTextureResolution: 1.5,
-    materialFilterResolution: 0.72,
-    bloomStrength: 3.5,
-    bloomResolution: 0.5,
+    generatedTextureResolution: 2,
+    materialFilterResolution: 'inherit',
+    bloomStrength: 0,
+    bloomResolution: 1,
     overlayFps: 10,
     refraction: false,
-    screenGrade: true,
+    screenGrade: false,
     atmosphericParticles: 0.62,
   }),
   mobile: Object.freeze({
-    atlasVariant: 'mobile',
-    rendererResolutionCap: 1.25,
-    rendererAntialias: false,
-    generatedTextureResolution: 1,
-    materialFilterResolution: 0.5,
+    // The smaller 192px-per-frame atlas did not survive high-DPI landscape
+    // presentation. Keep the mobile LOD in motion/particle cadence instead.
+    atlasVariant: 'desktop',
+    rendererResolutionCap: 2,
+    rendererAntialias: true,
+    generatedTextureResolution: 2,
+    materialFilterResolution: 'inherit',
     bloomStrength: 0,
-    bloomResolution: 0.5,
+    bloomResolution: 1,
     overlayFps: 8,
     refraction: false,
     screenGrade: false,
