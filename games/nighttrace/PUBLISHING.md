@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.7.1`
+- Current web release: `v1.7.2`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -68,6 +68,17 @@ The v1.6.0 remote-power, pickup, and music gate additionally requires:
   Combat Systems Codex are regenerated from the stable v1.6.0 build
 - no supplied reference frame, artwork, or audio is included in the package
 
+The v1.7.2 remote-power presentation-parity gate additionally requires:
+
+- Graveglass Spires and Eclipse Harrow consume immutable presentation-only
+  profiles across Basic, Upgraded, Mastered, and Final
+- additive hostile underglow remains below the protected hero, boss, and
+  foreground actor layers
+- cosmetic debris and shimmer are deterministic and never consume simulation
+  randomness or alter damage, cooldown, targeting, or collision state
+- the standalone HTTPS choreography review autoplays the authored material
+  reveals without becoming part of the gameplay bundle
+
 ## Release archives
 
 The Windows archive contains:
@@ -101,6 +112,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.6.0`: Graveglass Spires, Eclipse Harrow, remote-world targeting, rare-drop light shafts, original layered music, and refreshed deterministic evidence.
 - `v1.7.0`: experimental hero and sovereign material-VFX pass.
 - `v1.7.1`: full-resolution actor rescue, protected actor layering, bounded maximum-load effects, hostile boss atmosphere, and desktop/DPR-3 mobile visual validation.
+- `v1.7.2`: Graveglass Spires and Eclipse Harrow presentation parity with stage-scaled authored material profiles, layered hostile underglow, deterministic cosmetic debris, and unchanged combat simulation.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.
