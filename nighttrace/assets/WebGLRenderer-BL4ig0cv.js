@@ -1,0 +1,1 @@
+import{r as e}from"./GameCanvas-Btas-q1g.js";export{e as WebGLRenderer};
