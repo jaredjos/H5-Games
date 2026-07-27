@@ -186,6 +186,16 @@ const HERO_ART_ROOT_Y = (690 * HERO_RUNTIME_SCALE) / HERO_RUNTIME_FRAME_SIZE
 // Keep the authored hero inside the normal-horde silhouette range.
 // Sovereign bosses retain their separate 210x245+ presentation scale.
 const HERO_ART_SCALE = 66 / (550 * HERO_RUNTIME_SCALE)
+const HERO_MATERIAL_FRAME = Object.freeze({
+  gather: 0,
+  driftA: 4,
+  driftB: 6,
+  impact: 8,
+  lance: 10,
+  fragments: 11,
+  fracture: 13,
+  dust: 15,
+} as const)
 
 export interface GameCanvasHandle {
   beginEncounter(): void
@@ -444,12 +454,10 @@ class NighttraceRuntime {
   private readonly pickupAuraGraphics = new Graphics()
   private readonly loopGraphics = new Graphics()
   private readonly groundedVfxDustGraphics = new Graphics()
-  private readonly ringGraphics = new Graphics()
   private readonly motionGraphics = new Graphics()
   private readonly projectileTrailGraphics = new Graphics()
   private readonly weaponVfxAdditiveGraphics = new Graphics()
   private readonly weaponVfxGraphics = new Graphics()
-  private readonly heroAura = new Graphics()
   private readonly screenEffects = new Container()
   private readonly screenFlash = new Graphics()
   private readonly cinematicGraphics = new Graphics()
@@ -486,6 +494,8 @@ class NighttraceRuntime {
   private eclipseCathedralTexture?: Texture
   private hostileGroundFieldTexture?: Texture
   private hostileGroundLaneTexture?: Texture
+  private heroGroundMaterialTexture?: Texture
+  private heroPowerMaterialFrames: Texture[] = []
   private readonly authoredSpellMaterialSprites: Sprite[] = []
   private authoredSpellMaterialCursor = 0
   private readonly groundedVfxMaterialSprites: Sprite[] = []
@@ -685,6 +695,16 @@ class NighttraceRuntime {
     const groundedVfxAssetBundle = await import('./groundedVfxAssetData')
     const authoredSpellLod = resolveAuthoredSpellAssetLod(this.visualLod)
     const groundedVfxAssetLod = this.visualLod === 'mobile' ? 'Mobile' : 'Desktop'
+    const heroPowerMaterialAtlas = appAssetUrl(
+      this.visualLod === 'mobile'
+        ? 'assets/character-vfx/hero-material-vfx-atlas-v1-mobile.webp'
+        : 'assets/character-vfx/hero-material-vfx-atlas-v1-desktop.webp',
+    )
+    const heroGroundMaterialAsset = appAssetUrl(
+      this.visualLod === 'mobile'
+        ? 'assets/spell-vfx/hero-ground-material-v2-mobile.webp'
+        : 'assets/spell-vfx/hero-ground-material-v2.webp',
+    )
     const assetLoad = Promise.all([
       Assets.load<Texture>(backgroundForLevel(this.level.id)),
       Assets.load<Texture>(appAssetUrl('assets/hero-animations/hero-walk-runtime.webp')),
@@ -718,6 +738,8 @@ class NighttraceRuntime {
           `hostileGroundLane${groundedVfxAssetLod}`
         ],
       ),
+      Assets.load<Texture>(heroPowerMaterialAtlas),
+      Assets.load<Texture>(heroGroundMaterialAsset),
     ])
     try {
       const [
@@ -735,6 +757,8 @@ class NighttraceRuntime {
           eclipseCathedralTexture,
           hostileGroundFieldTexture,
           hostileGroundLaneTexture,
+          heroPowerMaterialSheet,
+          heroGroundMaterialTexture,
         ],
       ] = await Promise.all([applicationInit, assetLoad])
 
@@ -781,7 +805,6 @@ class NighttraceRuntime {
         this.motionEchoLayer,
         this.weaponVfxAdditiveGraphics,
         this.weaponVfxGraphics,
-        this.ringGraphics,
       )
       this.app.stage.addChild(this.world, this.screenEffects)
       this.screenEffects.addChild(
@@ -802,6 +825,12 @@ class NighttraceRuntime {
       this.eclipseCathedralTexture = eclipseCathedralTexture
       this.hostileGroundFieldTexture = hostileGroundFieldTexture
       this.hostileGroundLaneTexture = hostileGroundLaneTexture
+      this.heroPowerMaterialFrames = this.sliceTexture(
+        heroPowerMaterialSheet,
+        4,
+        4,
+      )
+      this.heroGroundMaterialTexture = heroGroundMaterialTexture
       this.createVfxTextures()
       this.heroGroundShadowFilter = createGroundShadowFilter(
         0x163b46,
@@ -813,12 +842,6 @@ class NighttraceRuntime {
       )
       this.heroSanctumField = createHeroSanctumField()
       this.bossHostileField = createBossHostileField()
-      this.heroAura.ellipse(0, 9, 54, 18).fill({ color: 0x02060a, alpha: 0.34 })
-      this.heroAura.ellipse(0, 8, 44, 14).stroke({ color: 0xffdf83, width: 2, alpha: 0.28 })
-      this.heroAura
-        .poly([-42, 8, -19, 3, 0, -5, 19, 3, 42, 8, 19, 13, 0, 21, -19, 13], true)
-        .stroke({ color: 0x64f5e0, width: 1.5, alpha: 0.22 })
-      this.heroAura.position.set(this.player.x, this.player.y)
       this.heroGroundShadow = new Sprite(Texture.WHITE)
       this.heroGroundShadow.anchor.set(0.5)
       this.heroGroundShadow.width = 78
@@ -834,7 +857,6 @@ class NighttraceRuntime {
       this.heroSanctum.filters = [this.heroSanctumField.filter]
       this.actorGroundLayer.addChild(this.heroSanctum)
       this.actorGroundLayer.addChild(this.heroGroundShadow)
-      this.actorGroundLayer.addChild(this.heroAura)
       const initialHeroTexture =
         this.heroChargeFrames[0] ?? this.heroWalkFrames[0] ?? Texture.WHITE
       this.hero = new Sprite(initialHeroTexture)
@@ -1343,12 +1365,6 @@ class NighttraceRuntime {
         facingAngle: Math.atan2(this.heroFacing.y, this.heroFacing.x),
       })
     }
-    this.heroAura.position.set(playerRenderX, playerRenderY + 2)
-    this.heroAura.rotation = this.motionClock * 0.14
-    this.heroAura.scale.set(
-      1 + Math.sin(this.motionClock * 2.2) * 0.018 + heroGlow * 0.18,
-    )
-    this.heroAura.alpha = 0.82 + heroGlow * 0.18
     if (this.heroGroundShadow) {
       this.heroGroundShadow.position.set(
         playerRenderX + heroPose.offsetX * 0.18,
@@ -4083,86 +4099,6 @@ class NighttraceRuntime {
     return ({ solo: 0, combined: 1, mastered: 2, final: 3 } as const)[stage]
   }
 
-  private drawSegmentedRing(
-    graphics: Graphics,
-    x: number,
-    y: number,
-    radius: number,
-    segments: number,
-    rotation: number,
-    color: number,
-    width: number,
-    alpha: number,
-    gapRatio = 0.28,
-  ) {
-    const safeSegments = Math.max(3, Math.floor(segments))
-    const segmentAngle = (Math.PI * 2) / safeSegments
-    const arcAngle = segmentAngle * (1 - gapRatio)
-    const steps = 3
-    for (let segment = 0; segment < safeSegments; segment += 1) {
-      const start = rotation + segment * segmentAngle
-      graphics.moveTo(x + Math.cos(start) * radius, y + Math.sin(start) * radius)
-      for (let step = 1; step <= steps; step += 1) {
-        const angle = start + arcAngle * (step / steps)
-        graphics.lineTo(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius)
-      }
-    }
-    graphics.stroke({ color, width, alpha })
-  }
-
-  private drawJaggedRing(
-    graphics: Graphics,
-    x: number,
-    y: number,
-    radius: number,
-    pointCount: number,
-    rotation: number,
-    seed: number,
-    jitter: number,
-    color: number,
-    width: number,
-    alpha: number,
-  ) {
-    const safeCount = Math.max(12, pointCount)
-    for (let index = 0; index <= safeCount; index += 1) {
-      const wrappedIndex = index % safeCount
-      const angle = rotation + (Math.PI * 2 * wrappedIndex) / safeCount
-      const noise =
-        Math.sin((seed + wrappedIndex * 17) * 1.739) * 0.62 +
-        Math.sin((seed + wrappedIndex * 7) * 0.811) * 0.38
-      const pointRadius = radius + noise * jitter
-      const pointX = x + Math.cos(angle) * pointRadius
-      const pointY = y + Math.sin(angle) * pointRadius
-      if (index === 0) graphics.moveTo(pointX, pointY)
-      else graphics.lineTo(pointX, pointY)
-    }
-    graphics.stroke({ color, width, alpha })
-  }
-
-  private drawRadialTicks(
-    graphics: Graphics,
-    x: number,
-    y: number,
-    radius: number,
-    count: number,
-    length: number,
-    rotation: number,
-    color: number,
-    width: number,
-    alpha: number,
-  ) {
-    for (let index = 0; index < count; index += 1) {
-      const angle = rotation + (Math.PI * 2 * index) / count
-      graphics
-        .moveTo(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius)
-        .lineTo(
-          x + Math.cos(angle) * (radius + length),
-          y + Math.sin(angle) * (radius + length),
-        )
-    }
-    graphics.stroke({ color, width, alpha })
-  }
-
   private drawDiamondGlyph(
     graphics: Graphics,
     x: number,
@@ -4181,183 +4117,6 @@ class NighttraceRuntime {
     const path = graphics.poly(points, true)
     if (filled) path.fill({ color, alpha })
     else path.stroke({ color, width: Math.max(1.2, radius * 0.16), alpha })
-  }
-
-  private drawStarburst(
-    graphics: Graphics,
-    x: number,
-    y: number,
-    rays: number,
-    innerRadius: number,
-    outerRadius: number,
-    rotation: number,
-    color: number,
-    width: number,
-    alpha: number,
-  ) {
-    for (let index = 0; index < rays; index += 1) {
-      const angle = rotation + (Math.PI * 2 * index) / rays
-      const length = outerRadius * (index % 2 === 0 ? 1 : 0.64)
-      graphics
-        .moveTo(
-          x + Math.cos(angle) * innerRadius,
-          y + Math.sin(angle) * innerRadius,
-        )
-        .lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length)
-    }
-    graphics.stroke({ color, width, alpha })
-  }
-
-  private drawCinderFeather(
-    graphics: Graphics,
-    x: number,
-    y: number,
-    angle: number,
-    length: number,
-    width: number,
-    glowColor: number,
-    coreColor: number,
-    alpha: number,
-    bend: -1 | 1,
-  ) {
-    const forwardX = Math.cos(angle)
-    const forwardY = Math.sin(angle)
-    const normalX = -forwardY
-    const normalY = forwardX
-    const buildPoints = (widthScale: number, lengthScale: number) => {
-      const halfWidth = width * widthScale
-      const tailX = x - forwardX * length * 0.48 * lengthScale
-      const tailY = y - forwardY * length * 0.48 * lengthScale
-      const shoulderX =
-        x +
-        forwardX * length * 0.02 * lengthScale +
-        normalX * bend * width * 0.22
-      const shoulderY =
-        y +
-        forwardY * length * 0.02 * lengthScale +
-        normalY * bend * width * 0.22
-      const tipX =
-        x +
-        forwardX * length * 0.58 * lengthScale +
-        normalX * bend * width * 0.48
-      const tipY =
-        y +
-        forwardY * length * 0.58 * lengthScale +
-        normalY * bend * width * 0.48
-      return [
-        tailX + normalX * halfWidth * 0.18,
-        tailY + normalY * halfWidth * 0.18,
-        shoulderX + normalX * halfWidth,
-        shoulderY + normalY * halfWidth,
-        tipX,
-        tipY,
-        shoulderX - normalX * halfWidth * 0.62,
-        shoulderY - normalY * halfWidth * 0.62,
-        tailX - normalX * halfWidth * 0.12,
-        tailY - normalY * halfWidth * 0.12,
-      ]
-    }
-
-    graphics
-      .poly(buildPoints(1.28, 1.08), true)
-      .fill({ color: glowColor, alpha: alpha * 0.15 })
-    graphics
-      .poly(buildPoints(0.72, 1), true)
-      .fill({ color: glowColor, alpha: alpha * 0.62 })
-    graphics
-      .poly(buildPoints(0.28, 0.86), true)
-      .fill({ color: coreColor, alpha: alpha * 0.92 })
-  }
-
-  private drawBellGlyph(
-    graphics: Graphics,
-    x: number,
-    y: number,
-    size: number,
-    rotation: number,
-    edgeColor: number,
-    coreColor: number,
-    alpha: number,
-  ) {
-    const cos = Math.cos(rotation)
-    const sin = Math.sin(rotation)
-    const transform = (localX: number, localY: number): [number, number] => [
-      x + (localX * cos - localY * sin) * size,
-      y + (localX * sin + localY * cos) * size,
-    ]
-    const canopy = [
-      transform(-0.5, 0.24),
-      transform(-0.34, -0.28),
-      transform(-0.2, -0.48),
-      transform(0.2, -0.48),
-      transform(0.34, -0.28),
-      transform(0.5, 0.24),
-      transform(0.3, 0.34),
-      transform(-0.3, 0.34),
-    ].flat()
-    const clapper = [
-      transform(0, 0.22),
-      transform(0.16, 0.5),
-      transform(0, 0.66),
-      transform(-0.16, 0.5),
-    ].flat()
-
-    graphics
-      .poly(canopy, true)
-      .fill({ color: 0x0b0d21, alpha: alpha * 0.74 })
-      .stroke({ color: edgeColor, width: Math.max(1.5, size * 0.08), alpha })
-    graphics
-      .poly(clapper, true)
-      .fill({ color: coreColor, alpha: alpha * 0.94 })
-  }
-
-  private drawPressureWedge(
-    graphics: Graphics,
-    x: number,
-    y: number,
-    angle: number,
-    distance: number,
-    length: number,
-    width: number,
-    edgeColor: number,
-    fillColor: number,
-    alpha: number,
-  ) {
-    const forwardX = Math.cos(angle)
-    const forwardY = Math.sin(angle)
-    const normalX = -forwardY
-    const normalY = forwardX
-    const backX = x + forwardX * (distance - length * 0.52)
-    const backY = y + forwardY * (distance - length * 0.52)
-    const shoulderX = x + forwardX * (distance + length * 0.16)
-    const shoulderY = y + forwardY * (distance + length * 0.16)
-    const tipX = x + forwardX * (distance + length * 0.64)
-    const tipY = y + forwardY * (distance + length * 0.64)
-
-    graphics
-      .poly(
-        [
-          backX + normalX * width * 0.22,
-          backY + normalY * width * 0.22,
-          shoulderX + normalX * width * 0.5,
-          shoulderY + normalY * width * 0.5,
-          tipX,
-          tipY,
-          shoulderX - normalX * width * 0.5,
-          shoulderY - normalY * width * 0.5,
-          backX - normalX * width * 0.22,
-          backY - normalY * width * 0.22,
-          x + forwardX * (distance - length * 0.12),
-          y + forwardY * (distance - length * 0.12),
-        ],
-        true,
-      )
-      .fill({ color: fillColor, alpha: alpha * 0.12 })
-      .stroke({
-        color: edgeColor,
-        width: Math.max(1.4, width * 0.055),
-        alpha: alpha * 0.88,
-      })
   }
 
   private drawCrescentGlyph(
@@ -4481,6 +4240,118 @@ class NighttraceRuntime {
     sprite.blendMode = 'normal'
     sprite.anchor.set(0.5, 0.96)
     return sprite
+  }
+
+  private drawHeroPowerMaterialEvent(options: {
+    x: number
+    y: number
+    radius: number
+    progress: number
+    stage: WeaponVfxStage
+    seed: number
+    tint: number
+    frame: number
+    angle?: number
+    groundOpacity?: number
+    materialOpacity?: number
+    stretchX?: number
+    stretchY?: number
+  }) {
+    const progress = clamp(options.progress, 0, 1)
+    const rise = clamp(progress / 0.18, 0, 1)
+    const decay = 1 - clamp((progress - 0.6) / 0.4, 0, 1)
+    const envelope = rise * decay
+    if (envelope <= 0.001) return
+
+    const stage = this.vfxStageIndex(options.stage)
+    const stageScale = [0.82, 0.92, 1.02, 1.14][stage]
+    const variation = replacementCosmeticUnit(options.seed, 0, 61)
+    const rotation =
+      (options.angle ?? 0) +
+      (replacementCosmeticUnit(options.seed, 1, 67) - 0.5) * 0.34
+    const reducedFlashScale = this.settings.reducedFlash ? 0.62 : 1
+
+    if (this.heroGroundMaterialTexture) {
+      const ground = this.acquireAuthoredSpellMaterialSprite(
+        this.heroGroundMaterialTexture,
+      )
+      ground.anchor.set(0.5)
+      ground.position.set(options.x, options.y + options.radius * 0.08)
+      ground.width =
+        options.radius *
+        2.5 *
+        stageScale *
+        (0.92 + variation * 0.16)
+      ground.height =
+        options.radius *
+        1.62 *
+        stageScale *
+        (0.9 + variation * 0.12)
+      ground.rotation = rotation * 0.24
+      ground.tint = 0xb9c5c8
+      ground.alpha =
+        (options.groundOpacity ?? 0.17) *
+        envelope *
+        (0.9 + stage * 0.045)
+      ground.blendMode = 'normal'
+      ground.zIndex = Math.round(options.y * 10) - 4
+    }
+
+    const frame = this.heroPowerMaterialFrames[options.frame]
+    if (frame) {
+      const material = this.acquireAuthoredSpellMaterialSprite(frame)
+      material.anchor.set(0.5)
+      material.position.set(
+        options.x + Math.cos(rotation) * options.radius * 0.04,
+        options.y + Math.sin(rotation) * options.radius * 0.04,
+      )
+      material.width =
+        options.radius *
+        2.24 *
+        stageScale *
+        (options.stretchX ?? 1)
+      material.height =
+        options.radius *
+        2.24 *
+        stageScale *
+        (options.stretchY ?? 1)
+      material.rotation = rotation
+      material.tint = options.tint
+      material.alpha =
+        (options.materialOpacity ?? 0.24) *
+        envelope *
+        reducedFlashScale
+      material.blendMode = 'add'
+      material.zIndex = Math.round(options.y * 10) - 2
+    }
+
+    const gritCount = Math.min(
+      this.visualLod === 'mobile' ? 3 + stage : 5 + stage * 2,
+      10,
+    )
+    for (let grit = 0; grit < gritCount; grit += 1) {
+      const gritAngle =
+        rotation +
+        (replacementCosmeticUnit(options.seed, grit, 71) - 0.5) * 2.2
+      const distance =
+        options.radius *
+        (0.18 + replacementCosmeticUnit(options.seed, grit, 73) * 0.74) *
+        rise
+      const size =
+        options.radius *
+        (0.012 + replacementCosmeticUnit(options.seed, grit, 79) * 0.025)
+      this.weaponVfxGraphics
+        .ellipse(
+          options.x + Math.cos(gritAngle) * distance,
+          options.y + Math.sin(gritAngle) * distance * 0.62,
+          size * 1.7,
+          size * 0.68,
+        )
+        .fill({
+          color: grit % 3 === 0 ? options.tint : 0x687176,
+          alpha: envelope * (grit % 3 === 0 ? 0.12 : 0.16),
+        })
+    }
   }
 
   private beginGroundedVfxFrame() {
@@ -5139,93 +5010,37 @@ class NighttraceRuntime {
 
       switch (effect.kind) {
         case 'helio-gate': {
-          const gateRadius = 22 + stage * 9 + attack * 8
-          graphics
-            .circle(effect.x, effect.y, gateRadius * 1.24)
-            .fill({ color: profile.glowColor, alpha: motionAlpha * 0.035 })
-          this.drawSegmentedRing(
-            graphics,
-            effect.x,
-            effect.y,
-            gateRadius,
-            8 + stage * 2,
-            -rotation,
-            profile.accentColor,
-            2.2 + stage * 0.4,
-            motionAlpha * 0.84,
-          )
-          if (stage >= 1) {
-            this.drawSegmentedRing(
-              graphics,
-              effect.x,
-              effect.y,
-              gateRadius * 1.5,
-              6 + stage * 3,
-              rotation * 0.7,
-              profile.secondaryColor,
-              1.5 + stage * 0.24,
-              motionAlpha * 0.56,
-              0.44,
-            )
-          }
-          this.drawRadialTicks(
-            graphics,
-            effect.x,
-            effect.y,
-            gateRadius * 1.03,
-            8 + stage * 4,
-            5 + stage * 2,
-            rotation,
-            profile.coreColor,
-            1.4,
-            motionAlpha * 0.72,
-          )
-          const normalX = -Math.sin(effect.angle)
-          const normalY = Math.cos(effect.angle)
-          const railLength = 76 + stage * 20
-          for (const side of stage >= 1 ? [-1, 1] : [0]) {
-            const offset = side * (7 + stage * 2)
-            graphics
-              .moveTo(effect.x + normalX * offset, effect.y + normalY * offset)
-              .lineTo(
-                effect.x + Math.cos(effect.angle) * railLength + normalX * offset,
-                effect.y + Math.sin(effect.angle) * railLength + normalY * offset,
-              )
-              .stroke({
-                color: side === 0 ? profile.coreColor : profile.secondaryColor,
-                width: side === 0 ? 3.2 : 1.6,
-                alpha: motionAlpha * (side === 0 ? 0.9 : 0.58),
-              })
-          }
+          this.drawHeroPowerMaterialEvent({
+            x: effect.x,
+            y: effect.y,
+            radius: 30 + stage * 8 + attack * 5,
+            progress,
+            stage: state.stage,
+            seed: effect.seed,
+            tint: profile.coreColor,
+            frame: HERO_MATERIAL_FRAME.lance,
+            angle: effect.angle + Math.PI * 0.23,
+            groundOpacity: 0.13,
+            materialOpacity: 0.34,
+            stretchX: 1.28 + stage * 0.08,
+            stretchY: 0.72,
+          })
           break
         }
         case 'helio-impact': {
-          graphics
-            .circle(effect.x, effect.y, radius * 0.34)
-            .fill({ color: profile.glowColor, alpha: motionAlpha * 0.12 })
-          this.drawStarburst(
-            graphics,
-            effect.x,
-            effect.y,
-            8 + stage * 2,
-            4,
+          this.drawHeroPowerMaterialEvent({
+            x: effect.x,
+            y: effect.y,
             radius,
-            rotation,
-            profile.coreColor,
-            2.4 + stage * 0.35,
-            motionAlpha * 0.9,
-          )
-          this.drawSegmentedRing(
-            graphics,
-            effect.x,
-            effect.y,
-            radius * 0.72,
-            8 + stage * 2,
-            -rotation,
-            profile.accentColor,
-            2,
-            motionAlpha * 0.68,
-          )
+            progress,
+            stage: state.stage,
+            seed: effect.seed,
+            tint: profile.accentColor,
+            frame: HERO_MATERIAL_FRAME.impact,
+            angle: rotation,
+            groundOpacity: 0.2,
+            materialOpacity: 0.3,
+          })
           break
         }
         case 'crescent-orbit': {
@@ -5234,46 +5049,21 @@ class NighttraceRuntime {
             state.stage,
           )
           const orbitRadius = radius * (0.68 + attack * 0.32)
-          if (stage === 3) {
-            graphics
-              .circle(effect.x, effect.y, orbitRadius * 0.38)
-              .fill({
-                color: 0x01070c,
-                alpha: this.protectedEffectAlphaAt(
-                  effect.x,
-                  effect.y,
-                  motionAlpha * 0.46,
-                  'dark',
-                ),
-              })
-              .stroke({ color: profile.secondaryColor, width: 2, alpha: motionAlpha * 0.62 })
-          }
-          this.drawSegmentedRing(
-            graphics,
-            effect.x,
-            effect.y,
-            orbitRadius,
-            10 + stage * 4,
-            rotation,
-            profile.secondaryColor,
-            1.5 + stage * 0.22,
-            motionAlpha * 0.48,
-            0.48,
-          )
-          if (stage >= 1) {
-            this.drawSegmentedRing(
-              graphics,
-              effect.x,
-              effect.y,
-              orbitRadius * 0.56,
-              8 + stage * 2,
-              -rotation * 1.3,
-              profile.accentColor,
-              1.3,
-              motionAlpha * 0.4,
-              0.52,
-            )
-          }
+          this.drawHeroPowerMaterialEvent({
+            x: effect.x,
+            y: effect.y,
+            radius: orbitRadius,
+            progress,
+            stage: state.stage,
+            seed: effect.seed,
+            tint: profile.secondaryColor,
+            frame: HERO_MATERIAL_FRAME.driftA,
+            angle: rotation,
+            groundOpacity: stage === 3 ? 0.22 : 0.12,
+            materialOpacity: stage === 3 ? 0.2 : 0.12,
+            stretchX: 1.16,
+            stretchY: 0.84,
+          })
           for (let blade = 0; blade < orbitCount; blade += 1) {
             const bladeAngle = rotation + (Math.PI * 2 * blade) / orbitCount
             const layerRadius = stage === 3 && blade % 2 ? orbitRadius * 0.62 : orbitRadius
@@ -5291,17 +5081,19 @@ class NighttraceRuntime {
         }
         case 'crescent-impact': {
           const shards = 4 + stage * 2
-          this.drawSegmentedRing(
-            graphics,
-            effect.x,
-            effect.y,
-            radius * 0.62,
-            shards,
-            rotation,
-            profile.accentColor,
-            2.1,
-            motionAlpha * 0.72,
-          )
+          this.drawHeroPowerMaterialEvent({
+            x: effect.x,
+            y: effect.y,
+            radius,
+            progress,
+            stage: state.stage,
+            seed: effect.seed,
+            tint: profile.coreColor,
+            frame: HERO_MATERIAL_FRAME.fragments,
+            angle: rotation,
+            groundOpacity: 0.16,
+            materialOpacity: 0.24,
+          })
           for (let shard = 0; shard < shards; shard += 1) {
             const shardAngle = rotation + (Math.PI * 2 * shard) / shards
             this.drawCrescentGlyph(
@@ -5325,57 +5117,35 @@ class NighttraceRuntime {
             const node = effect.points?.[nodeIndex]
             if (!node) continue
             const nodeRadius = 10 + stage * 2.7
-            graphics
-              .circle(node.x, node.y, nodeRadius * 1.5)
-              .fill({ color: profile.glowColor, alpha: motionAlpha * 0.055 })
-            this.drawSegmentedRing(
-              graphics,
-              node.x,
-              node.y,
-              nodeRadius,
-              6 + stage * 2,
-              rotation + nodeIndex,
-              profile.accentColor,
-              1.8,
-              motionAlpha * 0.84,
-              0.34,
-            )
-            this.drawDiamondGlyph(
-              graphics,
-              node.x,
-              node.y,
-              4 + stage,
-              -rotation,
-              profile.coreColor,
-              motionAlpha,
-              stage >= 2,
-            )
+            this.drawHeroPowerMaterialEvent({
+              x: node.x,
+              y: node.y,
+              radius: nodeRadius * 1.7,
+              progress,
+              stage: state.stage,
+              seed: effect.seed + nodeIndex * 97,
+              tint: profile.accentColor,
+              frame: HERO_MATERIAL_FRAME.impact,
+              angle: rotation + nodeIndex,
+              groundOpacity: 0.11,
+              materialOpacity: 0.2,
+            })
           }
           if (stage === 3) {
-            this.drawSegmentedRing(
-              graphics,
-              effect.x,
-              effect.y,
-              radius * 0.82,
-              16,
-              -rotation,
-              profile.secondaryColor,
-              2.4,
-              motionAlpha * 0.58,
-              0.52,
-            )
-            this.drawRadialTicks(
-              graphics,
-              effect.x,
-              effect.y,
-              radius * 0.82,
-              12,
-              10,
-              rotation,
-              profile.coreColor,
-              1.6,
-              motionAlpha * 0.62,
-            )
+            this.drawHeroPowerMaterialEvent({
+              x: effect.x,
+              y: effect.y,
+              radius: radius * 0.82,
+              progress,
+              stage: state.stage,
+              seed: effect.seed + 401,
+              tint: profile.secondaryColor,
+              frame: HERO_MATERIAL_FRAME.gather,
+              angle: effect.angle,
+              groundOpacity: 0.16,
+              materialOpacity: 0.18,
+              stretchY: 1.18,
+            })
           }
           break
         }
@@ -5385,150 +5155,77 @@ class NighttraceRuntime {
           const centerX = impact ? effect.x : effect.x + Math.cos(effect.angle) * (34 + stage * 5)
           const centerY = impact ? effect.y : effect.y + Math.sin(effect.angle) * (34 + stage * 5)
           const coreRadius = impact ? radius * (0.19 + stage * 0.018) : 10 + stage * 2.5
-          graphics
-            .circle(centerX, centerY, coreRadius * 2.2)
-            .fill({ color: profile.glowColor, alpha: motionAlpha * 0.11 })
-          graphics
-            .circle(centerX, centerY, coreRadius * 1.18)
-            .stroke({
-              color: profile.glowColor,
-              width: 8 + stage * 1.2,
-              alpha: motionAlpha * 0.12,
+          this.drawHeroPowerMaterialEvent({
+            x: centerX,
+            y: centerY,
+            radius: coreRadius * (impact ? 4.2 : 3.3),
+            progress,
+            stage: state.stage,
+            seed: effect.seed,
+            tint: profile.accentColor,
+            frame: impact
+              ? HERO_MATERIAL_FRAME.fracture
+              : HERO_MATERIAL_FRAME.driftB,
+            angle: -rotation * 0.4,
+            groundOpacity: impact ? 0.26 : 0.16,
+            materialOpacity: impact ? 0.27 : 0.18,
+          })
+          for (let seedIndex = 0; seedIndex < stage; seedIndex += 1) {
+            const seedAngle =
+              -rotation * 0.36 +
+              replacementCosmeticUnit(effect.seed, seedIndex, 83) * Math.PI * 2
+            const seedDistance =
+              coreRadius *
+              (1.9 + replacementCosmeticUnit(effect.seed, seedIndex, 89) * 1.8)
+            this.drawHeroPowerMaterialEvent({
+              x: centerX + Math.cos(seedAngle) * seedDistance,
+              y: centerY + Math.sin(seedAngle) * seedDistance * 0.66,
+              radius: coreRadius * (0.7 + stage * 0.08),
+              progress,
+              stage: state.stage,
+              seed: effect.seed + seedIndex * 101,
+              tint:
+                seedIndex % 2 ? profile.secondaryColor : profile.coreColor,
+              frame: HERO_MATERIAL_FRAME.fragments,
+              angle: seedAngle,
+              groundOpacity: 0.08,
+              materialOpacity: 0.16,
             })
-          graphics
-            .circle(centerX, centerY, coreRadius)
-            .fill({
-              color: 0x010708,
-              alpha: this.protectedEffectAlphaAt(
-                centerX,
-                centerY,
-                motionAlpha * 0.92,
-                'dark',
-              ),
-            })
-            .stroke({ color: profile.coreColor, width: 2.2 + stage * 0.35, alpha: motionAlpha })
-          const orbitCount = 1 + stage + (impact ? 1 : 0)
-          for (let orbit = 0; orbit < orbitCount; orbit += 1) {
-            const orbitRadius = coreRadius * (1.8 + orbit * 0.78)
-            this.drawSegmentedRing(
-              graphics,
-              centerX,
-              centerY,
-              orbitRadius,
-              7 + stage * 2 + orbit,
-              (orbit % 2 ? -1 : 1) * rotation * (1 + orbit * 0.2),
-              profile.glowColor,
-              6 + (orbit === 0 ? 2 : 0),
-              motionAlpha * (0.08 - orbit * 0.008),
-              0.46,
-            )
-            this.drawSegmentedRing(
-              graphics,
-              centerX,
-              centerY,
-              orbitRadius,
-              7 + stage * 2 + orbit,
-              (orbit % 2 ? -1 : 1) * rotation * (1 + orbit * 0.2),
-              orbit % 2 ? profile.secondaryColor : profile.accentColor,
-              1.5 + (orbit === 0 ? 0.8 : 0),
-              motionAlpha * (0.72 - orbit * 0.1),
-              0.46,
-            )
-          }
-          for (let satellite = 0; satellite < stage; satellite += 1) {
-            const satelliteAngle =
-              -rotation * 0.9 + (Math.PI * 2 * satellite) / Math.max(1, stage)
-            const satelliteOrbit = coreRadius * (3.25 + (satellite % 2) * 0.72)
-            const satelliteRadius = coreRadius * (0.22 + stage * 0.025)
-            const satelliteX = centerX + Math.cos(satelliteAngle) * satelliteOrbit
-            const satelliteY = centerY + Math.sin(satelliteAngle) * satelliteOrbit
-            graphics
-              .circle(satelliteX, satelliteY, satelliteRadius * 1.8)
-              .fill({ color: profile.glowColor, alpha: motionAlpha * 0.09 })
-            graphics
-              .circle(satelliteX, satelliteY, satelliteRadius)
-              .fill({ color: 0x010708, alpha: motionAlpha * 0.94 })
-              .stroke({
-                color: satellite % 2 ? profile.secondaryColor : profile.coreColor,
-                width: 1.8 + stage * 0.18,
-                alpha: motionAlpha * 0.9,
-              })
-          }
-          const shards = capDecorativeDensity(
-            3 + stage * 2 + (impact ? 2 : 0),
-            state.stage,
-          )
-          for (let shard = 0; shard < shards; shard += 1) {
-            const shardAngle = -rotation * 0.8 + (Math.PI * 2 * shard) / shards
-            const shardRadius = coreRadius * (2.2 + (shard % 3) * 0.62)
-            this.drawDiamondGlyph(
-              graphics,
-              centerX + Math.cos(shardAngle) * shardRadius,
-              centerY + Math.sin(shardAngle) * shardRadius,
-              3.4 + stage,
-              shardAngle,
-              shard % 2 ? profile.accentColor : profile.coreColor,
-              motionAlpha * 0.72,
-              stage === 3,
-            )
           }
           break
         }
         case 'comet-launch': {
-          const rays = 4 + stage * 2
-          this.drawStarburst(
-            graphics,
-            effect.x,
-            effect.y,
-            rays,
-            12,
+          this.drawHeroPowerMaterialEvent({
+            x: effect.x,
+            y: effect.y,
             radius,
-            effect.angle - Math.PI * 0.5,
-            profile.accentColor,
-            1.8 + stage * 0.3,
-            motionAlpha * 0.64,
-          )
-          this.drawSegmentedRing(
-            graphics,
-            effect.x,
-            effect.y,
-            24 + stage * 6,
-            6 + stage * 2,
-            rotation,
-            profile.secondaryColor,
-            1.5,
-            motionAlpha * 0.48,
-            0.56,
-          )
+            progress,
+            stage: state.stage,
+            seed: effect.seed,
+            tint: profile.secondaryColor,
+            frame: HERO_MATERIAL_FRAME.driftB,
+            angle: effect.angle,
+            groundOpacity: 0.12,
+            materialOpacity: 0.22,
+            stretchX: 1.24,
+            stretchY: 0.78,
+          })
           break
         }
         case 'comet-impact': {
-          graphics
-            .circle(effect.x, effect.y, radius * 0.26)
-            .fill({ color: profile.glowColor, alpha: motionAlpha * 0.18 })
-          this.drawStarburst(
-            graphics,
-            effect.x,
-            effect.y,
-            8 + stage * 2,
-            3,
+          this.drawHeroPowerMaterialEvent({
+            x: effect.x,
+            y: effect.y,
             radius,
-            rotation,
-            profile.coreColor,
-            2 + stage * 0.32,
-            motionAlpha,
-          )
-          this.drawSegmentedRing(
-            graphics,
-            effect.x,
-            effect.y,
-            radius * 0.72,
-            7 + stage * 2,
-            -rotation,
-            profile.accentColor,
-            2,
-            motionAlpha * 0.66,
-          )
+            progress,
+            stage: state.stage,
+            seed: effect.seed,
+            tint: profile.accentColor,
+            frame: HERO_MATERIAL_FRAME.dust,
+            angle: rotation,
+            groundOpacity: 0.25,
+            materialOpacity: 0.3,
+          })
           break
         }
         case 'graveglass-eruption': {
@@ -5543,86 +5240,38 @@ class NighttraceRuntime {
           break
         }
         case 'mirror-gate': {
-          const normalX = -Math.sin(effect.angle)
-          const normalY = Math.cos(effect.angle)
-          const forwardX = Math.cos(effect.angle)
-          const forwardY = Math.sin(effect.angle)
           const gateRadius = 30 + stage * 10
-          this.drawDiamondGlyph(
-            graphics,
-            effect.x,
-            effect.y,
-            gateRadius,
-            effect.angle,
-            profile.accentColor,
-            motionAlpha * 0.72,
-          )
-          if (stage >= 1) {
-            this.drawDiamondGlyph(
-              graphics,
-              effect.x,
-              effect.y,
-              gateRadius * 0.62,
-              -effect.angle + progress,
-              profile.secondaryColor,
-              motionAlpha * 0.56,
-            )
-          }
-          const railLength = 92 + stage * 38
-          for (const direction of [-1, 1]) {
-            for (const side of [-1, 1]) {
-              const offset = side * (6 + stage * 2)
-              graphics
-                .moveTo(effect.x + normalX * offset, effect.y + normalY * offset)
-                .lineTo(
-                  effect.x + forwardX * railLength * direction + normalX * offset,
-                  effect.y + forwardY * railLength * direction + normalY * offset,
-                )
-            }
-            graphics.stroke({
-              color: direction > 0 ? profile.coreColor : profile.secondaryColor,
-              width: 1.6 + stage * 0.34,
-              alpha: motionAlpha * (direction > 0 ? 0.76 : 0.56),
-            })
-          }
-          const shards = 4 + stage * 2
-          for (let shard = 0; shard < shards; shard += 1) {
-            const shardAngle = rotation + (Math.PI * 2 * shard) / shards
-            this.drawDiamondGlyph(
-              graphics,
-              effect.x + Math.cos(shardAngle) * gateRadius * 1.25,
-              effect.y + Math.sin(shardAngle) * gateRadius * 1.25,
-              3 + stage,
-              shardAngle,
-              shard % 2 ? profile.accentColor : profile.secondaryColor,
-              motionAlpha * 0.68,
-              stage >= 2,
-            )
-          }
+          this.drawHeroPowerMaterialEvent({
+            x: effect.x,
+            y: effect.y,
+            radius: gateRadius * 1.35,
+            progress,
+            stage: state.stage,
+            seed: effect.seed,
+            tint: profile.accentColor,
+            frame: HERO_MATERIAL_FRAME.fragments,
+            angle: effect.angle,
+            groundOpacity: 0.13,
+            materialOpacity: 0.27,
+            stretchX: 1.24 + stage * 0.08,
+            stretchY: 0.78,
+          })
           break
         }
         case 'mirror-impact': {
-          this.drawDiamondGlyph(
-            graphics,
-            effect.x,
-            effect.y,
-            radius * 0.72,
-            rotation,
-            profile.accentColor,
-            motionAlpha * 0.8,
-          )
-          this.drawStarburst(
-            graphics,
-            effect.x,
-            effect.y,
-            6 + stage * 2,
-            radius * 0.16,
+          this.drawHeroPowerMaterialEvent({
+            x: effect.x,
+            y: effect.y,
             radius,
-            -rotation,
-            profile.coreColor,
-            1.7 + stage * 0.3,
-            motionAlpha * 0.82,
-          )
+            progress,
+            stage: state.stage,
+            seed: effect.seed,
+            tint: profile.coreColor,
+            frame: HERO_MATERIAL_FRAME.fracture,
+            angle: rotation,
+            groundOpacity: 0.17,
+            materialOpacity: 0.25,
+          })
           break
         }
         case 'eclipse-harrow': {
@@ -5662,17 +5311,37 @@ class NighttraceRuntime {
       const flattened = effect.points.flatMap((point) => [point.x, point.y])
       if (effect.closed !== false) {
         this.loopGraphics.poly(flattened, true).fill({ color: effect.color, alpha: alpha * 0.12 })
-        this.loopGraphics.stroke({ color: 0xffdf87, width: effect.width ?? 5, alpha: alpha * 0.8 })
-      } else if (effect.points.length > 1) {
-        this.loopGraphics.moveTo(effect.points[0].x, effect.points[0].y)
-        for (let pointIndex = 1; pointIndex < effect.points.length; pointIndex += 1) {
-          this.loopGraphics.lineTo(effect.points[pointIndex].x, effect.points[pointIndex].y)
-        }
-        this.loopGraphics.stroke({
-          color: effect.color,
-          width: effect.width ?? 5,
-          alpha: alpha * 0.9,
+        const center = effect.points.reduce(
+          (sum, point) => ({ x: sum.x + point.x, y: sum.y + point.y }),
+          { x: 0, y: 0 },
+        )
+        center.x /= Math.max(1, effect.points.length)
+        center.y /= Math.max(1, effect.points.length)
+        const extent = effect.points.reduce(
+          (largest, point) =>
+            Math.max(largest, Math.hypot(point.x - center.x, point.y - center.y)),
+          24,
+        )
+        this.drawHeroPowerMaterialEvent({
+          x: center.x,
+          y: center.y,
+          radius: extent,
+          progress: 1 - alpha,
+          stage: 'combined',
+          seed: Math.round(center.x * 19 + center.y * 31),
+          tint: effect.color,
+          frame: HERO_MATERIAL_FRAME.dust,
+          groundOpacity: 0.12,
+          materialOpacity: 0.15,
         })
+      } else if (effect.points.length > 1) {
+        this.drawPolyline(
+          this.loopGraphics,
+          effect.points,
+          effect.color,
+          effect.width ?? 5,
+          alpha * 0.9,
+        )
       }
     }
 
@@ -5724,7 +5393,6 @@ class NighttraceRuntime {
     }
     this.finishGroundedVfxFrame()
 
-    this.ringGraphics.clear()
     for (let index = this.rings.length - 1; index >= 0; index -= 1) {
       const ring = this.rings[index]
       if (ring.life <= 0) {
@@ -5733,9 +5401,26 @@ class NighttraceRuntime {
       }
       const progress = 1 - ring.life / ring.total
       const radius = lerp(ring.radius, ring.maxRadius, 1 - (1 - progress) ** 3)
-      this.ringGraphics
-        .circle(ring.x, ring.y, radius)
-        .stroke({ color: ring.color, width: ring.width * (1 - progress * 0.72), alpha: 1 - progress })
+      this.drawHeroPowerMaterialEvent({
+        x: ring.x,
+        y: ring.y,
+        radius,
+        progress,
+        stage:
+          ring.maxRadius >= 420
+            ? 'final'
+            : ring.maxRadius >= 150
+              ? 'mastered'
+              : 'solo',
+        seed: Math.round(ring.x * 17 + ring.y * 29 + ring.maxRadius * 43),
+        tint: ring.color,
+        frame:
+          ring.maxRadius >= 260
+            ? HERO_MATERIAL_FRAME.gather
+            : HERO_MATERIAL_FRAME.dust,
+        groundOpacity: ring.maxRadius >= 260 ? 0.1 : 0.14,
+        materialOpacity: ring.maxRadius >= 260 ? 0.14 : 0.2,
+      })
     }
 
     this.screenFlash.alpha = this.screenFlashAlpha
@@ -6234,59 +5919,47 @@ class NighttraceRuntime {
       return
     }
 
-    const ringRadius = enemy.radius * (
+    const pressureRadius = enemy.radius * (
       1.34 -
       envelope.gather * 0.38 +
       envelope.release * 0.26 +
       envelope.impact * (enemy.isBoss ? 0.72 : 0.36)
     )
     this.motionGraphics
-      .circle(x, y + enemy.radius * 0.12, ringRadius)
+      .ellipse(
+        x,
+        y + enemy.radius * 0.24,
+        pressureRadius,
+        pressureRadius * (enemy.isBoss ? 0.34 : 0.28),
+      )
       .fill({
         color: hordeProfile?.shadowColor ?? HOSTILE_SHADOW_COLOR,
-        alpha: (0.025 + envelope.gather * 0.05 + envelope.impact * 0.08) *
+        alpha: (0.04 + envelope.gather * 0.07 + envelope.impact * 0.12) *
           prominence,
       })
-    this.motionGraphics
-      .circle(x, y + enemy.radius * 0.12, ringRadius)
-      .stroke({
-        color: accent,
-        width: enemy.isBoss ? 5 : 2.4,
-        alpha: (0.08 + pulse * (enemy.isBoss ? 0.54 : 0.24)) *
-          prominence *
-          (this.settings.reducedFlash ? 0.58 : 1),
-      })
-    if (envelope.release > 0.04 || envelope.impact > 0.04) {
-      this.drawSegmentedRing(
-        this.motionGraphics,
-        x,
-        y + enemy.radius * 0.12,
-        ringRadius * (0.68 + envelope.impact * 0.25),
-        enemy.isBoss ? 12 + enemy.phase * 2 : 7,
-        this.motionClock * (enemy.isBoss ? -0.9 : -0.45),
-        secondary,
-        enemy.isBoss ? 3 : 1.4,
-        (envelope.release * 0.38 + envelope.flashScale * 0.46) *
-          prominence,
-        0.5,
-      )
-    }
-
-    if (
-      enemy.attackMotionStyle === 'boss-cross' ||
-      enemy.attackMotionStyle === 'boss-phase' ||
-      enemy.attackMotionStyle === 'slam'
-    ) {
-      const spoke = ringRadius * (0.72 + pulse * 0.28)
+    const disturbedGrit = enemy.isBoss ? 7 : 3
+    for (let grit = 0; grit < disturbedGrit; grit += 1) {
+      const angle =
+        enemy.attackMotionAngle +
+        (replacementCosmeticUnit(enemy.uid, grit, 109) - 0.5) * 2.6
+      const distance =
+        pressureRadius *
+        (0.22 + replacementCosmeticUnit(enemy.uid, grit, 113) * 0.72)
+      const size =
+        enemy.radius *
+        (0.035 + replacementCosmeticUnit(enemy.uid, grit, 127) * 0.045)
       this.motionGraphics
-        .moveTo(x - spoke, y)
-        .lineTo(x + spoke, y)
-        .moveTo(x, y - spoke)
-        .lineTo(x, y + spoke)
-        .stroke({
-          color: accent,
-          width: enemy.isBoss ? 4 : 2,
-          alpha: pulse * (enemy.isBoss ? 0.42 : 0.18) * prominence,
+        .ellipse(
+          x + Math.cos(angle) * distance,
+          y + enemy.radius * 0.18 + Math.sin(angle) * distance * 0.38,
+          size * 1.8,
+          size * 0.62,
+        )
+        .fill({
+          color: grit % 3 === 0 ? secondary : HOSTILE_SHADOW_COLOR,
+          alpha:
+            (envelope.release * 0.1 + envelope.impact * 0.18) *
+            prominence,
         })
     }
   }
@@ -6333,50 +6006,28 @@ class NighttraceRuntime {
       const pulse = 1 + Math.sin(this.motionClock * 8 + projectile.visualSeed) * 0.08
       const coreRadius = (9 + stage * 1.8) * pulse
       graphics
-        .circle(x, y, coreRadius * 1.8)
-        .fill({ color: profile.glowColor, alpha: 0.08 })
-      this.drawSegmentedRing(
-        graphics,
-        x,
-        y,
-        coreRadius * 1.34,
-        7 + stage * 2,
-        this.motionClock * (2.1 + stage * 0.2) + projectile.visualSeed,
-        profile.accentColor,
-        1.6 + stage * 0.24,
-        0.74,
-        0.45,
-      )
-      if (stage >= 1) {
-        this.drawSegmentedRing(
-          graphics,
-          x,
-          y,
-          coreRadius * 2.06,
-          6 + stage * 2,
-          -this.motionClock * 1.6 + projectile.visualSeed,
-          profile.secondaryColor,
-          1.2,
-          0.48,
-          0.58,
-        )
-      }
-      const orbiters = 1 + stage
-      for (let index = 0; index < orbiters; index += 1) {
+        .circle(x, y, coreRadius)
+        .fill({ color: 0x010609, alpha: 0.94 })
+      const debrisCount = 2 + stage
+      for (let debris = 0; debris < debrisCount; debris += 1) {
         const angle =
-          this.motionClock * (2.3 + index * 0.18) +
+          this.motionClock * (0.7 + debris * 0.09) +
           projectile.visualSeed * 0.17 +
-          (Math.PI * 2 * index) / orbiters
-        this.drawDiamondGlyph(
-          graphics,
-          x + Math.cos(angle) * coreRadius * 1.9,
-          y + Math.sin(angle) * coreRadius * 1.9,
-          2.2 + stage * 0.5,
-          angle,
-          index % 2 ? profile.secondaryColor : profile.coreColor,
-          0.7,
-          stage >= 2,
-        )
+          replacementCosmeticUnit(projectile.visualSeed, debris, 97) * Math.PI * 2
+        const distance =
+          coreRadius *
+          (1.1 + replacementCosmeticUnit(projectile.visualSeed, debris, 101) * 1.2)
+        graphics
+          .ellipse(
+            x + Math.cos(angle) * distance,
+            y + Math.sin(angle) * distance * 0.64,
+            1.4 + stage * 0.34,
+            0.8 + stage * 0.16,
+          )
+          .fill({
+            color: debris % 2 ? profile.secondaryColor : profile.accentColor,
+            alpha: 0.34,
+          })
       }
       return
     }
@@ -6404,46 +6055,10 @@ class NighttraceRuntime {
     this.drawPolyline(graphics, trailPoints, profile.coreColor, width, 0.88)
 
     if (projectile.weaponId === 'helio-lance') {
-      if (stage >= 1) {
-        for (const side of [-1, 1]) {
-          const offset = side * (4 + stage * 1.2)
-          graphics
-            .moveTo(startX + normalX * offset, startY + normalY * offset)
-            .lineTo(x + normalX * offset, y + normalY * offset)
-            .stroke({
-              color: side < 0 ? profile.secondaryColor : profile.accentColor,
-              width: 1.2 + stage * 0.2,
-              alpha: 0.52,
-            })
-        }
-      }
-      this.drawStarburst(
-        graphics,
-        x,
-        y,
-        6 + stage * 2,
-        3,
-        8 + stage * 2.4,
-        projectile.sprite.rotation,
-        profile.coreColor,
-        1.2,
-        0.72,
-      )
       return
     }
 
     if (projectile.weaponId === 'crescent-array') {
-      if (stage >= 1) {
-        const echoOffset = 5 + stage * 1.4
-        const echoPoints = trailPoints.map((point, index) => {
-          const fade = 1 - index / Math.max(1, trailPoints.length - 1)
-          return {
-            x: point.x + normalX * echoOffset * fade,
-            y: point.y + normalY * echoOffset * fade,
-          }
-        })
-        this.drawPolyline(graphics, echoPoints, profile.secondaryColor, 1.5 + stage * 0.2, 0.48)
-      }
       return
     }
 
@@ -6473,116 +6088,18 @@ class NighttraceRuntime {
             alpha: 0.52 - t * 0.22,
           })
       }
-      this.drawStarburst(
-        graphics,
-        x,
-        y,
-        6 + stage,
-        2,
-        7 + stage * 1.6,
-        projectile.sprite.rotation,
-        profile.coreColor,
-        1.4,
-        0.76,
-      )
       return
     }
 
     if (projectile.weaponId === 'mirror-bow') {
-      const echoCount = 1 + stage
-      for (let echo = 1; echo <= echoCount; echo += 1) {
-        const offset = (echo % 2 ? 1 : -1) * (4 + Math.ceil(echo / 2) * 3)
-        graphics
-          .moveTo(startX + normalX * offset, startY + normalY * offset)
-          .lineTo(x + normalX * offset * 0.2, y + normalY * offset * 0.2)
-          .stroke({
-            color: echo % 2 ? profile.secondaryColor : profile.accentColor,
-            width: Math.max(1, 1.8 - echo * 0.16),
-            alpha: 0.46 - echo * 0.06,
-          })
-        const shardX = lerp(startX, x, echo / (echoCount + 1))
-        const shardY = lerp(startY, y, echo / (echoCount + 1))
-        this.drawDiamondGlyph(
-          graphics,
-          shardX + normalX * offset,
-          shardY + normalY * offset,
-          2.8 + stage * 0.5,
-          projectile.sprite.rotation,
-          echo % 2 ? profile.secondaryColor : profile.coreColor,
-          0.58,
-          stage >= 2,
-        )
-      }
       return
     }
 
     if (projectile.weaponId === 'ash-halo') {
-      for (const side of [-1, 1]) {
-        this.drawPolyline(
-          graphics,
-          [
-            {
-              x: startX + normalX * side * (3 + stage),
-              y: startY + normalY * side * (3 + stage),
-            },
-            {
-              x:
-                lerp(startX, x, 0.58) +
-                normalX * side * (7 + stage * 2),
-              y:
-                lerp(startY, y, 0.58) +
-                normalY * side * (7 + stage * 2),
-            },
-            {
-              x: x - dx * 3 + normalX * side * 1.5,
-              y: y - dy * 3 + normalY * side * 1.5,
-            },
-          ],
-          side > 0 ? profile.secondaryColor : profile.accentColor,
-          side > 0 ? 1.6 : 2.2,
-          side > 0 ? 0.5 : 0.42,
-        )
-      }
-      this.drawCinderFeather(
-        graphics,
-        x - dx * 2,
-        y - dy * 2,
-        Math.atan2(dy, dx),
-        12 + stage * 2,
-        4 + stage,
-        profile.glowColor,
-        profile.coreColor,
-        0.62,
-        projectile.visualSeed % 2 === 0 ? 1 : -1,
-      )
       return
     }
 
     if (projectile.weaponId === 'null-bell') {
-      const echoes = 1 + Math.min(2, stage)
-      for (let echo = 0; echo < echoes; echo += 1) {
-        const centerX = x - dx * (8 + echo * 9)
-        const centerY = y - dy * (8 + echo * 9)
-        const depth = 7 + echo * 3
-        const spread = 7 + stage * 1.5 + echo * 1.5
-        this.drawPolyline(
-          graphics,
-          [
-            {
-              x: centerX - dx * depth + normalX * spread,
-              y: centerY - dy * depth + normalY * spread,
-            },
-            { x: centerX + dx * depth, y: centerY + dy * depth },
-            {
-              x: centerX - dx * depth - normalX * spread,
-              y: centerY - dy * depth - normalY * spread,
-            },
-          ],
-          echo % 2 ? profile.secondaryColor : profile.accentColor,
-          Math.max(1, 1.8 - echo * 0.28),
-          0.48 - echo * 0.1,
-        )
-      }
       return
     }
   }
@@ -6605,7 +6122,6 @@ class NighttraceRuntime {
       graphics.poly([9, 14, 49, 7, 78, 14, 49, 21], true).fill({ color: 0xffd15f, alpha: 0.7 })
       graphics.poly([16, 14, 55, 10, 78, 14, 55, 18], true).fill({ color: 0xfff9dc, alpha: 0.98 })
       graphics.poly([28, 5, 43, 9, 36, 14, 43, 19, 28, 23, 34, 14], true).fill({ color: 0x76f5df, alpha: 0.68 })
-      graphics.moveTo(4, 14).lineTo(70, 14).stroke({ color: 0xffffff, width: 1.5, alpha: 0.92 })
     })
     create('crescent-array', (graphics, color) => {
       graphics
@@ -6626,23 +6142,20 @@ class NighttraceRuntime {
       graphics
         .poly([0, 14, 15, 5, 25, 11, 39, 2, 34, 13, 58, 18, 38, 22, 24, 16], true)
         .fill({ color, alpha: 0.46 })
-      graphics.moveTo(3, 14).lineTo(52, 17).stroke({ color: 0xfaf4ff, width: 3, alpha: 0.96 })
-      graphics.circle(26, 13, 7).stroke({ color: 0x70eaff, width: 2, alpha: 0.62 })
-      graphics.circle(26, 13, 2.5).fill({ color: 0xffffff, alpha: 0.92 })
+      graphics
+        .poly([4, 14, 18, 9, 25, 13, 38, 7, 34, 15, 52, 17, 37, 19, 24, 15], true)
+        .fill({ color: 0xfaf4ff, alpha: 0.9 })
     })
     create('rift-seeds', (graphics, color) => {
-      graphics.circle(19, 19, 18).fill({ color, alpha: 0.14 })
-      graphics.circle(19, 19, 13).fill({ color: 0x010708, alpha: 0.98 })
-      graphics.circle(19, 19, 14).stroke({ color, width: 3.5, alpha: 0.9 })
-      graphics.ellipse(19, 19, 18, 8).stroke({ color: 0x9276ff, width: 2, alpha: 0.62 })
-      graphics.circle(14, 13, 3).fill({ color: 0xe9fff6, alpha: 0.9 })
+      graphics.circle(19, 19, 15).fill({ color: 0x010708, alpha: 0.98 })
+      graphics.ellipse(15, 12, 5, 3).fill({ color, alpha: 0.74 })
+      graphics.ellipse(25, 25, 3.5, 2).fill({ color: 0x9276ff, alpha: 0.56 })
     })
     create('comet-swarm', (graphics, color) => {
       graphics.poly([0, 16, 31, 3, 52, 16, 31, 29], true).fill({ color, alpha: 0.28 })
       graphics.poly([6, 16, 34, 8, 50, 16, 34, 24], true).fill({ color: 0xffd25d, alpha: 0.62 })
       graphics.ellipse(43, 16, 12, 10).fill({ color, alpha: 0.9 })
       graphics.ellipse(46, 13, 6, 5).fill({ color: 0xfff4de, alpha: 0.98 })
-      graphics.moveTo(17, 16).lineTo(48, 16).stroke({ color: 0xffffff, width: 1.4, alpha: 0.74 })
     })
     create('ash-halo', (graphics, color) => {
       graphics
@@ -6654,31 +6167,31 @@ class NighttraceRuntime {
       graphics
         .poly([14, 14, 26, 11, 46, 14, 26, 17], true)
         .fill({ color: 0xfff2c9, alpha: 0.98 })
-      graphics.moveTo(4, 8).lineTo(18, 4).stroke({ color: color, width: 1.5, alpha: 0.62 })
-      graphics.moveTo(4, 20).lineTo(18, 24).stroke({ color: 0xffd06a, width: 1.2, alpha: 0.56 })
     })
     create('mirror-bow', (graphics, color) => {
       graphics.poly([0, 16, 20, 1, 65, 8, 82, 16, 65, 24, 20, 31], true).fill({ color, alpha: 0.24 })
       graphics.poly([9, 16, 30, 7, 70, 13, 79, 16, 70, 19, 30, 25], true).fill({ color: 0xffffff, alpha: 0.92 })
-      graphics.moveTo(6, 16).lineTo(76, 16).stroke({ color: 0x8de9ff, width: 2.4, alpha: 0.8 })
-      graphics.poly([34, 5, 42, 16, 34, 27, 26, 16], true).stroke({ color: 0xc196ff, width: 2, alpha: 0.68 })
+      graphics.poly([34, 5, 42, 16, 34, 27, 28, 16], true).fill({ color: 0xc196ff, alpha: 0.62 })
     })
     create('null-bell', (graphics, color) => {
       graphics
         .poly([4, 25, 9, 10, 15, 4, 27, 4, 33, 10, 38, 25, 31, 30, 11, 30], true)
         .fill({ color: 0x0b0d21, alpha: 0.94 })
-        .stroke({ color, width: 3.2, alpha: 0.86 })
+      graphics
+        .poly([8, 24, 13, 11, 18, 7, 25, 7, 30, 12, 34, 24, 29, 27, 13, 27], true)
+        .fill({ color, alpha: 0.72 })
       graphics
         .poly([21, 25, 27, 34, 21, 40, 15, 34], true)
         .fill({ color: 0xf0f1ff, alpha: 0.96 })
       graphics
         .poly([11, 18, 21, 11, 31, 18, 21, 23], true)
-        .stroke({ color: 0xb6a0ff, width: 1.8, alpha: 0.68 })
+        .fill({ color: 0xb6a0ff, alpha: 0.46 })
     })
 
     const spark = new Graphics()
-    spark.poly([10, 0, 16, 10, 10, 22, 4, 10], true).fill({ color: 0xffffff, alpha: 0.94 })
-    spark.circle(10, 10, 8).fill({ color: 0xffffff, alpha: 0.18 })
+    spark
+      .poly([2, 8, 8, 2, 17, 5, 20, 12, 13, 19, 5, 16], true)
+      .fill({ color: 0xffffff, alpha: 0.82 })
     this.sparkTexture = this.app.renderer.generateTexture({
       target: spark,
       resolution: this.visualProfile.generatedTextureResolution,

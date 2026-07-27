@@ -26,9 +26,11 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.8.0` — the approved Graveglass and Eclipse choreography enters live combat through authored alpha-textured structures, deterministic rise/impact/decay animation, protected actor layering, and dedicated mobile texture LODs
 - `v1.9.0` — grounded hostile VFX replace diagrammatic boss rays, ring warnings, fissure spokes, and duplicate spell vectors with authored rubble/scorch materials, ash, dust, and restrained embedded embers beneath every actor layer
 
+- `v1.10.0` — every hero power abandons concentric/dotted rings, radial ticks, starbursts, rune wheels, outlined gates, decorative rails, and generic diamond debris in favor of authored fractured stone, localized smoke, ash, grit, physical fragments, and material impact light; combat geometry is unchanged
+
 ## Runtime guide and visual evidence
 
-- [Animated Graveglass + Eclipse material review](https://jaredjos.github.io/H5-Games/nighttrace/review/spell-choreography/) — the authored structural choreography remains in live combat, now grounded by the v1.9.0 material-floor pass
+- [Animated Graveglass + Eclipse material review](https://jaredjos.github.io/H5-Games/nighttrace/review/spell-choreography/) — the authored structural choreography remains in live combat, now joined by the v1.10.0 all-power material-floor pass
 - [Combat Systems Codex (PDF)](https://jaredjos.github.io/H5-Games/nighttrace/docs/NIGHTTRACE_Combat_Systems_Codex.pdf) — the v1.6.0 combat, upgrade, pickup, boss, difficulty, music, and mobile reference
 - [Upgrade states: Helio Lance through Rift Seeds](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-01.png)
 - [Upgrade states: Comet Swarm through Eclipse Harrow](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-02.png)

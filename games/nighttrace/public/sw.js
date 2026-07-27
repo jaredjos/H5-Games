@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.9.0'
+const CACHE_VERSION = 'v1.10.0'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
 const ASSET_CACHE = `${CACHE_PREFIX}assets-${CACHE_VERSION}`

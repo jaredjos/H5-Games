@@ -48,46 +48,53 @@ mat2 rotate2d(float angle) {
   return mat2(cosine, -sine, sine, cosine);
 }
 
-float fineLine(float distanceValue, float width) {
-  return 1.0 - smoothstep(width, width * 2.8, distanceValue);
+float valueNoise(vec2 point) {
+  vec2 cell = floor(point);
+  vec2 local = fract(point);
+  local = local * local * (3.0 - 2.0 * local);
+  float a = hash21(cell);
+  float b = hash21(cell + vec2(1.0, 0.0));
+  float c = hash21(cell + vec2(0.0, 1.0));
+  float d = hash21(cell + vec2(1.0, 1.0));
+  return mix(mix(a, b, local.x), mix(c, d, local.x), local.y);
 }
 
-float brokenLight(float coordinate, float offset) {
-  float cell = fract(coordinate * 5.4 + offset);
-  return smoothstep(0.08, 0.2, cell) * (1.0 - smoothstep(0.66, 0.9, cell));
+float fbm(vec2 point) {
+  float value = 0.0;
+  float amplitude = 0.56;
+  for (int octave = 0; octave < 4; octave++) {
+    value += valueNoise(point) * amplitude;
+    point = point * 2.03 + vec2(5.17, 9.31);
+    amplitude *= 0.47;
+  }
+  return value;
 }
 
 void main(void) {
   float sourceMask = texture(uTexture, vTextureCoord).a;
   vec2 point = (vTextureCoord - 0.5) * 2.0;
-  point = rotate2d(-uFacingAngle * 0.08) * point;
+  point = rotate2d(-uFacingAngle * 0.05) * point;
 
-  float radius = length(point);
-  float bounds = 1.0 - smoothstep(0.68, 0.98, radius);
-  float fieldBand = smoothstep(0.14, 0.23, radius) *
-    (1.0 - smoothstep(0.86, 1.02, radius));
-  float shimmer = 0.88 + sin(uTime * 1.6 + radius * 10.0) * 0.12;
-  float dash = brokenLight(radius, uTime * 0.025);
+  vec2 compressed = vec2(point.x, point.y * 1.42);
+  float distanceField = length(compressed);
+  float bounds = 1.0 - smoothstep(0.46, 1.0, distanceField);
+  vec2 drift = vec2(uTime * 0.018, -uTime * 0.012);
+  float broadNoise = fbm(compressed * 2.8 + drift);
+  float detailNoise = fbm(compressed.yx * 6.4 - drift * 1.7);
+  float disturbedStone = smoothstep(
+    0.3,
+    0.92,
+    broadNoise * 0.78 + detailNoise * 0.3
+  ) * bounds;
 
-  float horizontal = fineLine(abs(point.y), 0.0085);
-  float vertical = fineLine(abs(point.x), 0.0085);
-  float cardinal = max(horizontal, vertical) * fieldBand * dash;
+  vec2 facing = vec2(cos(uFacingAngle), sin(uFacingAngle));
+  float forward = dot(point, facing);
+  float lateral = abs(dot(point, vec2(-facing.y, facing.x)));
+  float wake = smoothstep(-0.38, 0.38, forward);
+  wake *= 1.0 - smoothstep(0.18, 0.76, lateral);
+  wake *= bounds * (0.66 + broadNoise * 0.34);
 
-  vec2 diagonalPoint = rotate2d(0.785398) * point;
-  float diagonal = max(
-    fineLine(abs(diagonalPoint.x), 0.006),
-    fineLine(abs(diagonalPoint.y), 0.006)
-  );
-  diagonal *= fieldBand * brokenLight(radius, 0.47 - uTime * 0.018) * 0.38;
-
-  float diamondDistance = abs(point.x * 0.88) + abs(point.y);
-  float diamond = fineLine(abs(diamondDistance - 0.34), 0.008);
-  diamond *= brokenLight(
-    atan(point.y, point.x) / 6.283185 + 0.5,
-    0.28
-  ) * 0.58;
-
-  vec2 moteGrid = point * 8.0 + vec2(uTime * 0.025, -uTime * 0.018);
+  vec2 moteGrid = point * 9.0 + vec2(uTime * 0.018, -uTime * 0.014);
   vec2 moteId = floor(moteGrid);
   vec2 moteCell = fract(moteGrid) - 0.5;
   float moteSeed = hash21(moteId);
@@ -97,24 +104,20 @@ void main(void) {
   ) - 0.5;
   moteOffset *= 0.46;
   float mote = 1.0 - smoothstep(0.025, 0.09, length(moteCell - moteOffset));
-  mote *= step(0.91, moteSeed) * bounds *
-    (0.72 + sin(uTime * 2.3 + moteSeed * 18.0) * 0.28);
+  mote *= step(0.93, moteSeed) * bounds *
+    (0.68 + sin(uTime * 1.9 + moteSeed * 18.0) * 0.32);
 
-  float compassEnergy = cardinal * 0.72 + diagonal * 0.44 + diamond * 0.58;
-  float energy = compassEnergy * shimmer + mote * 0.34;
-  float pulseLift = 1.0 + uPulse * (0.24 + sin(uTime * 3.1) * 0.06);
-  float alpha = energy * (0.055 + uIntensity * 0.1) * pulseLift;
+  float pressure = disturbedStone * (0.22 + uIntensity * 0.24);
+  pressure += wake * uPulse * 0.26;
+  pressure += mote * 0.24;
+  float alpha = pressure * (0.12 + uIntensity * 0.15);
   alpha = min(uAlphaCeiling, max(0.0, alpha)) * bounds * sourceMask;
 
-  float colorSplit = clamp(
-    0.5 + point.x * 0.3 - point.y * 0.18 + (moteSeed - 0.5) * 0.16,
-    0.0,
-    1.0
-  );
-  vec3 teal = vec3(0.18, 0.78, 0.74);
-  vec3 gold = vec3(1.0, 0.7, 0.26);
-  vec3 color = mix(teal, gold, colorSplit);
-  color += vec3(1.0, 0.91, 0.68) * (cardinal + diamond) * 0.16;
+  vec3 stone = vec3(0.025, 0.055, 0.068);
+  vec3 coldMineral = vec3(0.16, 0.52, 0.58);
+  vec3 warmDust = vec3(0.65, 0.46, 0.23);
+  vec3 color = mix(stone, coldMineral, broadNoise * 0.62 + mote * 0.24);
+  color += warmDust * (wake * uPulse * 0.18 + detailNoise * 0.035);
 
   finalColor = vec4(max(color, 0.0) * alpha, alpha);
 }
