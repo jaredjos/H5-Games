@@ -1,4 +1,4 @@
-NIGHTTRACE v1.9.0 bundled runtime documentation
+NIGHTTRACE v1.10.0 bundled runtime documentation
 
 NIGHTTRACE_Combat_Systems_Codex.pdf
   Full player-facing and implementation-derived reference for weapon states,
@@ -24,7 +24,8 @@ the bearer, use concentric damage bands, or apply repeated damage where their
 presentation geometry overlaps. Timed support relics use persistent tapered
 vertical beacons to remain visible through dense combat.
 
-The v1.9.0 live runtime replaces hostile attack diagrams and duplicate
-Graveglass/Eclipse vector passes with transparent authored rubble/scorch
-materials, ash, dust, and restrained embedded embers placed beneath every
-actor. Combat timing and collision geometry are unchanged.
+The v1.10.0 live runtime removes concentric/dotted rings, radial ticks,
+starbursts, rune wheels, outlined gates, decorative rails, and generic
+diamond debris from all hero powers. Authored fractured stone, smoke, ash,
+grit, physical fragments, and localized material light replace those
+diagrammatic overlays. Combat timing and collision geometry are unchanged.
