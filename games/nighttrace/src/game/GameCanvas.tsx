@@ -114,6 +114,16 @@ import {
   type ReplacementWeaponPresentationProfile,
 } from './replacementWeaponPresentation'
 import {
+  AUTHORED_SPELL_ASSET_DATA,
+  AUTHORED_SPELL_ASSET_REVISION,
+} from './authoredSpellAssetData'
+import {
+  authoredSpellAssetDataKey,
+  authoredSpellStageMaterialProfile,
+  resolveAuthoredSpellAssetLod,
+  sampleAuthoredSpellMaterialPose,
+} from './authoredSpellPresentation'
+import {
   SUPPORT_PICKUP_LIFETIME_SECONDS,
   supportPickupPresentation,
 } from './pickupPresentation'
@@ -414,6 +424,7 @@ class NighttraceRuntime {
   private readonly app = new Application()
   private readonly world = new Container()
   private readonly trailLayer = new Container()
+  private readonly weaponMaterialLayer = new Container()
   private readonly pickupLayer = new Container()
   private readonly enemyMaterialLayer = new Container()
   private readonly enemyLayer = new Container()
@@ -465,6 +476,11 @@ class NighttraceRuntime {
   private bossFrames: Texture[] = []
   private pickupFrames: Texture[] = []
   private readonly projectileTextures = new Map<WeaponId, Texture>()
+  private graveglassSpireTexture?: Texture
+  private eclipseGateTexture?: Texture
+  private eclipseCathedralTexture?: Texture
+  private readonly authoredSpellMaterialSprites: Sprite[] = []
+  private authoredSpellMaterialCursor = 0
   private sparkTexture = Texture.WHITE
   private background?: Sprite
   private settings: GameSettings
@@ -657,6 +673,7 @@ class NighttraceRuntime {
       .then(() => {
         this.applicationReady = true
       })
+    const authoredSpellLod = resolveAuthoredSpellAssetLod(this.visualLod)
     const assetLoad = Promise.all([
       Assets.load<Texture>(backgroundForLevel(this.level.id)),
       Assets.load<Texture>(appAssetUrl('assets/hero-animations/hero-walk-runtime.webp')),
@@ -665,6 +682,21 @@ class NighttraceRuntime {
       Assets.load<Texture>(appAssetUrl('assets/nighttrace-enemy-atlas.webp')),
       Assets.load<Texture>(appAssetUrl('assets/nighttrace-boss-atlas.webp')),
       Assets.load<Texture>(appAssetUrl('assets/nighttrace-pickup-atlas.webp')),
+      Assets.load<Texture>(
+        AUTHORED_SPELL_ASSET_DATA[
+          authoredSpellAssetDataKey('graveglass-spire', authoredSpellLod)
+        ],
+      ),
+      Assets.load<Texture>(
+        AUTHORED_SPELL_ASSET_DATA[
+          authoredSpellAssetDataKey('eclipse-gate', authoredSpellLod)
+        ],
+      ),
+      Assets.load<Texture>(
+        AUTHORED_SPELL_ASSET_DATA[
+          authoredSpellAssetDataKey('eclipse-cathedral', authoredSpellLod)
+        ],
+      ),
     ])
     try {
       const [
@@ -677,6 +709,9 @@ class NighttraceRuntime {
           enemySheet,
           bossSheet,
           pickupSheet,
+          graveglassSpireTexture,
+          eclipseGateTexture,
+          eclipseCathedralTexture,
         ],
       ] = await Promise.all([applicationInit, assetLoad])
 
@@ -697,6 +732,7 @@ class NighttraceRuntime {
       this.world.addChild(this.background)
       this.world.addChild(
         this.trailLayer,
+        this.weaponMaterialLayer,
         this.pickupLayer,
         this.enemyMaterialLayer,
         this.enemyLayer,
@@ -707,6 +743,7 @@ class NighttraceRuntime {
         this.actorLayer,
       )
       this.trailLayer.addChild(this.loopGraphics, this.trailGlow, this.trailCore)
+      this.weaponMaterialLayer.sortableChildren = true
       this.pickupLayer.addChild(this.pickupAuraGraphics)
       this.enemyLayer.addChild(this.motionGraphics)
       this.projectileLayer.addChild(this.projectileTrailGraphics)
@@ -732,6 +769,9 @@ class NighttraceRuntime {
       this.enemyFrames = this.sliceTexture(enemySheet, 3, 2)
       this.bossFrames = this.sliceTexture(bossSheet, 3, 2)
       this.pickupFrames = this.sliceTexture(pickupSheet, 3, 2)
+      this.graveglassSpireTexture = graveglassSpireTexture
+      this.eclipseGateTexture = eclipseGateTexture
+      this.eclipseCathedralTexture = eclipseCathedralTexture
       this.createVfxTextures()
       this.heroGroundShadowFilter = createGroundShadowFilter(
         0x163b46,
@@ -796,6 +836,7 @@ class NighttraceRuntime {
       this.host.dataset.visualLod = this.visualLod
       this.host.dataset.materialVfxReady = 'retired'
       this.host.dataset.actorReadability = 'protected'
+      this.host.dataset.authoredSpellMaterials = AUTHORED_SPELL_ASSET_REVISION
 
       this.input = new GameInput(this.host, {
         onInteract: () => void this.audio.unlock(),
@@ -4402,6 +4443,166 @@ class NighttraceRuntime {
     graphics.stroke({ color, width, alpha })
   }
 
+  private beginAuthoredSpellMaterialFrame() {
+    this.authoredSpellMaterialCursor = 0
+  }
+
+  private finishAuthoredSpellMaterialFrame() {
+    for (
+      let index = this.authoredSpellMaterialCursor;
+      index < this.authoredSpellMaterialSprites.length;
+      index += 1
+    ) {
+      this.authoredSpellMaterialSprites[index].visible = false
+    }
+  }
+
+  private acquireAuthoredSpellMaterialSprite(texture: Texture) {
+    let sprite =
+      this.authoredSpellMaterialSprites[this.authoredSpellMaterialCursor]
+    if (!sprite) {
+      sprite = new Sprite(texture)
+      sprite.eventMode = 'none'
+      sprite.visible = false
+      this.authoredSpellMaterialSprites.push(sprite)
+      this.weaponMaterialLayer.addChild(sprite)
+    }
+    this.authoredSpellMaterialCursor += 1
+    sprite.texture = texture
+    sprite.visible = true
+    sprite.alpha = 1
+    sprite.tint = 0xffffff
+    sprite.rotation = 0
+    sprite.blendMode = 'normal'
+    sprite.anchor.set(0.5, 0.96)
+    return sprite
+  }
+
+  private drawGraveglassMaterialSprite(
+    effect: WeaponEffectEntity,
+    strike: CirclePatternStrike,
+    localTime: number,
+  ) {
+    const texture = this.graveglassSpireTexture
+    if (!texture) return
+    const pose = sampleAuthoredSpellMaterialPose(
+      'graveglass-spire',
+      localTime,
+    )
+    if (!pose.visible) return
+
+    const stageProfile = authoredSpellStageMaterialProfile(
+      effect.visualState.stage,
+    )
+    const variation =
+      replacementCosmeticUnit(effect.seed + strike.index * 131, 0, 31) - 0.5
+    const targetHeight =
+      Math.max(86, strike.radius * 2.42) *
+      stageProfile.materialScale *
+      (1 + variation * 0.1)
+    const sprite = this.acquireAuthoredSpellMaterialSprite(texture)
+    const textureAspect = texture.width / Math.max(1, texture.height)
+    sprite.width = targetHeight * textureAspect * pose.scaleX
+    sprite.height = targetHeight * pose.scaleY
+    sprite.position.set(
+      strike.center.x,
+      strike.center.y + strike.radius * 0.24 + pose.lift,
+    )
+    sprite.rotation = variation * 0.035
+    sprite.alpha = Math.min(
+      1,
+      pose.alpha *
+        stageProfile.opacity *
+        (0.94 + pose.impact * 0.08),
+    )
+    sprite.zIndex = Math.round(sprite.y * 10)
+  }
+
+  private drawEclipseGateMaterialSprites(
+    effect: WeaponEffectEntity,
+    strike: CapsulePatternStrike,
+    localTime: number,
+  ) {
+    const texture = this.eclipseGateTexture
+    if (!texture) return
+    const stageProfile = authoredSpellStageMaterialProfile(
+      effect.visualState.stage,
+    )
+    const gateCount = stageProfile.gateCountPerStrike
+
+    for (let gate = 0; gate < gateCount; gate += 1) {
+      const staggeredTime = localTime - gate * 0.035
+      const pose = sampleAuthoredSpellMaterialPose(
+        'eclipse-gate',
+        staggeredTime,
+      )
+      if (!pose.visible) continue
+      const t =
+        gateCount === 1
+          ? 0.5
+          : lerp(0.3, 0.7, gate / Math.max(1, gateCount - 1))
+      const variation =
+        replacementCosmeticUnit(
+          effect.seed + strike.index * 137,
+          gate,
+          37,
+        ) - 0.5
+      const targetHeight =
+        Math.max(76, strike.radius * 2.72) *
+        stageProfile.materialScale *
+        (1 + variation * 0.07)
+      const sprite = this.acquireAuthoredSpellMaterialSprite(texture)
+      const textureAspect = texture.width / Math.max(1, texture.height)
+      sprite.width = targetHeight * textureAspect * pose.scaleX
+      sprite.height = targetHeight * pose.scaleY
+      sprite.position.set(
+        lerp(strike.start.x, strike.end.x, t),
+        lerp(strike.start.y, strike.end.y, t) +
+          strike.radius * 0.2 +
+          pose.lift,
+      )
+      sprite.alpha = Math.min(
+        1,
+        pose.alpha *
+          stageProfile.opacity *
+          (0.93 + pose.impact * 0.1),
+      )
+      sprite.zIndex = Math.round(sprite.y * 10)
+    }
+  }
+
+  private drawEclipseCathedralMaterialSprite(
+    effect: WeaponEffectEntity,
+    center: Vec2,
+    localTime: number,
+  ) {
+    const texture = this.eclipseCathedralTexture
+    if (!texture) return
+    const stageProfile = authoredSpellStageMaterialProfile(
+      effect.visualState.stage,
+    )
+    if (!stageProfile.cathedral) return
+    const pose = sampleAuthoredSpellMaterialPose(
+      'eclipse-cathedral',
+      localTime,
+    )
+    if (!pose.visible) return
+
+    const targetHeight = 166 * stageProfile.materialScale
+    const sprite = this.acquireAuthoredSpellMaterialSprite(texture)
+    const textureAspect = texture.width / Math.max(1, texture.height)
+    sprite.width = targetHeight * textureAspect * pose.scaleX
+    sprite.height = targetHeight * pose.scaleY
+    sprite.position.set(center.x, center.y + 18 + pose.lift)
+    sprite.alpha = Math.min(
+      1,
+      pose.alpha *
+        stageProfile.opacity *
+        (0.94 + pose.impact * 0.08),
+    )
+    sprite.zIndex = Math.round(sprite.y * 10) - 1
+  }
+
   private drawGraveglassPresentation(
     graphics: Graphics,
     glow: Graphics,
@@ -4433,12 +4634,12 @@ class NighttraceRuntime {
       resolve *
       reducedScale *
       presentation.material.opacity
-    const growth = 1 - (1 - eruption) ** 3
     const footprint =
       strike.radius *
       (0.54 + warning * 0.46) *
       presentation.cast.footprintScale
     const seed = effect.seed + strike.index * 131
+    this.drawGraveglassMaterialSprite(effect, strike, localTime)
 
     graphics
       .ellipse(
@@ -4536,132 +4737,6 @@ class NighttraceRuntime {
     }
 
     if (eruption <= 0) return
-    const spireCount = 1 + Math.min(2, stage)
-    for (let spire = spireCount - 1; spire >= 0; spire -= 1) {
-      const localSeed = seed + spire * 53
-      const lateral =
-        spire === 0
-          ? 0
-          : (spire % 2 ? -1 : 1) *
-            footprint *
-            (0.19 + replacementCosmeticUnit(localSeed, spire, 0) * 0.1)
-      const baseX =
-        strike.center.x +
-        lateral +
-        (replacementCosmeticUnit(localSeed, spire, 1) - 0.5) * 10
-      const baseY =
-        strike.center.y +
-        9 +
-        spire * 3 +
-        (replacementCosmeticUnit(localSeed, spire, 2) - 0.5) * 6
-      const width =
-        (18 + stage * 3.6) *
-        (spire === 0 ? 1 : 0.62) *
-        presentation.material.depth
-      const height =
-        (72 + stage * 19) *
-        (spire === 0 ? 1 : 0.68) *
-        growth *
-        (0.9 + replacementCosmeticUnit(localSeed, spire, 3) * 0.2)
-      const lean =
-        (replacementCosmeticUnit(localSeed, spire, 4) - 0.5) *
-        (18 + stage * 3)
-      const body = [
-        baseX - width,
-        baseY,
-        baseX - width * 0.62,
-        baseY - height * 0.4,
-        baseX + lean,
-        baseY - height,
-        baseX + width * 0.54,
-        baseY - height * 0.32,
-        baseX + width,
-        baseY,
-      ]
-      glow
-        .poly(body, true)
-        .fill({
-          color: palette.glowColor,
-          alpha: alpha * (0.045 + presentation.intensity * 0.035),
-        })
-      graphics
-        .poly(body, true)
-        .fill({
-          color: palette.shadowColor,
-          alpha: this.protectedEffectAlphaAt(
-            baseX,
-            baseY,
-            alpha * 0.96,
-            'dark',
-          ),
-        })
-        .stroke({
-          color: spire % 2 ? palette.secondaryColor : palette.accentColor,
-          width: 1.5 + stage * 0.34,
-          alpha: alpha * 0.88,
-        })
-      graphics
-        .poly(
-          [
-            baseX - width * 0.62,
-            baseY - height * 0.4,
-            baseX + lean,
-            baseY - height,
-            baseX + width * 0.12,
-            baseY - height * 0.08,
-            baseX - width * 0.24,
-            baseY - height * 0.14,
-          ],
-          true,
-        )
-        .fill({
-          color: palette.secondaryColor,
-          alpha: alpha * (0.3 + presentation.material.surfaceContrast * 0.18),
-        })
-      graphics
-        .poly(
-          [
-            baseX + lean,
-            baseY - height,
-            baseX + width * 0.54,
-            baseY - height * 0.32,
-            baseX + width * 0.12,
-            baseY - height * 0.08,
-          ],
-          true,
-        )
-        .fill({
-          color: palette.accentColor,
-          alpha: alpha * (0.2 + presentation.material.coreLuminance * 0.16),
-        })
-      graphics
-        .moveTo(baseX + lean, baseY - height)
-        .lineTo(baseX - width * 0.06, baseY - height * 0.08)
-        .stroke({
-          color: palette.coreColor,
-          width: 0.9 + stage * 0.22,
-          alpha: alpha * presentation.material.edgeLuminance * 0.9,
-        })
-
-      const veinCount = 1 + Math.floor(presentation.material.fractureDensity * 3)
-      for (let vein = 0; vein < veinCount; vein += 1) {
-        const veinT = (vein + 1) / (veinCount + 1)
-        const veinY = lerp(baseY - height * 0.1, baseY - height * 0.76, veinT)
-        const veinX =
-          lerp(baseX - width * 0.16, baseX + lean * 0.72, veinT) +
-          (replacementCosmeticUnit(localSeed, vein, 8) - 0.5) * width * 0.46
-        graphics
-          .moveTo(veinX - width * 0.2, veinY + height * 0.055)
-          .lineTo(veinX, veinY)
-          .lineTo(veinX + width * 0.12, veinY - height * 0.075)
-          .stroke({
-            color: vein % 2 ? palette.glowColor : palette.coreColor,
-            width: 0.7 + stage * 0.12,
-            alpha: alpha * 0.7,
-          })
-      }
-    }
-
     const particleCount = capDecorativeDensity(
       presentation.particles.count,
       effect.visualState.stage,
@@ -4718,157 +4793,6 @@ class NighttraceRuntime {
     }
   }
 
-  private drawEclipseGate(
-    graphics: Graphics,
-    glow: Graphics,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    stage: number,
-    alpha: number,
-    seed: number,
-    presentation: ReplacementWeaponPresentationProfile,
-  ) {
-    const palette = presentation.palette
-    const half = width * 0.5
-    const body = [
-      x - half,
-      y + 6,
-      x - half,
-      y - height * 0.46,
-      x - half * 0.78,
-      y - height * 0.79,
-      x,
-      y - height,
-      x + half * 0.78,
-      y - height * 0.79,
-      x + half,
-      y - height * 0.46,
-      x + half,
-      y + 6,
-    ]
-    glow
-      .poly(body, true)
-      .fill({
-        color: palette.glowColor,
-        alpha: alpha * (0.055 + presentation.intensity * 0.025),
-      })
-    graphics
-      .poly(body, true)
-      .fill({
-        color: palette.shadowColor,
-        alpha: this.protectedEffectAlphaAt(x, y, alpha * 0.94, 'dark'),
-      })
-      .stroke({
-        color: palette.secondaryColor,
-        width: 1.4 + stage * 0.3,
-        alpha: alpha * 0.86,
-      })
-
-    const opening = [
-      x - half * 0.55,
-      y + 2,
-      x - half * 0.55,
-      y - height * 0.38,
-      x - half * 0.38,
-      y - height * 0.64,
-      x,
-      y - height * 0.8,
-      x + half * 0.38,
-      y - height * 0.64,
-      x + half * 0.55,
-      y - height * 0.38,
-      x + half * 0.55,
-      y + 2,
-    ]
-    graphics
-      .poly(opening, true)
-      .fill({
-        color: 0x020106,
-        alpha: this.protectedEffectAlphaAt(x, y, alpha * 0.92, 'dark'),
-      })
-      .stroke({
-        color: palette.accentColor,
-        width: 1 + stage * 0.18,
-        alpha: alpha * 0.76,
-      })
-
-    const pillarWidth = Math.max(3, width * 0.1)
-    for (const side of [-1, 1]) {
-      const pillarX = x + side * half * 0.76
-      graphics
-        .rect(pillarX - pillarWidth * 0.5, y - height * 0.72, pillarWidth, height * 0.78)
-        .fill({
-          color: side > 0 ? palette.secondaryColor : palette.accentColor,
-          alpha: alpha * 0.52,
-        })
-      graphics
-        .poly(
-          [
-            pillarX - pillarWidth,
-            y - height * 0.72,
-            pillarX,
-            y - height * (0.93 + replacementCosmeticUnit(seed, side + 2, 0) * 0.06),
-            pillarX + pillarWidth,
-            y - height * 0.72,
-          ],
-          true,
-        )
-        .fill({ color: palette.shadowColor, alpha: alpha * 0.94 })
-        .stroke({
-          color: palette.glowColor,
-          width: 0.9 + stage * 0.14,
-          alpha: alpha * 0.62,
-        })
-    }
-
-    const barCount = 3 + stage
-    for (let bar = 0; bar < barCount; bar += 1) {
-      const barT = (bar + 1) / (barCount + 1)
-      const barX = lerp(x - half * 0.46, x + half * 0.46, barT)
-      const arch =
-        1 -
-        Math.abs((barX - x) / Math.max(1, half * 0.46))
-      graphics
-        .moveTo(barX, y)
-        .lineTo(barX, y - height * (0.48 + arch * 0.23))
-        .stroke({
-          color: bar % 2 ? palette.secondaryColor : palette.accentColor,
-          width: 0.75 + stage * 0.11,
-          alpha: alpha * 0.58,
-        })
-    }
-
-    const roseY = y - height * 0.5
-    const roseRadius = width * (0.09 + stage * 0.008)
-    glow
-      .circle(x, roseY, roseRadius * 2.4)
-      .fill({ color: palette.glowColor, alpha: alpha * 0.07 })
-    graphics
-      .circle(x, roseY, roseRadius)
-      .fill({ color: palette.accentColor, alpha: alpha * 0.26 })
-      .stroke({
-        color: palette.coreColor,
-        width: 0.9 + stage * 0.12,
-        alpha: alpha * 0.82,
-      })
-    for (let spoke = 0; spoke < 4 + stage; spoke += 1) {
-      const angle = (Math.PI * 2 * spoke) / (4 + stage)
-      graphics
-        .moveTo(x, roseY)
-        .lineTo(
-          x + Math.cos(angle) * roseRadius,
-          roseY + Math.sin(angle) * roseRadius,
-        )
-    }
-    graphics.stroke({
-      color: palette.coreColor,
-      width: 0.55 + stage * 0.08,
-      alpha: alpha * 0.7,
-    })
-  }
-
   private drawEclipsePresentation(
     graphics: Graphics,
     glow: Graphics,
@@ -4899,6 +4823,7 @@ class NighttraceRuntime {
         1,
       )
     if (gather <= 0 || afterglow <= 0) return
+    this.drawEclipseGateMaterialSprites(effect, strike, localTime)
 
     const alpha =
       afterglow *
@@ -4988,31 +4913,6 @@ class NighttraceRuntime {
         palette.coreColor,
         2 + stage * 0.44,
         cutAlpha * 0.92,
-      )
-    }
-
-    const gateCount = stage <= 1 ? 2 : 1
-    for (let gate = 0; gate < gateCount; gate += 1) {
-      const gateT =
-        gateCount === 1
-          ? 0.12 + (strike.index % 3) * 0.07
-          : gate === 0
-            ? 0.1
-            : 0.9
-      const gateX = lerp(strike.start.x, strike.end.x, gateT)
-      const gateY = lerp(strike.start.y, strike.end.y, gateT)
-      const gateGrowth = 1 - (1 - gather) ** 3
-      this.drawEclipseGate(
-        graphics,
-        glow,
-        gateX,
-        gateY,
-        width * (1.34 + stage * 0.08),
-        (32 + stage * 10) * gateGrowth * presentation.material.depth,
-        stage,
-        alpha * gather,
-        effect.seed + strike.index * 97 + gate * 19,
-        presentation,
       )
     }
 
@@ -5327,6 +5227,7 @@ class NighttraceRuntime {
   }
 
   private drawWeaponEffects() {
+    this.beginAuthoredSpellMaterialFrame()
     this.weaponVfxAdditiveGraphics.clear()
     this.weaponVfxGraphics.clear()
     const additiveGraphics = this.weaponVfxAdditiveGraphics
@@ -5846,92 +5747,8 @@ class NighttraceRuntime {
               }
 
               if (eruption <= 0) continue
-              const growth = 1 - (1 - eruption) ** 3
               const baseWidth = 20 + stage * 4.8
-              const spireHeight = (58 + stage * 18 + (strike.index % 3) * 8) * growth
-              const lean =
-                Math.sin((effect.seed + strike.index * 41) * 0.57) *
-                (8 + stage * 2)
               const baseY = strike.center.y + 8
-              const spirePoints = [
-                strike.center.x - baseWidth,
-                baseY,
-                strike.center.x - baseWidth * 0.36,
-                baseY - spireHeight * 0.48,
-                strike.center.x + lean,
-                baseY - spireHeight,
-                strike.center.x + baseWidth * 0.42,
-                baseY - spireHeight * 0.38,
-                strike.center.x + baseWidth,
-                baseY,
-              ]
-              graphics
-                .poly(spirePoints, true)
-                .fill({
-                  color: 0x090b12,
-                  alpha: this.protectedEffectAlphaAt(
-                    strike.center.x,
-                    strike.center.y,
-                    strikeAlpha * (0.88 + eruption * 0.1),
-                    'dark',
-                  ),
-                })
-                .stroke({
-                  color:
-                    strike.index % 2
-                      ? profile.secondaryColor
-                      : profile.accentColor,
-                  width: 2.2 + stage * 0.5,
-                  alpha: strikeAlpha * 0.86,
-                })
-              graphics
-                .poly(
-                  [
-                    strike.center.x - baseWidth * 0.36,
-                    baseY - spireHeight * 0.48,
-                    strike.center.x + lean,
-                    baseY - spireHeight,
-                    strike.center.x + baseWidth * 0.18,
-                    baseY - spireHeight * 0.24,
-                    strike.center.x - baseWidth * 0.12,
-                    baseY - spireHeight * 0.08,
-                  ],
-                  true,
-                )
-                .fill({
-                  color:
-                    strike.index % 2
-                      ? profile.secondaryColor
-                      : profile.accentColor,
-                  alpha: strikeAlpha * 0.22,
-                })
-              graphics
-                .poly(
-                  [
-                    strike.center.x + lean,
-                    baseY - spireHeight,
-                    strike.center.x + baseWidth * 0.42,
-                    baseY - spireHeight * 0.38,
-                    strike.center.x + baseWidth * 0.12,
-                    baseY - spireHeight * 0.12,
-                  ],
-                  true,
-                )
-                .fill({
-                  color: profile.coreColor,
-                  alpha: strikeAlpha * 0.16,
-                })
-              graphics
-                .moveTo(strike.center.x + lean, baseY - spireHeight)
-                .lineTo(
-                  strike.center.x - baseWidth * 0.12,
-                  baseY - spireHeight * 0.08,
-                )
-                .stroke({
-                  color: profile.coreColor,
-                  width: 1.5 + stage * 0.28,
-                  alpha: strikeAlpha * (0.62 + eruption * 0.28),
-                })
               graphics
                 .poly(
                   [
@@ -6405,68 +6222,11 @@ class NighttraceRuntime {
             }
 
             if (stage === 3) {
-              const crownGather = clamp(now / 0.26, 0, 1)
-              const crownFade = 1 - clamp((now - 0.68) / 0.42, 0, 1)
-              const center = pattern.aimPoint
-              const width = 84 + crownGather * 42
-              const height = 74 + crownGather * 34
-              const left = { x: center.x - width, y: center.y + 24 }
-              const right = { x: center.x + width, y: center.y + 24 }
-              const apex = { x: center.x, y: center.y - height }
-              graphics
-                .poly(
-                  [
-                    left.x,
-                    left.y,
-                    center.x - width * 0.46,
-                    center.y - height * 0.62,
-                    apex.x,
-                    apex.y,
-                    center.x + width * 0.46,
-                    center.y - height * 0.62,
-                    right.x,
-                    right.y,
-                    center.x,
-                    center.y + 42,
-                  ],
-                  true,
-                )
-                .fill({
-                  color: 0x05060d,
-                  alpha: this.protectedEffectAlphaAt(
-                    center.x,
-                    center.y,
-                    crownGather * crownFade * reducedScale * 0.26,
-                    'dark',
-                  ),
-                })
-              this.drawPolyline(
-                graphics,
-                [
-                  left,
-                  {
-                    x: center.x - width * 0.46,
-                    y: center.y - height * 0.62,
-                  },
-                  apex,
-                  {
-                    x: center.x + width * 0.46,
-                    y: center.y - height * 0.62,
-                  },
-                  right,
-                ],
-                profile.secondaryColor,
-                3.6,
-                crownGather * crownFade * reducedScale * 0.68,
+              this.drawEclipseCathedralMaterialSprite(
+                effect,
+                pattern.aimPoint,
+                now,
               )
-              graphics
-                .moveTo(apex.x, apex.y)
-                .lineTo(center.x, center.y + 42)
-                .stroke({
-                  color: profile.coreColor,
-                  width: 2.2,
-                  alpha: crownGather * crownFade * reducedScale * 0.5,
-                })
             }
 
             const impactAlpha =
@@ -6750,6 +6510,7 @@ class NighttraceRuntime {
         }
       }
     }
+    this.finishAuthoredSpellMaterialFrame()
   }
 
   private drawEffects() {
