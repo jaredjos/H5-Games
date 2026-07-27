@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.8.0`
+- Current web release: `v1.9.0`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -96,6 +96,25 @@ The v1.8.0 authored-runtime gate additionally requires:
 - damage, cooldown, target selection, hit de-duplication, and collision tests
   remain unchanged
 
+The v1.9.0 grounded-hostile-VFX gate additionally requires:
+
+- circular and directional hostile warnings use authored transparent
+  rubble/scorch materials rather than stroked rings, polygons, center rays,
+  parallel rails, radial ticks, or segmented geometry
+- Graveglass keeps the approved crystal silhouette while its duplicate
+  procedural fissures, connector lines, diamond plates, and hit starbursts are
+  absent from live combat
+- Eclipse keeps its authored gates and Final cathedral while its duplicate lane
+  edges, center cuts, and fracture strokes are absent from live combat
+- hostile warning materials render in a dedicated ground layer beneath weapon
+  structures, hordes, bosses, projectiles, and the protected hero
+- boss attack animation remains readable through body motion, contact shadow,
+  displaced dust, and ash rather than local antler or signature line systems
+- desktop and mobile ground-field and ground-lane bundles decode as valid
+  alpha WebP images; mobile assets are materially smaller
+- warning duration, collision geometry, damage, targeting, cooldown, and boss
+  pattern scheduling remain unchanged
+
 ## Release archives
 
 The Windows archive contains:
@@ -131,6 +150,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.7.1`: full-resolution actor rescue, protected actor layering, bounded maximum-load effects, hostile boss atmosphere, and desktop/DPR-3 mobile visual validation.
 - `v1.7.2`: Graveglass Spires and Eclipse Harrow presentation parity with stage-scaled authored material profiles, layered hostile underglow, deterministic cosmetic debris, and unchanged combat simulation.
 - `v1.8.0`: approved Graveglass and Eclipse material animation integrated into real PixiJS combat with alpha-textured structures, deterministic strike-local choreography, actor-safe layering, and mobile LODs.
+- `v1.9.0`: grounded material warnings replace hostile diagram graphics and duplicate final-spell vectors with rubble, scorch, ash, dust, and restrained embedded embers below all actors.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.
