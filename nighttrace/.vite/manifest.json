@@ -102,7 +102,7 @@
     "name": "rolldown-runtime"
   },
   "index.html": {
-    "file": "assets/index-DhOiGtye.js",
+    "file": "assets/index-GCw9ZquW.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -139,7 +139,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/canvas/CanvasRenderer.mjs": {
-    "file": "assets/CanvasRenderer-CEpMu4mz.js",
+    "file": "assets/CanvasRenderer-lpmg1Ii9.js",
     "name": "CanvasRenderer",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/canvas/CanvasRenderer.mjs",
     "isDynamicEntry": true,
@@ -148,7 +148,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gl/WebGLRenderer.mjs": {
-    "file": "assets/WebGLRenderer-BL4ig0cv.js",
+    "file": "assets/WebGLRenderer-BOejQtuV.js",
     "name": "WebGLRenderer",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gl/WebGLRenderer.mjs",
     "isDynamicEntry": true,
@@ -157,7 +157,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gpu/WebGPURenderer.mjs": {
-    "file": "assets/WebGPURenderer-BU8suwoa.js",
+    "file": "assets/WebGPURenderer-7-gPnbG2.js",
     "name": "WebGPURenderer",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gpu/WebGPURenderer.mjs",
     "isDynamicEntry": true,
@@ -166,7 +166,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/scene/text-bitmap/BitmapFont.mjs": {
-    "file": "assets/BitmapFont-BT1GFktl.js",
+    "file": "assets/BitmapFont-BWJ8Bpeq.js",
     "name": "BitmapFont",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/scene/text-bitmap/BitmapFont.mjs",
     "isDynamicEntry": true,
@@ -175,7 +175,7 @@
     ]
   },
   "src/game/GameCanvas.tsx": {
-    "file": "assets/GameCanvas-Btas-q1g.js",
+    "file": "assets/GameCanvas-C1v2opT8.js",
     "name": "GameCanvas",
     "src": "src/game/GameCanvas.tsx",
     "isDynamicEntry": true,
@@ -196,7 +196,14 @@
     "dynamicImports": [
       "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/environment-browser/browserAll.mjs",
       "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/environment-webworker/webworkerAll.mjs",
-      "src/game/GameCanvas.tsx"
+      "src/game/GameCanvas.tsx",
+      "src/game/groundedVfxAssetData.ts"
     ]
+  },
+  "src/game/groundedVfxAssetData.ts": {
+    "file": "assets/groundedVfxAssetData-deEymgEk.js",
+    "name": "groundedVfxAssetData",
+    "src": "src/game/groundedVfxAssetData.ts",
+    "isDynamicEntry": true
   }
 }
