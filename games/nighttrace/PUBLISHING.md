@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.7.2`
+- Current web release: `v1.8.0`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -79,6 +79,23 @@ The v1.7.2 remote-power presentation-parity gate additionally requires:
 - the standalone HTTPS choreography review autoplays the authored material
   reveals without becoming part of the gameplay bundle
 
+The v1.8.0 authored-runtime gate additionally requires:
+
+- live Graveglass strikes use the approved obsidian/crimson material texture,
+  bottom-anchored rise animation, impact hold, and clean decay
+- live Eclipse lanes raise authored hostile gothic gates, with a distinct
+  cathedral focal structure reserved for the Final formation
+- desktop and mobile texture LODs decode as valid alpha WebP images
+- authored structures render beneath hordes, bosses, and the protected hero;
+  no spell code mutates actor opacity or parents actors beneath effect layers
+- every pose is derived from fixed spell-local time and deterministic cosmetic
+  seeds, with no free-running animation clock or simulation-RNG consumption
+- the old opaque procedural spire/gate bodies no longer compete with the
+  authored structures; ground fissures, lanes, shards, and additive impacts
+  remain native and target-aware
+- damage, cooldown, target selection, hit de-duplication, and collision tests
+  remain unchanged
+
 ## Release archives
 
 The Windows archive contains:
@@ -113,6 +130,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.7.0`: experimental hero and sovereign material-VFX pass.
 - `v1.7.1`: full-resolution actor rescue, protected actor layering, bounded maximum-load effects, hostile boss atmosphere, and desktop/DPR-3 mobile visual validation.
 - `v1.7.2`: Graveglass Spires and Eclipse Harrow presentation parity with stage-scaled authored material profiles, layered hostile underglow, deterministic cosmetic debris, and unchanged combat simulation.
+- `v1.8.0`: approved Graveglass and Eclipse material animation integrated into real PixiJS combat with alpha-textured structures, deterministic strike-local choreography, actor-safe layering, and mobile LODs.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.
