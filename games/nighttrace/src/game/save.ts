@@ -1,5 +1,5 @@
 import type { RunResult, SaveData, TraceModId, WeaponId } from '../shared/types'
-import { LEVELS, WEAPONS, getLevel } from './content'
+import { ALL_WEAPON_IDS, LEVELS, WEAPONS, getLevel } from './content'
 
 export const SAVE_VERSION = 3
 export const SAVE_KEY = 'nighttrace.save.v1'
@@ -59,7 +59,7 @@ export const DEFAULT_SAVE: SaveData = {
     'echo-chamber': 0,
     'dawn-within': 0,
   },
-  unlockedWeapons: ['helio-lance'],
+  unlockedWeapons: [...ALL_WEAPON_IDS],
   settings: DEFAULT_SETTINGS,
 }
 
@@ -201,13 +201,9 @@ export function migrateSave(value: unknown): SaveData {
   const unlockedLevel = clamp(Math.max(1, rawUnlockedLevel, inferredUnlock), 1, LEVELS.length)
 
   const unlockedWeapons = new Set<WeaponId>([
-    'helio-lance',
+    ...ALL_WEAPON_IDS,
     ...weaponArray(source.unlockedWeapons ?? source.weaponUnlocks),
   ])
-  for (const levelId of completedLevels) {
-    const weaponId = getLevel(levelId).unlockWeapon
-    if (weaponId) unlockedWeapons.add(weaponId)
-  }
 
   const settingsSource =
     source.settings ??
@@ -342,8 +338,8 @@ export function calculateRunReward(result: RunResult, previousSave?: SaveData): 
 
 /**
  * Applies campaign progression immutably. Failed runs keep their earned and
- * performance shards, while only victories unlock chapters, weapons, and
- * mastery seals.
+ * performance shards, while only victories unlock chapters and mastery seals.
+ * The complete weapon catalog is available from the first descent.
  */
 export function applyPersistentReward(save: SaveData, result: RunResult): SaveData {
   const current = migrateSave(save)
@@ -359,10 +355,6 @@ export function applyPersistentReward(save: SaveData, result: RunResult): SaveDa
     next.completedLevels = [...next.completedLevels, level.id].sort((left, right) => left - right)
   }
   next.unlockedLevel = Math.max(next.unlockedLevel, Math.min(LEVELS.length, level.id + 1))
-
-  if (level.unlockWeapon && !next.unlockedWeapons.includes(level.unlockWeapon)) {
-    next.unlockedWeapons = [...next.unlockedWeapons, level.unlockWeapon]
-  }
 
   const mastery = new Set<MasteryId>(next.mastery[level.id] ?? [])
   for (const masteryId of reward.earnedMastery) mastery.add(masteryId)

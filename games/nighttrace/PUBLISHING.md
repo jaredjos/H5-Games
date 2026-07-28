@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.10.0`
+- Current web release: `v1.11.0`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -152,6 +152,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.8.0`: approved Graveglass and Eclipse material animation integrated into real PixiJS combat with alpha-textured structures, deterministic strike-local choreography, actor-safe layering, and mobile LODs.
 - `v1.9.0`: grounded material warnings replace hostile diagram graphics and duplicate final-spell vectors with rubble, scorch, ash, dust, and restrained embedded embers below all actors.
 - `v1.10.0`: all hero-power rings, radial ticks, line bursts, outlined gates, decorative rails, and generic diamond fragments are replaced by authored ground damage, smoke, ash, grit, and physical material cues without changing collision or balance.
+- `v1.11.0`: authored five-pose sovereign atlases add idle, two-contact locomotion, windup, and release silhouettes; quadrupeds visibly alternate four-leg contacts; grounded physical hostile warnings replace diagrammatic telegraphs; all eight weapons are available immediately with three free refreshes and normalized connected DPS; overlays share a centered safe-area wrapper.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

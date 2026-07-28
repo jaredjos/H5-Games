@@ -3,9 +3,9 @@ import type {
   OwnedModule,
   OwnedWeapon,
   TraceModId,
-  WeaponId,
 } from '../shared/types'
 import { WEAPONS } from './content'
+import { weaponConnectedDps } from './weaponBalance'
 
 export const BOSS_PATTERN_COUNT = 10
 
@@ -136,22 +136,11 @@ export function experienceToNextLevel(playerLevel: number) {
   return base + lateRunTax
 }
 
-const bossUptimeByWeapon: Record<WeaponId, number> = {
-  'helio-lance': 1,
-  'crescent-array': 1.1,
-  'arc-choir': 1,
-  'rift-seeds': 1,
-  'comet-swarm': 0.9,
-  'ash-halo': 0.9,
-  'mirror-bow': 1,
-  'null-bell': 0.92,
-}
-
 /**
  * Estimates sustained single-target damage instead of using horde damage,
- * which would overvalue chains and area weapons. It mirrors the live rank,
- * module, awakening, critical, and Astrarium formulas closely enough to keep a
- * sovereign meaningful without counter-building the player.
+ * which would overvalue chains and area weapons. Every power now consumes the
+ * same cast-wide connected-damage budget; its targeting, coverage, control and
+ * synergy remain distinct without making one visual pattern a hidden DPS tax.
  */
 export function estimateBossDps({
   playerLevel,
@@ -167,37 +156,12 @@ export function estimateBossDps({
 
   for (const owned of weapons) {
     const definition = WEAPONS[owned.id]
-    const rank = Math.max(1, Math.min(5, Math.floor(owned.rank)))
     const moduleRank = Math.max(0, Math.min(3, moduleRanks.get(definition.moduleId) ?? 0))
-    const damage =
-      definition.damage *
-      (1 + (rank - 1) * 0.31) *
-      (owned.awakened ? 1.5 : 1)
-    let volleyFactor = bossUptimeByWeapon[owned.id]
-
-    if (owned.id === 'helio-lance') {
-      volleyFactor *= 1 + moduleRank * 0.08 + (owned.awakened ? 1.44 : 0)
-    } else if (owned.id === 'arc-choir') {
-      volleyFactor *= 1 + moduleRank * 0.07
-    } else if (owned.id === 'rift-seeds') {
-      volleyFactor *= 1 + moduleRank * 0.12
-    } else if (owned.id === 'comet-swarm') {
-      const count = Math.min(7, 1 + Math.ceil(rank / 2) + (owned.awakened ? 2 : 0))
-      volleyFactor *= count * (1 + moduleRank * 0.06)
-    } else if (owned.id === 'ash-halo') {
-      volleyFactor *= 1 + moduleRank * 0.1
-    } else if (owned.id === 'mirror-bow') {
-      volleyFactor *= 1 + moduleRank * 0.08
-    } else if (owned.id === 'null-bell') {
-      volleyFactor *= 1 + moduleRank * 0.13
-    }
-
-    let cooldown =
-      definition.cooldown *
-      Math.max(0.45, 1 - (rank - 1) * 0.055 - moduleRank * 0.035) *
-      (owned.awakened ? 0.68 : 1)
-    if (traceMods.includes('red-shift')) cooldown *= 0.9
-    weaponDps += (damage * volleyFactor) / Math.max(0.08, cooldown)
+    weaponDps += weaponConnectedDps(
+      owned,
+      moduleRank,
+      traceMods.includes('red-shift') ? 0.9 : 1,
+    )
   }
 
   const critChance = Math.min(
@@ -249,7 +213,8 @@ export function bossHealthForBuild(baseHealth: number, estimatedDps: number, lev
   const adaptiveHealth =
     referenceDps *
     bossTargetTtkSeconds(safeLevel) *
-    powerRatio ** 0.82
+    powerRatio ** 0.82 *
+    1.06
 
   return Math.round(
     Math.max(safeBaseHealth * 1.05, Math.min(adaptiveHealth, safeBaseHealth * 16)),

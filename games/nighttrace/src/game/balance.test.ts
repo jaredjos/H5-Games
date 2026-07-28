@@ -162,7 +162,7 @@ describe('build-aware boss durability', () => {
     const awakenedDps = estimateBossDps(awakenedBuild)
 
     expect(starterDps).toBeGreaterThan(35)
-    expect(awakenedDps).toBeGreaterThan(starterDps * 12)
+    expect(awakenedDps).toBeGreaterThan(starterDps * 6)
   })
 
   it('targets a real fight while retaining floor and anti-sponge bounds', () => {
@@ -173,7 +173,7 @@ describe('build-aware boss durability', () => {
     const awakenedHealth = bossHealthForBuild(baseHealth, awakenedDps, 1)
 
     expect(weakHealth).toBeGreaterThan(baseHealth)
-    expect(awakenedHealth).toBeGreaterThan(weakHealth * 5)
+    expect(awakenedHealth).toBeGreaterThan(weakHealth * 3.2)
     expect(awakenedHealth).toBeLessThanOrEqual(baseHealth * 16)
     expect(awakenedHealth / awakenedDps).toBeGreaterThan(12)
     expect(awakenedHealth / awakenedDps).toBeLessThan(bossTargetTtkSeconds(1))

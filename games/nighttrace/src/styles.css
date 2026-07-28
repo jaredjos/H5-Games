@@ -2680,10 +2680,9 @@ kbd {
   position: absolute;
   z-index: 80;
   inset: 0;
-  display: grid;
-  align-content: center;
-  align-content: safe center;
-  justify-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   height: 100%;
   min-height: 0;
   padding:
@@ -2696,6 +2695,17 @@ kbd {
   overscroll-behavior: contain;
   touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
+}
+
+.upgrade-overlay__content,
+.pause-overlay__content {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: center;
+  width: 100%;
+  margin-block: auto;
 }
 
 .upgrade-overlay__veil,
@@ -2795,6 +2805,7 @@ kbd {
   z-index: 2;
   display: grid;
   grid-template-columns: repeat(3, minmax(230px, 330px));
+  justify-content: center;
   gap: clamp(14px, 2.4vw, 38px);
   width: min(1080px, 88vw);
 }
@@ -4011,7 +4022,6 @@ kbd {
   }
 
   .upgrade-overlay {
-    align-content: start;
     overflow-y: auto;
     padding:
       max(22px, calc(var(--safe-top) + 12px))
@@ -4528,7 +4538,6 @@ kbd {
   }
 
   .upgrade-overlay {
-    align-content: start;
     overflow-x: hidden;
     overflow-y: auto;
     padding:
@@ -5023,7 +5032,6 @@ kbd {
   }
 
   .upgrade-overlay {
-    align-content: start;
     overflow-x: hidden;
     overflow-y: auto;
     padding:
@@ -5386,7 +5394,6 @@ kbd {
 
 @media (max-width: 900px) and (orientation: landscape) {
   .upgrade-overlay {
-    align-content: center;
     padding:
       max(6px, calc(var(--safe-top) + 3px))
       max(12px, calc(var(--safe-right) + 8px))

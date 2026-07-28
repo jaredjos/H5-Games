@@ -1,7 +1,16 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RotateCw } from 'lucide-react'
 import type { GameCanvasHandle } from './game/GameCanvas'
-import { LEVELS, MODULES, TRACE_MODS, WEAPONS, formatTime, getLevel } from './game/content'
+import {
+  BASE_FREE_REFRESHES_PER_RUN,
+  BRIGHT_DRAFT_BONUS_REFRESHES,
+  LEVELS,
+  MODULES,
+  TRACE_MODS,
+  WEAPONS,
+  formatTime,
+  getLevel,
+} from './game/content'
 import {
   SAVE_KEY,
   applyBossTrialReward,
@@ -143,10 +152,9 @@ export default function App() {
   const [result, setResult] = useState<RunResult>()
   const [resultRewards, setResultRewards] = useState<{
     mastery: Array<'clear' | 'trace' | 'aegis'>
-    unlockedWeaponId?: string
   }>({ mastery: [] })
   const [runKey, setRunKey] = useState(0)
-  const [rerollAvailable, setRerollAvailable] = useState(false)
+  const [rerollsRemaining, setRerollsRemaining] = useState(0)
   const [toast, setToast] = useState<string>()
   const gameRef = useRef<GameCanvasHandle>(null)
   const completionTokenRef = useRef('')
@@ -157,7 +165,12 @@ export default function App() {
   const currentBossLevel = useMemo(() => getLevel(activeRun.bossLevelId), [activeRun.bossLevelId])
   const reducedMotion = save.settings.reducedShake
   const muted = save.settings.masterVolume === 0
-  const rerollUnlocked = (save.upgrades['bright-draft'] ?? 0) > 0
+  const rerollCapacity =
+    BASE_FREE_REFRESHES_PER_RUN +
+    Math.min(1, Math.max(0, save.upgrades['bright-draft'] ?? 0)) *
+      BRIGHT_DRAFT_BONUS_REFRESHES
+  const visibleRerollsRemaining =
+    snapshot?.rerollsRemaining ?? rerollsRemaining
 
   const persist = useCallback((next: SaveData) => {
     setSave(next)
@@ -242,11 +255,11 @@ export default function App() {
     setSnapshot(undefined)
     setResult(undefined)
     setResultRewards({ mastery: [] })
-    setRerollAvailable(runConfig.mode === 'campaign' && rerollUnlocked)
+    setRerollsRemaining(runConfig.mode === 'campaign' ? rerollCapacity : 0)
     completionTokenRef.current = ''
     setRunKey((value) => value + 1)
     setScreen('game')
-  }, [requestLandscapeMode, rerollUnlocked])
+  }, [requestLandscapeMode, rerollCapacity])
 
   const startLevel = useCallback((levelId: number) => {
     const safeLevelId = Math.max(1, Math.min(save.unlockedLevel, levelId))
@@ -282,11 +295,11 @@ export default function App() {
 
   const restartLevel = useCallback(() => {
     setSnapshot(undefined)
-    setRerollAvailable(activeRun.mode === 'campaign' && rerollUnlocked)
+    setRerollsRemaining(activeRun.mode === 'campaign' ? rerollCapacity : 0)
     completionTokenRef.current = ''
     setRunKey((value) => value + 1)
     setScreen('game')
-  }, [activeRun.mode, rerollUnlocked])
+  }, [activeRun.mode, rerollCapacity])
 
   const completeRun = useCallback((runResult: RunResult) => {
     const completionToken = String(runKey)
@@ -308,13 +321,9 @@ export default function App() {
             (seal) => !previousMastery.has(seal),
           )
         : []
-    const unlockedWeaponId =
-      runResult.runMode === 'campaign'
-        ? progressedSave.unlockedWeapons.find((id) => !save.unlockedWeapons.includes(id))
-        : undefined
     if (runResult.runMode !== 'combat-lab') persist(progressedSave)
     setResult({ ...runResult, dawnShards: awardedShards })
-    setResultRewards({ mastery: newlyEarnedMastery, unlockedWeaponId })
+    setResultRewards({ mastery: newlyEarnedMastery })
     if (runResult.runMode === 'campaign') setSelectedLevelId(runResult.levelId)
     if (runResult.runMode === 'boss-trial') setSelectedTrialLevelId(runResult.levelId)
     setSnapshot(undefined)
@@ -326,10 +335,10 @@ export default function App() {
   }, [])
 
   const rerollUpgrade = useCallback(() => {
-    if (!rerollAvailable) return
+    if (visibleRerollsRemaining <= 0) return
     gameRef.current?.rerollUpgrade()
-    setRerollAvailable(false)
-  }, [rerollAvailable])
+    setRerollsRemaining((remaining) => Math.max(0, remaining - 1))
+  }, [visibleRerollsRemaining])
 
   const togglePause = useCallback(() => {
     gameRef.current?.togglePause()
@@ -585,8 +594,8 @@ export default function App() {
                 weapons={WEAPON_LIST}
                 modules={MODULE_LIST}
                 traceMods={TRACE_MOD_LIST}
-                rerollUnlocked={rerollUnlocked}
-                rerollAvailable={rerollAvailable}
+                rerollsRemaining={visibleRerollsRemaining}
+                rerollCapacity={rerollCapacity}
                 onSelect={selectUpgrade}
                 onReroll={rerollUpgrade}
               />
@@ -625,9 +634,6 @@ export default function App() {
         settings={save.settings}
         nextGoal={nextGoal}
         earnedMastery={resultRewards.mastery}
-        unlockedWeapon={resultRewards.unlockedWeaponId
-          ? WEAPON_LIST.find((weapon) => weapon.id === resultRewards.unlockedWeaponId)
-          : undefined}
         onReturn={() =>
           setScreen(
             result.runMode === 'combat-lab'

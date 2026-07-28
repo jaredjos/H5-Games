@@ -1,3 +1,9 @@
+import type { BossId } from '../shared/types'
+import {
+  bossMaterialTreatment,
+  type BossMaterialTreatmentProfile,
+} from './enemyPresentation'
+
 export const GROUNDED_VFX_KINDS = [
   'hostile-field',
   'hostile-lane',
@@ -22,6 +28,7 @@ export interface GroundedVfxProfileInput {
   readonly lod: GroundedVfxAssetLod
   readonly stage: GroundedVfxStage
   readonly boss?: boolean
+  readonly bossId?: BossId
   readonly reducedFlash?: boolean
 }
 
@@ -82,6 +89,7 @@ export interface GroundedVfxMaterialProfile {
   readonly lod: GroundedVfxAssetLod
   readonly stage: GroundedVfxStage
   readonly boss: boolean
+  readonly bossTreatment?: BossMaterialTreatmentProfile
   readonly reducedFlash: boolean
   readonly material: Readonly<{
     assetId: string
@@ -331,11 +339,25 @@ export function groundedVfxMaterialProfile(
   const stage = STAGE_PROFILE[input.stage]
   const isHostile =
     input.kind === 'hostile-field' || input.kind === 'hostile-lane'
-  const boss = Boolean(input.boss && isHostile)
+  const bossTreatment =
+    isHostile && input.bossId
+      ? bossMaterialTreatment(input.bossId)
+      : undefined
+  const boss = Boolean(isHostile && (input.boss || bossTreatment))
   const reducedFlash = Boolean(input.reducedFlash)
-  const bossScale = boss ? 1.12 : 1
-  const bossDensity = boss ? 1.28 : 1
-  const bossOpacity = boss ? 1.08 : 1
+  const treatmentOpacity =
+    input.kind === 'hostile-field'
+      ? bossTreatment?.fieldOpacityScale ?? 1
+      : input.kind === 'hostile-lane'
+        ? bossTreatment?.laneOpacityScale ?? 1
+        : 1
+  const treatmentPressure = bossTreatment?.pressureScale ?? 1
+  const bossScale = (boss ? 1.12 : 1) * treatmentPressure
+  const bossDustDensity =
+    (boss ? 1.28 : 1) * (bossTreatment?.dustDensityScale ?? 1)
+  const bossDebrisDensity =
+    (boss ? 1.28 : 1) * (bossTreatment?.debrisDensityScale ?? 1)
+  const bossOpacity = (boss ? 1.08 : 1) * treatmentOpacity
   const flashOpacity = reducedFlash ? 0.68 : 1
   const flashEmission = reducedFlash ? 0.46 : 1
 
@@ -362,7 +384,7 @@ export function groundedVfxMaterialProfile(
   const dust = Object.freeze({
     count: densityCount(
       base.dustCount,
-      stage.density * bossDensity,
+      stage.density * bossDustDensity,
       input.lod,
     ),
     opacity: clamp01(
@@ -378,18 +400,23 @@ export function groundedVfxMaterialProfile(
   const debris = Object.freeze({
     count: densityCount(
       base.debrisCount,
-      stage.density * bossDensity,
+      stage.density * bossDebrisDensity,
       input.lod,
     ),
     opacity: clamp01(
       base.debrisOpacity *
         stage.opacity *
         bossOpacity *
+        (bossTreatment?.debrisOpacityScale ?? 1) *
         (reducedFlash ? 0.76 : 1),
     ),
     scale: clamp(base.debrisScale * stage.scale, 0.5, 1.8),
     spread: clamp(base.debrisSpread * bossScale, 0.5, 1.8),
-    lift: clamp01(base.debrisLift * (boss ? 1.1 : 1)),
+    lift: clamp01(
+      base.debrisLift *
+        (boss ? 1.1 : 1) *
+        (bossTreatment?.debrisLiftScale ?? 1),
+    ),
   })
 
   return Object.freeze({
@@ -397,6 +424,7 @@ export function groundedVfxMaterialProfile(
     lod: input.lod,
     stage: input.stage,
     boss,
+    bossTreatment,
     reducedFlash,
     material,
     dust,

@@ -3,18 +3,28 @@ import { WEAPONS } from './content'
 import {
   ALL_BOSS_PRESENTATION_IDS,
   ALL_ENEMY_PRESENTATION_IDS,
+  BOSS_MATERIAL_TREATMENTS,
   BOSS_PRESENTATIONS,
   BOSS_RELEASE_TAIL_SECONDS,
   ENEMY_PRESENTATIONS,
   HOSTILE_CRIMSON_COLOR,
+  HOSTILE_MATERIAL_FORBIDDEN_GEOMETRY,
   HOSTILE_VENOM_COLOR,
   HOSTILE_VIOLET_COLOR,
   bossImpactProgress,
+  bossMaterialTreatment,
   bossPresentation,
   enemyPresentation,
   sampleHostileEnvelope,
   sampleHostileReaction,
 } from './enemyPresentation'
+
+const colorLuminance = (color: number) => {
+  const red = ((color >> 16) & 0xff) / 255
+  const green = ((color >> 8) & 0xff) / 255
+  const blue = (color & 0xff) / 255
+  return red * 0.2126 + green * 0.7152 + blue * 0.0722
+}
 
 describe('hostile presentation profiles', () => {
   it('covers every horde and boss identity with immutable report data', () => {
@@ -122,6 +132,64 @@ describe('hostile presentation profiles', () => {
     expect(enemyFamilies).toEqual(new Set(['crimson', 'violet']))
     expect(bossFamilies).toEqual(new Set(['crimson', 'violet', 'venom']))
     expect(bossPresentation('mire-cantor').colorFamily).toBe('venom')
+  })
+
+  it('covers every boss with a restrained physical material treatment', () => {
+    expect(Object.keys(BOSS_MATERIAL_TREATMENTS))
+      .toEqual([...ALL_BOSS_PRESENTATION_IDS])
+    expect(Object.isFrozen(BOSS_MATERIAL_TREATMENTS)).toBe(true)
+
+    const heroColors = new Set(
+      Object.values(WEAPONS).map((weapon) => weapon.color),
+    )
+    const identities = new Set<string>()
+    for (const bossId of ALL_BOSS_PRESENTATION_IDS) {
+      const treatment = bossMaterialTreatment(bossId)
+      expect(treatment.id).toBe(bossId)
+      expect(treatment.materialFamily).toBe('neutral-charcoal')
+      expect(treatment.geometryPolicy).toBe('grounded-material-only')
+      expect(Object.isFrozen(treatment)).toBe(true)
+      expect(colorLuminance(treatment.fieldTint)).toBeLessThan(0.18)
+      expect(colorLuminance(treatment.laneTint)).toBeLessThan(0.16)
+      expect(treatment.accentCoverage).toBeGreaterThan(0)
+      expect(treatment.accentCoverage).toBeLessThanOrEqual(0.1)
+      expect(heroColors.has(treatment.fieldTint), bossId).toBe(false)
+      expect(heroColors.has(treatment.laneTint), bossId).toBe(false)
+      expect(heroColors.has(treatment.smokeTint), bossId).toBe(false)
+      expect(heroColors.has(treatment.accentColor), bossId).toBe(false)
+      expect(heroColors.has(treatment.debrisTint), bossId).toBe(false)
+
+      for (const scale of [
+        treatment.fieldOpacityScale,
+        treatment.laneOpacityScale,
+        treatment.dustDensityScale,
+        treatment.debrisDensityScale,
+        treatment.debrisOpacityScale,
+        treatment.debrisLiftScale,
+        treatment.pressureScale,
+      ]) {
+        expect(Number.isFinite(scale), bossId).toBe(true)
+        expect(scale, bossId).toBeGreaterThanOrEqual(0.5)
+        expect(scale, bossId).toBeLessThanOrEqual(1.5)
+      }
+      identities.add(
+        `${treatment.materialName}:${treatment.accentColor.toString(16)}`,
+      )
+    }
+    expect(identities.size).toBe(ALL_BOSS_PRESENTATION_IDS.length)
+  })
+
+  it('declares the absolute material-geometry bans', () => {
+    expect(HOSTILE_MATERIAL_FORBIDDEN_GEOMETRY).toEqual([
+      'rings',
+      'spokes',
+      'grids',
+      'outlines',
+      'rails',
+      'crosshairs',
+      'hard-cones',
+    ])
+    expect(Object.isFrozen(HOSTILE_MATERIAL_FORBIDDEN_GEOMETRY)).toBe(true)
   })
 })
 

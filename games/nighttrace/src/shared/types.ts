@@ -99,7 +99,6 @@ export interface LevelDefinition {
   accent: string
   hazards: string[]
   reward: string
-  unlockWeapon?: WeaponId
 }
 
 export interface OwnedWeapon {
@@ -186,6 +185,7 @@ export interface GameSnapshot {
   modules: OwnedModule[]
   traceMods: TraceModId[]
   upgradeOptions?: UpgradeOption[]
+  rerollsRemaining?: number
   tutorial?: string
   paused: boolean
 }

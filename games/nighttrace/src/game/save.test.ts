@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { RunResult } from '../shared/types'
+import { ALL_WEAPON_IDS } from './content'
 import {
   DEFAULT_SAVE,
   SAVE_KEY,
@@ -59,6 +60,7 @@ describe('versioned saves', () => {
     const second = loadSave(storage)
     expect(second).toEqual(DEFAULT_SAVE)
     expect(second.completedLevels).toEqual([])
+    expect(second.unlockedWeapons).toEqual(ALL_WEAPON_IDS)
     expect(second.settings.masterVolume).toBe(DEFAULT_SAVE.settings.masterVolume)
   })
 
@@ -102,9 +104,7 @@ describe('versioned saves', () => {
     expect(migrated.bossTrialClears).toBe(0)
     expect(migrated.completedLevels).toEqual([1])
     expect(migrated.dawnShards).toBe(12)
-    expect(migrated.unlockedWeapons).toEqual(
-      expect.arrayContaining(['helio-lance', 'crescent-array', 'arc-choir']),
-    )
+    expect(migrated.unlockedWeapons).toEqual(ALL_WEAPON_IDS)
     expect(migrated.upgrades.force).toBe(3)
     expect(migrated.mastery[1]).toEqual(['clear'])
     expect(migrated.settings.masterVolume).toBe(1)
@@ -164,11 +164,11 @@ describe('run rewards and mastery', () => {
     expect(next.completedLevels).toEqual([])
     expect(next.unlockedLevel).toBe(1)
     expect(next.bossTrialClears).toBe(0)
-    expect(next.unlockedWeapons).toEqual(['helio-lance'])
+    expect(next.unlockedWeapons).toEqual(ALL_WEAPON_IDS)
     expect(save.dawnShards).toBe(0)
   })
 
-  it('unlocks the next level, weapon, and all earned mastery on victory', () => {
+  it('unlocks the next level and earned mastery while preserving the universal arsenal', () => {
     const targets = getMasteryTargets(1)
     const result = runResult({
       victory: true,
@@ -181,7 +181,7 @@ describe('run rewards and mastery', () => {
 
     expect(next.completedLevels).toEqual([1])
     expect(next.unlockedLevel).toBe(2)
-    expect(next.unlockedWeapons).toContain('crescent-array')
+    expect(next.unlockedWeapons).toEqual(ALL_WEAPON_IDS)
     expect(next.mastery[1]).toEqual(['clear', 'trace', 'aegis'])
     expect(getMasteryCount(next)).toBe(3)
     expect(hasMastery(next, 1, 'trace')).toBe(true)
@@ -293,7 +293,7 @@ describe('Boss Trials rewards', () => {
     save.unlockedLevel = 4
     save.completedLevels = [1, 2, 3]
     save.mastery = { 1: ['clear', 'trace'] }
-    save.unlockedWeapons = ['helio-lance', 'crescent-array', 'arc-choir', 'rift-seeds']
+    save.unlockedWeapons = [...ALL_WEAPON_IDS]
     save.upgrades.force = 3
 
     const next = applyBossTrialReward(

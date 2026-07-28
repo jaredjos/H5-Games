@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { TraceModId } from '../shared/types'
 import {
+  ALL_WEAPON_IDS,
+  BASE_FREE_REFRESHES_PER_RUN,
+  BRIGHT_DRAFT_BONUS_REFRESHES,
   GLOBAL_DIFFICULTY_MULTIPLIER,
   LEVELS,
   MODULE_SLOT_CAP,
@@ -46,6 +49,7 @@ describe('NIGHTTRACE content catalog', () => {
   it('provides every typed weapon, module, and trace mod', () => {
     expect([WEAPON_SLOT_CAP, MODULE_SLOT_CAP, TRACE_MOD_SLOT_CAP]).toEqual([4, 4, 3])
     expect(Object.keys(WEAPONS)).toHaveLength(8)
+    expect(ALL_WEAPON_IDS).toEqual(Object.keys(WEAPONS))
     expect(Object.keys(MODULES)).toHaveLength(8)
     expect(Object.keys(TRACE_MODS)).toHaveLength(8)
 
@@ -110,23 +114,25 @@ describe('seeded upgrade drafts', () => {
     expect(draft.options.some((option) => option.id === 'module:prism-lens:1')).toBe(true)
   })
 
-  it('defaults omitted unlock data to owned weapons plus Helio Lance only', () => {
-    const draft = createUpgradeDraft(
-      {
-        weapons: [{ id: 'crescent-array', rank: 2 }],
-        modules: [],
-        traceMods: ['closed-circuit', 'afterimage', 'crossfire'],
-        excludeOptionIds: ['heal:vital-repair', 'heal:aegis-overcharge', 'heal:pulse-prime'],
-      },
-      73,
-    )
-    const offeredWeaponIds = draft.options
-      .filter((option) => option.type === 'weapon')
-      .map((option) => option.weaponId)
+  it('makes every unowned weapon available without campaign unlock data', () => {
+    const offeredWeaponIds = new Set<string>()
+    for (let seed = 1; seed <= 48; seed += 1) {
+      const draft = createUpgradeDraft(
+        {
+          weapons: [{ id: 'helio-lance', rank: 5, awakened: true }],
+          modules: [{ id: 'prism-lens', rank: 3 }],
+          traceMods: ['closed-circuit', 'afterimage', 'crossfire'],
+          excludeOptionIds: ['heal:vital-repair', 'heal:aegis-overcharge', 'heal:pulse-prime'],
+        },
+        seed,
+      )
+      for (const option of draft.options) {
+        if (option.weaponId && option.rank === 1) offeredWeaponIds.add(option.weaponId)
+      }
+    }
 
-    expect(new Set(offeredWeaponIds)).toEqual(new Set(['crescent-array', 'helio-lance']))
-    expect(offeredWeaponIds.every((weaponId) => weaponId === 'crescent-array' || weaponId === 'helio-lance')).toBe(
-      true,
+    expect(offeredWeaponIds).toEqual(
+      new Set(ALL_WEAPON_IDS.filter((weaponId) => weaponId !== 'helio-lance')),
     )
   })
 
@@ -148,10 +154,19 @@ describe('seeded upgrade drafts', () => {
   it('supports trace-only drafting when the build is otherwise complete', () => {
     const draft = createUpgradeDraft(
       {
-        weapons: [{ id: 'helio-lance', rank: 5, awakened: true }],
-        modules: [{ id: 'prism-lens', rank: 3 }],
+        weapons: [
+          { id: 'helio-lance', rank: 5, awakened: true },
+          { id: 'crescent-array', rank: 5, awakened: true },
+          { id: 'arc-choir', rank: 5, awakened: true },
+          { id: 'rift-seeds', rank: 5, awakened: true },
+        ],
+        modules: [
+          { id: 'prism-lens', rank: 3 },
+          { id: 'gyro-crown', rank: 3 },
+          { id: 'resonance-coil', rank: 3 },
+          { id: 'grav-anchor', rank: 3 },
+        ],
         traceMods: [],
-        unlockedWeapons: ['helio-lance'],
         excludeOptionIds: ['heal:vital-repair', 'heal:aegis-overcharge', 'heal:pulse-prime'],
       },
       122,
@@ -212,41 +227,67 @@ describe('seeded upgrade drafts', () => {
     expect(weaponCapped.options).toHaveLength(3)
     expect(weaponCapped.options.every((option) => option.type === 'heal')).toBe(true)
     expect(moduleCapped.options).toHaveLength(3)
-    expect(moduleCapped.options.every((option) => option.type === 'heal')).toBe(true)
+    expect(moduleCapped.options.every((option) => option.type !== 'module')).toBe(true)
     expect(traceCapped.options).toHaveLength(3)
-    expect(traceCapped.options.every((option) => option.type === 'heal')).toBe(true)
+    expect(traceCapped.options.every((option) => option.type !== 'trace')).toBe(true)
   })
 
-  it('consumes one reroll and excludes the prior three cards', () => {
-    const first = createUpgradeDraft(baseContext, 19)
-    const second = createUpgradeDraft(
-      {
-        ...baseContext,
-        excludeOptionIds: first.options.map((option) => option.id),
-      },
-      first.seed,
-      true,
-    )
-    const firstIds = new Set(first.options.map((option) => option.id))
+  it('consumes three free refreshes and cumulatively excludes rejected cards', () => {
+    let draft = createUpgradeDraft(baseContext, 19)
+    const rejectedIds = new Set<string>()
 
-    expect(second.options).toHaveLength(3)
-    expect(second.options.every((option) => !firstIds.has(option.id))).toBe(true)
-    expect(second.rerollsUsed).toBe(1)
-    expect(second.rerollAvailable).toBe(false)
+    expect(draft.rerollsRemaining).toBe(BASE_FREE_REFRESHES_PER_RUN)
+    for (let refresh = 1; refresh <= BASE_FREE_REFRESHES_PER_RUN; refresh += 1) {
+      for (const option of draft.options) rejectedIds.add(option.id)
+      draft = createUpgradeDraft(
+        {
+          ...baseContext,
+          rerollsUsed: refresh - 1,
+          excludeOptionIds: [...rejectedIds],
+        },
+        draft.seed,
+        true,
+      )
+
+      expect(draft.options).toHaveLength(3)
+      expect(draft.options.every((option) => !rejectedIds.has(option.id))).toBe(true)
+      expect(draft.rerollsUsed).toBe(refresh)
+      expect(draft.rerollsRemaining).toBe(BASE_FREE_REFRESHES_PER_RUN - refresh)
+    }
+    expect(draft.rerollAvailable).toBe(false)
   })
 
-  it('rejects a second reroll after the run reroll is spent', () => {
+  it('rejects a fourth refresh after the free allowance is spent', () => {
     expect(() =>
       createUpgradeDraft(
         {
           ...baseContext,
-          rerollsUsed: 1,
+          rerollsUsed: BASE_FREE_REFRESHES_PER_RUN,
           excludeOptionIds: ['weapon:helio-lance:3'],
         },
         331,
         true,
       ),
     ).toThrow(RangeError)
+  })
+
+  it('accepts one additional refresh when Bright Draft raises the run limit', () => {
+    const rerollLimit =
+      BASE_FREE_REFRESHES_PER_RUN + BRIGHT_DRAFT_BONUS_REFRESHES
+    const refreshed = createUpgradeDraft(
+      {
+        ...baseContext,
+        rerollsUsed: rerollLimit - 1,
+        rerollLimit,
+        excludeOptionIds: ['weapon:helio-lance:3'],
+      },
+      332,
+      true,
+    )
+
+    expect(refreshed.rerollsUsed).toBe(rerollLimit)
+    expect(refreshed.rerollsRemaining).toBe(0)
+    expect(refreshed.rerollAvailable).toBe(false)
   })
 
   it('returns three valid recovery choices when a saturated build exhausts fresh cards', () => {
@@ -276,6 +317,7 @@ describe('seeded upgrade drafts', () => {
     expect(new Set(draft.options.map((option) => option.id)).size).toBe(3)
     expect(draft.options.every((option) => option.type === 'heal')).toBe(true)
     expect(draft.rerollsUsed).toBe(1)
-    expect(draft.rerollAvailable).toBe(false)
+    expect(draft.rerollsRemaining).toBe(2)
+    expect(draft.rerollAvailable).toBe(true)
   })
 })

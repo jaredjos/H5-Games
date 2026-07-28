@@ -17,6 +17,8 @@ export const WEAPON_SLOT_CAP = 4
 export const MODULE_SLOT_CAP = 4
 export const TRACE_MOD_SLOT_CAP = 3
 export const GLOBAL_DIFFICULTY_MULTIPLIER = 1.1
+export const BASE_FREE_REFRESHES_PER_RUN = 3
+export const BRIGHT_DRAFT_BONUS_REFRESHES = 1
 
 export const WEAPONS = {
   'helio-lance': {
@@ -28,7 +30,7 @@ export const WEAPONS = {
     awakening: 'Crowned Spear',
     color: 0xffcf63,
     cooldown: 0.58,
-    damage: 28,
+    damage: 30.16,
   },
   'crescent-array': {
     id: 'crescent-array',
@@ -39,7 +41,7 @@ export const WEAPONS = {
     awakening: 'Eclipse Wheel',
     color: 0x8cecff,
     cooldown: 1.05,
-    damage: 18,
+    damage: 54.6,
   },
   'arc-choir': {
     id: 'arc-choir',
@@ -50,7 +52,7 @@ export const WEAPONS = {
     awakening: 'Cathedral Storm',
     color: 0xb18cff,
     cooldown: 1.28,
-    damage: 24,
+    damage: 66.56,
   },
   'rift-seeds': {
     id: 'rift-seeds',
@@ -61,7 +63,7 @@ export const WEAPONS = {
     awakening: 'Eventide Garden',
     color: 0x70f0b5,
     cooldown: 1.72,
-    damage: 38,
+    damage: 89.44,
   },
   'comet-swarm': {
     id: 'comet-swarm',
@@ -72,7 +74,7 @@ export const WEAPONS = {
     awakening: 'Perihelion Hunt',
     color: 0xff8f70,
     cooldown: 0.92,
-    damage: 21,
+    damage: 47.84,
   },
   'ash-halo': {
     id: 'ash-halo',
@@ -83,7 +85,7 @@ export const WEAPONS = {
     awakening: 'Sepulchral Orchard',
     color: 0xe35c68,
     cooldown: 1.08,
-    damage: 34,
+    damage: 56.16,
   },
   'mirror-bow': {
     id: 'mirror-bow',
@@ -94,7 +96,7 @@ export const WEAPONS = {
     awakening: 'Infinite Refrain',
     color: 0xe6f3ff,
     cooldown: 0.74,
-    damage: 34,
+    damage: 38.48,
   },
   'null-bell': {
     id: 'null-bell',
@@ -105,9 +107,13 @@ export const WEAPONS = {
     awakening: 'Black Benediction',
     color: 0xc269ff,
     cooldown: 2.12,
-    damage: 64,
+    damage: 110.24,
   },
 } satisfies Record<WeaponId, WeaponDefinition>
+
+export const ALL_WEAPON_IDS = Object.freeze(
+  Object.keys(WEAPONS) as WeaponId[],
+)
 
 export const MODULES = {
   'prism-lens': {
@@ -210,8 +216,7 @@ export const LEVELS: LevelDefinition[] = [
     bossFrame: 0,
     accent: '#7cf7d4',
     hazards: ['Star-lines sweep full horizontal or vertical lanes.', 'Gloam Stag fans aimed strike lanes as each phase deepens.'],
-    reward: 'Crescent Array pattern and 45 Dawn Shards',
-    unlockWeapon: 'crescent-array',
+    reward: '45 Dawn Shards and First Beacon mastery',
   },
   {
     id: 2,
@@ -227,8 +232,7 @@ export const LEVELS: LevelDefinition[] = [
     bossFrame: 1,
     accent: '#65d9b0',
     hazards: ['Twin mire sigils bloom near the bearer.', 'Mire Cantor surrounds the bearer with orbiting sound rings.'],
-    reward: 'Arc Choir pattern and 60 Dawn Shards',
-    unlockWeapon: 'arc-choir',
+    reward: '60 Dawn Shards and Glassreed mastery',
   },
   {
     id: 3,
@@ -244,8 +248,7 @@ export const LEVELS: LevelDefinition[] = [
     bossFrame: 2,
     accent: '#ffcf63',
     hazards: ['Angled rail lanes cut in from either edge.', 'Railjaw Prime escalates into crossing strike lanes.'],
-    reward: 'Rift Seeds pattern and 78 Dawn Shards',
-    unlockWeapon: 'rift-seeds',
+    reward: '78 Dawn Shards and Arcade mastery',
   },
   {
     id: 4,
@@ -261,8 +264,7 @@ export const LEVELS: LevelDefinition[] = [
     bossFrame: 3,
     accent: '#d4a5ff',
     hazards: ['Three prism seals orbit the bearer before detonation.', 'Mirror Matron marks both the bearer and their mirrored position.'],
-    reward: 'Comet Swarm pattern and 96 Dawn Shards',
-    unlockWeapon: 'comet-swarm',
+    reward: '96 Dawn Shards and Prism mastery',
   },
   {
     id: 5,
@@ -278,8 +280,7 @@ export const LEVELS: LevelDefinition[] = [
     bossFrame: 1,
     accent: '#57b7ff',
     hazards: ['Tidal walls sweep full horizontal or vertical lanes.', 'Tide Apostle scatters staggered flood marks around the bearer.'],
-    reward: 'Graveglass Spires pattern and 118 Dawn Shards',
-    unlockWeapon: 'ash-halo',
+    reward: '118 Dawn Shards and Drowned Docks mastery',
   },
   {
     id: 6,
@@ -295,8 +296,7 @@ export const LEVELS: LevelDefinition[] = [
     bossFrame: 4,
     accent: '#9ca7ff',
     hazards: ['Twin charged sigils erupt near the bearer.', 'Storm Engine fans increasingly dense target lanes.'],
-    reward: 'Mirror Bow pattern and 142 Dawn Shards',
-    unlockWeapon: 'mirror-bow',
+    reward: '142 Dawn Shards and Stormrail mastery',
   },
   {
     id: 7,
@@ -312,8 +312,7 @@ export const LEVELS: LevelDefinition[] = [
     bossFrame: 4,
     accent: '#8de9ff',
     hazards: ['Angled time-shear lanes enter from either edge.', 'Chronophage surrounds the bearer with rotating clock sigils.'],
-    reward: 'Eclipse Harrow pattern and 168 Dawn Shards',
-    unlockWeapon: 'null-bell',
+    reward: '168 Dawn Shards and Hourglass mastery',
   },
   {
     id: 8,
@@ -469,6 +468,7 @@ export interface UpgradeDraftContext {
   shield?: number
   maxShield?: number
   rerollsUsed?: number
+  rerollLimit?: number
   excludeOptionIds?: string[]
 }
 
@@ -477,6 +477,7 @@ export interface UpgradeDraftResult {
   seed: number
   rerollAvailable: boolean
   rerollsUsed: number
+  rerollsRemaining: number
 }
 
 type CandidateLane = 'awakening' | 'weapon' | 'synergy' | 'trace' | 'utility' | 'general'
@@ -622,26 +623,41 @@ function utilityCandidates(context: UpgradeDraftContext): UpgradeCandidate[] {
  *
  * Slot one favors an owned weapon or a ready awakening; slot two favors the
  * matching module; the final slot is weighted across trace mods, new weapons,
- * recovery, and remaining build progress. Pass `rerolled=true` with the prior
- * option ids in `excludeOptionIds` to consume the run's single reroll. When a
- * build is fully saturated, excluded recovery cards may return so the draft
- * always remains actionable.
+ * recovery, and remaining build progress. Pass `rerolled=true` with every
+ * option rejected so far in `excludeOptionIds` to consume one refresh. Three
+ * refreshes are free by default; callers may raise the limit for persistent
+ * perks. When a build is fully saturated, excluded recovery cards may return
+ * so the draft always remains actionable.
  */
 export function createUpgradeDraft(
   context: UpgradeDraftContext,
   seed: SeedValue = 1,
   rerolled = false,
 ): UpgradeDraftResult {
-  const priorRerolls = Math.max(0, context.rerollsUsed ?? 0)
-  if (rerolled && priorRerolls >= 1) {
-    throw new RangeError('NIGHTTRACE upgrade reroll has already been spent.')
+  const rerollLimit = Math.max(
+    0,
+    Math.floor(context.rerollLimit ?? BASE_FREE_REFRESHES_PER_RUN),
+  )
+  const priorRerolls = Math.min(
+    rerollLimit,
+    Math.max(0, Math.floor(context.rerollsUsed ?? 0)),
+  )
+  if (rerolled && priorRerolls >= rerollLimit) {
+    throw new RangeError('NIGHTTRACE upgrade refreshes have already been spent.')
   }
 
   const rng = createSeededRng(seed)
   const exclusions = new Set(context.excludeOptionIds ?? [])
-  const rerollsUsed = Math.min(1, priorRerolls + (rerolled ? 1 : 0))
+  const rerollsUsed = Math.min(
+    rerollLimit,
+    priorRerolls + (rerolled ? 1 : 0),
+  )
   const unlocked = new Set<WeaponId>(
-    context.unlockedWeapons ?? ['helio-lance', ...context.weapons.map((weapon) => weapon.id)],
+    [
+      ...ALL_WEAPON_IDS,
+      ...(context.unlockedWeapons ?? []),
+      ...context.weapons.map((weapon) => weapon.id),
+    ],
   )
   const ownedWeapons = new Map(context.weapons.map((weapon) => [weapon.id, weapon]))
   const ownedModules = new Map(context.modules.map((module) => [module.id, module]))
@@ -758,8 +774,9 @@ export function createUpgradeDraft(
   return {
     options: selected.slice(0, 3).map((candidate) => candidate.option),
     seed: rng.seed,
-    rerollAvailable: rerollsUsed === 0,
+    rerollAvailable: rerollsUsed < rerollLimit,
     rerollsUsed,
+    rerollsRemaining: Math.max(0, rerollLimit - rerollsUsed),
   }
 }
 

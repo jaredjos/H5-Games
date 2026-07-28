@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import actorAtmosphereSource from './actorAtmosphere.ts?raw'
 import {
   createBossHostileField,
   createHeroSanctumField,
@@ -56,6 +57,38 @@ describe('hero sanctum parameters', () => {
 })
 
 describe('hostile boss-field parameters', () => {
+  it('uses broad material masses without thin line or diagram geometry', () => {
+    const start = actorAtmosphereSource.indexOf(
+      'const BOSS_HOSTILE_FRAGMENT = `',
+    )
+    const end = actorAtmosphereSource.indexOf(
+      'const clamp01',
+      start,
+    )
+    expect(start).toBeGreaterThanOrEqual(0)
+    expect(end).toBeGreaterThan(start)
+    const shader = actorAtmosphereSource.slice(start, end)
+
+    for (const forbidden of [
+      'fractureA',
+      'fractureB',
+      'veins',
+      'directionalSurge',
+      'sideSurge',
+      'widening',
+    ]) {
+      expect(shader, forbidden).not.toContain(forbidden)
+    }
+    for (const materialField of [
+      'smokeMass',
+      'compressedStone',
+      'pressureMass',
+      'disturbedRubble',
+    ]) {
+      expect(shader, materialField).toContain(materialField)
+    }
+  })
+
   it('raises the restrained idle ceiling for a special attack', () => {
     const idle = resolveBossHostileFieldParameters({
       intensity: 0.55,

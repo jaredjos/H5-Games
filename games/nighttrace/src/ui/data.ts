@@ -1,4 +1,4 @@
-import type { BossId, EnemyId, WeaponId } from '../shared/types'
+import type { BossId, EnemyId } from '../shared/types'
 
 export interface CampaignNodeLayout {
   id: number
@@ -95,8 +95,8 @@ export const ASTRARIUM_NODES: AstrariumNodeDefinition[] = [
   {
     id: 'bright-draft',
     name: 'Bright Draft',
-    description: 'Once per descent, reject the path fate offers.',
-    stat: 'Unlocks one upgrade reroll per run',
+    description: 'Once more per descent, reject the path fate offers.',
+    stat: '+1 upgrade refresh per run · four total',
     baseCost: 70,
     maxRank: 1,
     x: 57,
@@ -181,14 +181,3 @@ export const BOSS_CODEX: Array<{ id: BossId; name: string; epithet: string; fram
   { id: 'cartographer', name: 'The Cartographer', epithet: 'It maps the shape of your fear', frame: 3 },
   { id: 'sun-eater', name: 'The Sun-Eater', epithet: 'Last regent of the eclipse', frame: 5 },
 ]
-
-export const WEAPON_UNLOCK_LEVEL: Partial<Record<WeaponId, number>> = {
-  'helio-lance': 1,
-  'crescent-array': 1,
-  'arc-choir': 2,
-  'rift-seeds': 3,
-  'comet-swarm': 4,
-  'ash-halo': 5,
-  'mirror-bow': 6,
-  'null-bell': 7,
-}

@@ -10,6 +10,10 @@ import {
   type GroundedVfxCue,
   type GroundedVfxKind,
 } from './groundedVfxPresentation'
+import {
+  ALL_BOSS_PRESENTATION_IDS,
+  bossMaterialTreatment,
+} from './enemyPresentation'
 
 const FORBIDDEN_CUE_KEYS = new Set([
   'damage',
@@ -172,6 +176,57 @@ describe('grounded material VFX profiles', () => {
       expect(bossFlagIgnored.boss).toBe(false)
       expect(bossFlagIgnored).toEqual(standard)
     }
+  })
+
+  it('applies each boss material treatment to hostile fields and lanes', () => {
+    for (const bossId of ALL_BOSS_PRESENTATION_IDS) {
+      const treatment = bossMaterialTreatment(bossId)
+      const field = groundedVfxMaterialProfile({
+        kind: 'hostile-field',
+        lod: 'desktop',
+        stage: 'mastered',
+        bossId,
+      })
+      const lane = groundedVfxMaterialProfile({
+        kind: 'hostile-lane',
+        lod: 'desktop',
+        stage: 'mastered',
+        bossId,
+      })
+
+      for (const profile of [field, lane]) {
+        expect(profile.boss).toBe(true)
+        expect(profile.bossTreatment).toBe(treatment)
+        expect(Object.isFrozen(profile.bossTreatment)).toBe(true)
+        expect(profile.material.opacity).toBeGreaterThan(0)
+        expect(profile.debris.count).toBeGreaterThan(0)
+        expect(profile.debris.lift).toBeGreaterThan(0)
+      }
+      expect(field.bossTreatment?.fieldTint).toBe(treatment.fieldTint)
+      expect(lane.bossTreatment?.laneTint).toBe(treatment.laneTint)
+    }
+
+    const openingBoss = groundedVfxMaterialProfile({
+      kind: 'hostile-field',
+      lod: 'desktop',
+      stage: 'final',
+      bossId: 'gloam-stag',
+    })
+    const finalBoss = groundedVfxMaterialProfile({
+      kind: 'hostile-field',
+      lod: 'desktop',
+      stage: 'final',
+      bossId: 'sun-eater',
+    })
+    expect(finalBoss.material.scale).toBeGreaterThan(
+      openingBoss.material.scale,
+    )
+    expect(finalBoss.debris.count).toBeGreaterThanOrEqual(
+      openingBoss.debris.count,
+    )
+    expect(finalBoss.debris.lift).toBeGreaterThan(
+      openingBoss.debris.lift,
+    )
   })
 
   it('reduces light energy without changing scale, assets, or density', () => {

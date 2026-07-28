@@ -165,8 +165,8 @@ export function UpgradeOverlay({
   weapons,
   modules,
   traceMods,
-  rerollUnlocked,
-  rerollAvailable,
+  rerollsRemaining,
+  rerollCapacity,
   onSelect,
   onReroll,
 }: {
@@ -174,8 +174,8 @@ export function UpgradeOverlay({
   weapons: WeaponDefinition[]
   modules: ModuleDefinition[]
   traceMods: TraceModDefinition[]
-  rerollUnlocked: boolean
-  rerollAvailable: boolean
+  rerollsRemaining: number
+  rerollCapacity: number
   onSelect: (id: string) => void
   onReroll: () => void
 }) {
@@ -194,79 +194,85 @@ export function UpgradeOverlay({
       tabIndex={-1}
     >
       <div className="upgrade-overlay__veil" />
-      <header className="upgrade-heading">
-        <OrnamentRule />
-        <h1 id="upgrade-title">{hasAwakening ? 'Awaken the Light' : 'Choose Your Trace'}</h1>
-        <span>Level {snapshot.level}</span>
-      </header>
-      <div className="upgrade-loadout" aria-label="Current loadout">
-        <div>
-          <small>Weapons</small>
-          <span className="upgrade-loadout__slots">
-            {snapshot.weapons.map((weapon) => (
-              <i key={weapon.id}>
-                <WeaponGlyph id={weapon.id} size={23} />
-                <RankPips rank={weapon.rank} awakened={weapon.awakened} />
-              </i>
-            ))}
-          </span>
+      <div className="upgrade-overlay__content">
+        <header className="upgrade-heading">
+          <OrnamentRule />
+          <h1 id="upgrade-title">{hasAwakening ? 'Awaken the Light' : 'Choose Your Trace'}</h1>
+          <span>Level {snapshot.level}</span>
+        </header>
+        <div className="upgrade-loadout" aria-label="Current loadout">
+          <div>
+            <small>Weapons</small>
+            <span className="upgrade-loadout__slots">
+              {snapshot.weapons.map((weapon) => (
+                <i key={weapon.id}>
+                  <WeaponGlyph id={weapon.id} size={23} />
+                  <RankPips rank={weapon.rank} awakened={weapon.awakened} />
+                </i>
+              ))}
+            </span>
+          </div>
+          <div>
+            <small>Modules</small>
+            <span className="upgrade-loadout__slots">
+              {snapshot.modules.map((module) => (
+                <i key={module.id}>
+                  <WeaponGlyph id={module.id} module size={23} />
+                  <RankPips rank={module.rank} max={3} />
+                </i>
+              ))}
+            </span>
+          </div>
         </div>
-        <div>
-          <small>Modules</small>
-          <span className="upgrade-loadout__slots">
-            {snapshot.modules.map((module) => (
-              <i key={module.id}>
-                <WeaponGlyph id={module.id} module size={23} />
-                <RankPips rank={module.rank} max={3} />
-              </i>
-            ))}
-          </span>
+        <div className="upgrade-cards">
+          {options.map((option, index) => {
+            const weapon = option.weaponId ? weapons.find((entry) => entry.id === option.weaponId) : undefined
+            const module = option.moduleId ? modules.find((entry) => entry.id === option.moduleId) : undefined
+            const trace = option.traceModId ? traceMods.find((entry) => entry.id === option.traceModId) : undefined
+            const description = option.description || weapon?.description || module?.description || trace?.description || ''
+            const statLine = getUpgradeStatLine(option, weapon)
+            return (
+              <button
+                key={option.id}
+                className={`upgrade-card upgrade-card--${option.type} upgrade-card--${option.rarity ?? 'standard'}`}
+                style={{ '--card-index': index } as React.CSSProperties}
+                onClick={() => onSelect(option.id)}
+              >
+                <span className="panel-corner panel-corner--tl" aria-hidden="true" />
+                <span className="panel-corner panel-corner--tr" aria-hidden="true" />
+                <span className="panel-corner panel-corner--bl" aria-hidden="true" />
+                <span className="panel-corner panel-corner--br" aria-hidden="true" />
+                <span className="upgrade-card__number">{index + 1}</span>
+                <small>{option.category}</small>
+                <h2>{option.title}</h2>
+                <div className="upgrade-card__art">
+                  <span />
+                  <UpgradeIcon option={option} />
+                </div>
+                <p>{description}</p>
+                <span className="upgrade-card__stats">{statLine}</span>
+                <span className="upgrade-card__footer">
+                  {option.rank ? <RankPips rank={option.rank} max={option.type === 'module' ? 3 : 5} /> : <span className="upgrade-card__rarity">{option.rarity === 'elite' ? 'Elite Mod' : option.rarity === 'awakening' ? 'Awakening' : 'New Pattern'}</span>}
+                  {weapon ? (
+                    <span className="upgrade-card__pairing">
+                      Awakes with {modules.find((entry) => entry.id === weapon.moduleId)?.name ?? weapon.moduleId}
+                    </span>
+                  ) : <span className="upgrade-card__pairing">Bound to the current run</span>}
+                </span>
+              </button>
+            )
+          })}
         </div>
+        <button className="reroll-button" onClick={onReroll} disabled={rerollsRemaining <= 0}>
+          <RefreshCw size={16} />
+          {rerollsRemaining > 0
+            ? `Refresh · ${rerollsRemaining} left`
+            : `All ${rerollCapacity} refreshes spent`}
+        </button>
+        <p className="smart-draft-note">
+          All eight weapons are available · Smart draft protects an owned weapon.
+        </p>
       </div>
-      <div className="upgrade-cards">
-        {options.map((option, index) => {
-          const weapon = option.weaponId ? weapons.find((entry) => entry.id === option.weaponId) : undefined
-          const module = option.moduleId ? modules.find((entry) => entry.id === option.moduleId) : undefined
-          const trace = option.traceModId ? traceMods.find((entry) => entry.id === option.traceModId) : undefined
-          const description = option.description || weapon?.description || module?.description || trace?.description || ''
-          const statLine = getUpgradeStatLine(option, weapon)
-          return (
-            <button
-              key={option.id}
-              className={`upgrade-card upgrade-card--${option.type} upgrade-card--${option.rarity ?? 'standard'}`}
-              style={{ '--card-index': index } as React.CSSProperties}
-              onClick={() => onSelect(option.id)}
-            >
-              <span className="panel-corner panel-corner--tl" aria-hidden="true" />
-              <span className="panel-corner panel-corner--tr" aria-hidden="true" />
-              <span className="panel-corner panel-corner--bl" aria-hidden="true" />
-              <span className="panel-corner panel-corner--br" aria-hidden="true" />
-              <span className="upgrade-card__number">{index + 1}</span>
-              <small>{option.category}</small>
-              <h2>{option.title}</h2>
-              <div className="upgrade-card__art">
-                <span />
-                <UpgradeIcon option={option} />
-              </div>
-              <p>{description}</p>
-              <span className="upgrade-card__stats">{statLine}</span>
-              <span className="upgrade-card__footer">
-                {option.rank ? <RankPips rank={option.rank} max={option.type === 'module' ? 3 : 5} /> : <span className="upgrade-card__rarity">{option.rarity === 'elite' ? 'Elite Mod' : option.rarity === 'awakening' ? 'Awakening' : 'New Pattern'}</span>}
-                {weapon ? (
-                  <span className="upgrade-card__pairing">
-                    Awakes with {modules.find((entry) => entry.id === weapon.moduleId)?.name ?? weapon.moduleId}
-                  </span>
-                ) : <span className="upgrade-card__pairing">Bound to the current run</span>}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-      <button className="reroll-button" onClick={onReroll} disabled={!rerollAvailable}>
-        <RefreshCw size={16} />
-        {rerollAvailable ? 'Reroll 1' : rerollUnlocked ? 'Reroll spent' : 'Unlock in Astrarium'}
-      </button>
-      <p className="smart-draft-note">Smart draft protects an owned weapon.</p>
     </section>
   )
 }
@@ -454,14 +460,16 @@ export function EncounterGate({
       tabIndex={-1}
     >
       <div className="pause-overlay__veil" />
-      <PanelFrame className="pause-panel">
-        <StarMark />
-        <small>{copy.eyebrow}</small>
-        <h1 id="encounter-gate-title">{bossName ?? copy.fallbackTitle}</h1>
-        <OrnamentRule />
-        <p id="encounter-gate-description">{copy.description}</p>
-        <CrestButton onClick={onBegin}><Play size={17} /> {copy.button}</CrestButton>
-      </PanelFrame>
+      <div className="pause-overlay__content">
+        <PanelFrame className="pause-panel">
+          <StarMark />
+          <small>{copy.eyebrow}</small>
+          <h1 id="encounter-gate-title">{bossName ?? copy.fallbackTitle}</h1>
+          <OrnamentRule />
+          <p id="encounter-gate-description">{copy.description}</p>
+          <CrestButton onClick={onBegin}><Play size={17} /> {copy.button}</CrestButton>
+        </PanelFrame>
+      </div>
     </section>
   )
 }
@@ -572,20 +580,22 @@ export function PauseOverlay({
       tabIndex={-1}
     >
       <div className="pause-overlay__veil" />
-      <PanelFrame className="pause-panel">
-        <StarMark />
-        <small>The encounter is held</small>
-        <h1 id="pause-title">Paused</h1>
-        <OrnamentRule />
-        <CrestButton onClick={onResume}><Play size={17} /> Resume</CrestButton>
-        <button className="pause-action" onClick={onRestart}><RotateCcw size={17} /> Restart encounter</button>
-        <button className="pause-action" onClick={onToggleMute}>
-          {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
-          {muted ? 'Restore sound' : 'Mute sound'}
-        </button>
-        <button className="pause-action pause-action--exit" onClick={onExit}><ArrowLeft size={17} /> Leave encounter</button>
-        <p><kbd>ESC</kbd> to return</p>
-      </PanelFrame>
+      <div className="pause-overlay__content">
+        <PanelFrame className="pause-panel">
+          <StarMark />
+          <small>The encounter is held</small>
+          <h1 id="pause-title">Paused</h1>
+          <OrnamentRule />
+          <CrestButton onClick={onResume}><Play size={17} /> Resume</CrestButton>
+          <button className="pause-action" onClick={onRestart}><RotateCcw size={17} /> Restart encounter</button>
+          <button className="pause-action" onClick={onToggleMute}>
+            {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+            {muted ? 'Restore sound' : 'Mute sound'}
+          </button>
+          <button className="pause-action pause-action--exit" onClick={onExit}><ArrowLeft size={17} /> Leave encounter</button>
+          <p><kbd>ESC</kbd> to return</p>
+        </PanelFrame>
+      </div>
     </section>
   )
 }

@@ -166,66 +166,85 @@ float fbm(vec2 point) {
 void main(void) {
   float sourceMask = texture(uTexture, vTextureCoord).a;
   vec2 point = (vTextureCoord - 0.5) * 2.0;
-  float radius = length(point);
+  vec2 groundPoint = vec2(point.x, point.y * 1.18);
+  float radius = length(groundPoint);
   float bounds = 1.0 - smoothstep(0.64, 0.98, radius);
 
-  vec2 smokeDrift = vec2(uTime * 0.045, -uTime * 0.032);
-  float smokeNoise = fbm(point * (2.7 + uPhase * 0.55) + smokeDrift);
-  float smokeDetail = fbm(point.yx * 5.1 - smokeDrift * 1.4);
-  float smoke = smoothstep(0.24, 0.92, smokeNoise + smokeDetail * 0.28);
-  smoke *= (1.0 - smoothstep(0.12, 1.04, radius)) * bounds;
+  vec2 smokeDrift = vec2(uTime * 0.032, -uTime * 0.024);
+  float smokeNoise = fbm(
+    groundPoint * (2.15 + uPhase * 0.42) + smokeDrift
+  );
+  float smokeDetail = fbm(
+    groundPoint.yx * 4.35 - smokeDrift * 1.25
+  );
+  float smokeMass = smoothstep(
+    0.24,
+    0.88,
+    smokeNoise * 0.78 + smokeDetail * 0.34
+  );
+  smokeMass *= (1.0 - smoothstep(0.08, 1.02, radius)) * bounds;
 
-  float fractureNoiseA = fbm(point * 4.2 + vec2(uTime * 0.018, 0.0));
-  float fractureNoiseB = fbm(point.yx * 4.9 - vec2(0.0, uTime * 0.014));
-  float fractureA = abs(sin(
-    (point.x * 8.4 + point.y * 1.9 + fractureNoiseA * 3.1) * 3.14159
-  ));
-  float fractureB = abs(sin(
-    (point.y * 10.2 - point.x * 1.3 - fractureNoiseB * 2.8) * 3.14159
-  ));
-  float veins = smoothstep(0.972, 0.998, max(fractureA, fractureB));
-  veins *= (1.0 - smoothstep(0.18, 0.96, radius)) *
-    (0.45 + smokeNoise * 0.55);
+  float deformationNoise = fbm(
+    groundPoint * 3.1 + vec2(-uTime * 0.012, uTime * 0.009)
+  );
+  float compressedStone = smoothstep(
+    0.22,
+    0.78,
+    deformationNoise * 0.72 + (1.0 - radius) * 0.44
+  );
+  compressedStone *= bounds;
 
   vec2 attackDirection = vec2(cos(uAttackAngle), sin(uAttackAngle));
   vec2 attackNormal = vec2(-attackDirection.y, attackDirection.x);
-  float forward = dot(point, attackDirection);
-  float side = abs(dot(point, attackNormal));
-  float widening = 0.07 + max(0.0, forward) * (0.22 + uPhase * 0.04);
-  float directionalSurge = smoothstep(-0.16, 0.1, forward);
-  directionalSurge *= 1.0 - smoothstep(widening, widening + 0.12, side);
-  directionalSurge *= 1.0 - smoothstep(0.88, 1.08, radius);
-
-  vec2 hookDirection = vec2(
-    cos(uAttackAngle + 1.94),
-    sin(uAttackAngle + 1.94)
+  float forward = dot(groundPoint, attackDirection);
+  float side = dot(groundPoint, attackNormal);
+  vec2 pressurePoint = vec2(
+    (forward - 0.12) * 0.82,
+    side * (0.92 - uPhase * 0.08)
   );
-  float hookForward = dot(point, hookDirection);
-  float hookSide = abs(
-    dot(point, vec2(-hookDirection.y, hookDirection.x))
+  float pressureDistance = length(pressurePoint);
+  float pressureBreakup = 0.68 + fbm(
+    groundPoint * 3.45 + smokeDrift * 0.64
+  ) * 0.32;
+  float pressureMass = (
+    1.0 - smoothstep(0.18, 0.92, pressureDistance)
+  ) * pressureBreakup * bounds * uSpecial;
+
+  float rubbleNoise = fbm(
+    groundPoint * 7.2 + vec2(uTime * 0.018, -uTime * 0.011)
   );
-  float sideSurge = smoothstep(0.04, 0.42, hookForward);
-  sideSurge *= 1.0 - smoothstep(0.055, 0.17, hookSide);
-  sideSurge *= 1.0 - smoothstep(0.62, 0.96, radius);
-  sideSurge *= 0.42;
+  float disturbedRubble = smoothstep(
+    0.72,
+    0.94,
+    rubbleNoise + pressureMass * 0.16
+  );
+  disturbedRubble *= bounds * (0.38 + compressedStone * 0.62);
 
-  float surgePulse = 0.78 + sin(uTime * 4.8 + radius * 13.0) * 0.22;
-  float surge = (directionalSurge + sideSurge) * surgePulse * uSpecial;
+  float pressurePulse =
+    0.9 + sin(uTime * 1.55 + smokeNoise * 4.2) * 0.1;
+  pressureMass *= pressurePulse;
 
-  float idleEnergy = smoke * (0.17 + uIntensity * 0.13);
-  idleEnergy += veins * (0.16 + uIntensity * 0.2 + uPhase * 0.05);
-  float specialEnergy = surge * (0.34 + uIntensity * 0.18);
+  float idleEnergy = smokeMass * (0.13 + uIntensity * 0.11);
+  idleEnergy += compressedStone * (0.08 + uIntensity * 0.1);
+  float specialEnergy = pressureMass * (0.2 + uIntensity * 0.13);
+  specialEnergy += disturbedRubble * uSpecial * 0.08;
   float alpha = min(
     uAlphaCeiling,
     max(0.0, idleEnergy + specialEnergy)
   ) * bounds * sourceMask;
 
-  vec3 deepRed = vec3(0.48, 0.012, 0.026);
-  vec3 hostileViolet = vec3(0.31, 0.025, 0.52);
-  vec3 hotFracture = vec3(1.0, 0.12, 0.08);
-  vec3 color = mix(deepRed, hostileViolet, smokeNoise * 0.72 + uPhase * 0.12);
-  color += hotFracture * veins * (0.42 + uIntensity * 0.42);
-  color += mix(hotFracture, hostileViolet, 0.42) * surge * 0.72;
+  vec3 charcoal = vec3(0.042, 0.032, 0.035);
+  vec3 bruisedStone = vec3(0.14, 0.075, 0.105);
+  vec3 buriedOxide = vec3(0.33, 0.055, 0.05);
+  vec3 hostileViolet = vec3(0.19, 0.055, 0.24);
+  vec3 color = mix(
+    charcoal,
+    bruisedStone,
+    compressedStone * 0.52 + smokeNoise * 0.22
+  );
+  color += mix(buriedOxide, hostileViolet, 0.48) *
+    pressureMass * (0.18 + uIntensity * 0.12);
+  color += bruisedStone * disturbedRubble * 0.11;
 
   finalColor = vec4(max(color, 0.0) * alpha, alpha);
 }

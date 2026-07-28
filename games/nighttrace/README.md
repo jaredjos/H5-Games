@@ -27,6 +27,7 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.9.0` — grounded hostile VFX replace diagrammatic boss rays, ring warnings, fissure spokes, and duplicate spell vectors with authored rubble/scorch materials, ash, dust, and restrained embedded embers beneath every actor layer
 
 - `v1.10.0` — every hero power abandons concentric/dotted rings, radial ticks, starbursts, rune wheels, outlined gates, decorative rails, and generic diamond debris in favor of authored fractured stone, localized smoke, ash, grit, physical fragments, and material impact light; combat geometry is unchanged
+- `v1.11.0` — every sovereign gains authored idle, locomotion-contact, attack-windup, and special-release poses (including alternating four-leg contact for quadrupeds); boss and horde warnings become grounded smoke, pressure, rubble, and material disturbance; all eight weapons enter the first draft with three free refreshes and a normalized connected-DPS budget; upgrade and pause overlays are optically centered
 
 ## Runtime guide and visual evidence
 
@@ -157,9 +158,10 @@ No reference-game audio or visual asset is included.
 
 ### Campaign
 
-The original ten-sector campaign is unchanged: horde survival, three-card
-drafts, mastery seals, first-clear weapon unlocks, Dawn Shards, and Astrarium
-progression all remain on their existing track.
+The ten-sector campaign retains horde survival, three-card drafts, mastery
+seals, Dawn Shards, and Astrarium progression. All eight weapon patterns are
+available from the first descent, so campaign clears advance sectors and
+mastery rather than gating build variety.
 
 ### Boss Trials
 
@@ -207,20 +209,25 @@ seconds in Sector 10, leaving time for each boss's phase-scaled fans, orbits,
 crosses, reflections, clusters, storm lanes, chrono spirals, foundry strikes,
 safe-corridor grids, or final eclipse sequence.
 
-| # | Sector | Time | Boss | First-clear unlock |
+| # | Sector | Time | Boss | First-clear reward |
 | ---: | --- | ---: | --- | --- |
-| 1 | First Beacon | 4:00 | Gloam Stag | Crescent Array |
-| 2 | Glassreed Mire | 4:30 | Mire Cantor | Arc Choir |
-| 3 | Shattered Arcade | 5:00 | Railjaw Prime | Rift Seeds |
-| 4 | Prism Garden | 5:00 | Mirror Matron | Comet Swarm |
-| 5 | Drowned Docks | 5:30 | Tide Apostle | Graveglass Spires |
-| 6 | Stormrail | 6:00 | Storm Engine | Mirror Bow |
-| 7 | Hourglass Vault | 6:00 | Chronophage | Eclipse Harrow |
+| 1 | First Beacon | 4:00 | Gloam Stag | 45 Dawn Shards + mastery |
+| 2 | Glassreed Mire | 4:30 | Mire Cantor | 60 Dawn Shards + mastery |
+| 3 | Shattered Arcade | 5:00 | Railjaw Prime | 78 Dawn Shards + mastery |
+| 4 | Prism Garden | 5:00 | Mirror Matron | 96 Dawn Shards + mastery |
+| 5 | Drowned Docks | 5:30 | Tide Apostle | 118 Dawn Shards + mastery |
+| 6 | Stormrail | 6:00 | Storm Engine | 142 Dawn Shards + mastery |
+| 7 | Hourglass Vault | 6:00 | Chronophage | 168 Dawn Shards + mastery |
 | 8 | Cinder Foundry | 6:30 | Furnace Titan | Masterwork module cache |
 | 9 | Void Observatory | 7:00 | The Cartographer | Astrarium sigil |
 | 10 | Crown of Dawn | 7:30 | The Sun-Eater | Crown of Dawn relic |
 
-Three-card drafts pause the action. A run can carry up to four weapons, four aligned modules, and three Trace Mods. Weapons have five ranks; mastering a weapon while holding its aligned module exposes its awakening. The Bright Draft Astrarium node unlocks one reroll per run, and the draft system keeps recovery or another actionable choice available when a build is saturated.
+Three-card drafts pause the action. A run can carry up to four of the eight
+universally available weapons, four aligned modules, and three Trace Mods.
+Weapons have five ranks; mastering a weapon while holding its aligned module
+exposes its awakening. Every campaign run starts with three free refreshes.
+Bright Draft adds one more, for four total, and the draft system keeps recovery
+or another actionable choice available when a build is saturated.
 
 Timed support relics add positional decisions without undoing the campaign
 curve. Their opportunities are based on elapsed minutes rather than kill count:
@@ -234,14 +241,16 @@ In v1.6.0, every support relic also projects a tapered vertical light shaft onto
 a broken landing rune. That heaven-to-ground beacon persists until collection
 or expiry, making a valuable drop readable even when the horde fills the arena.
 
-Victories relight the next sector, recover weapon patterns, and can earn three mastery seals: clear, Trace, and Aegis. Failed runs do not unlock the next sector, but they still return earned and performance-based Dawn Shards.
+Victories relight the next sector and can earn three mastery seals: clear,
+Trace, and Aegis. Failed runs do not unlock the next sector, but they still
+return earned and performance-based Dawn Shards.
 
 ## Astrarium and saves
 
 Dawn Shards fund the ten-node Astrarium, a prerequisite-linked constellation of persistent upgrades. Nodes have explicit rank caps, and **Refund all** returns the full shard investment so a build can be reconfigured freely.
 
-Campaign progress, Boss Trial crowns, mastery, weapon unlocks, Astrarium ranks,
-and settings are stored locally in the browser under the versioned
+Campaign progress, Boss Trial crowns, mastery, the universal arsenal,
+Astrarium ranks, and settings are stored locally in the browser under the versioned
 `nighttrace.save.v1` save. The schema is now version 3 and migrates older saves
 in place; the storage key remains stable. Combat Lab never writes progression.
 There is no account or remote backend. **Erase progress** clears campaign and

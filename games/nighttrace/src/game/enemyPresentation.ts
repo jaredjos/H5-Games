@@ -30,6 +30,19 @@ export type HostileReactionPhase =
   | 'collapse'
   | 'dissolve'
 
+export const HOSTILE_MATERIAL_FORBIDDEN_GEOMETRY = Object.freeze([
+  'rings',
+  'spokes',
+  'grids',
+  'outlines',
+  'rails',
+  'crosshairs',
+  'hard-cones',
+] as const)
+
+export type HostileMaterialForbiddenGeometry =
+  (typeof HOSTILE_MATERIAL_FORBIDDEN_GEOMETRY)[number]
+
 interface HostilePalette {
   readonly reportName: string
   readonly paletteName: string
@@ -50,6 +63,34 @@ export interface BossPresentationProfile extends HostilePalette {
   readonly id: BossId
   readonly motif: BossPresentationMotif
   readonly bossProminence: number
+}
+
+/**
+ * Material-only treatment for boss ground warnings.
+ *
+ * The base footprint remains low-value physical charcoal. Identity is carried
+ * by a deliberately small smoke/accent contribution rather than diagrammatic
+ * geometry or a fully saturated tint over the entire warning footprint.
+ */
+export interface BossMaterialTreatmentProfile {
+  readonly id: BossId
+  readonly materialName: string
+  readonly materialFamily: 'neutral-charcoal'
+  readonly geometryPolicy: 'grounded-material-only'
+  readonly fieldTint: number
+  readonly laneTint: number
+  readonly smokeTint: number
+  readonly accentColor: number
+  readonly debrisTint: number
+  readonly fieldOpacityScale: number
+  readonly laneOpacityScale: number
+  readonly dustDensityScale: number
+  readonly debrisDensityScale: number
+  readonly debrisOpacityScale: number
+  readonly debrisLiftScale: number
+  readonly pressureScale: number
+  /** Maximum normalized footprint area allowed to carry luminous identity. */
+  readonly accentCoverage: number
 }
 
 export interface HostileEnvelopeInput {
@@ -322,6 +363,199 @@ export const BOSS_PRESENTATIONS = Object.freeze({
   }),
 } as const satisfies Readonly<Record<BossId, BossPresentationProfile>>)
 
+export const BOSS_MATERIAL_TREATMENTS = Object.freeze({
+  'gloam-stag': Object.freeze({
+    id: 'gloam-stag',
+    materialName: 'Iron Garnet',
+    materialFamily: 'neutral-charcoal',
+    geometryPolicy: 'grounded-material-only',
+    fieldTint: 0x262123,
+    laneTint: 0x211c1e,
+    smokeTint: 0x4c242d,
+    accentColor: 0xa94753,
+    debrisTint: 0x6c5d58,
+    fieldOpacityScale: 0.96,
+    laneOpacityScale: 0.98,
+    dustDensityScale: 1,
+    debrisDensityScale: 1,
+    debrisOpacityScale: 0.96,
+    debrisLiftScale: 0.94,
+    pressureScale: 0.98,
+    accentCoverage: 0.055,
+  }),
+  'mire-cantor': Object.freeze({
+    id: 'mire-cantor',
+    materialName: 'Black Mire',
+    materialFamily: 'neutral-charcoal',
+    geometryPolicy: 'grounded-material-only',
+    fieldTint: 0x22251e,
+    laneTint: 0x1e211a,
+    smokeTint: 0x3f4722,
+    accentColor: 0x778437,
+    debrisTint: 0x626052,
+    fieldOpacityScale: 0.98,
+    laneOpacityScale: 0.96,
+    dustDensityScale: 1.02,
+    debrisDensityScale: 0.98,
+    debrisOpacityScale: 0.94,
+    debrisLiftScale: 0.9,
+    pressureScale: 1,
+    accentCoverage: 0.06,
+  }),
+  'railjaw-prime': Object.freeze({
+    id: 'railjaw-prime',
+    materialName: 'Oxide Gouge',
+    materialFamily: 'neutral-charcoal',
+    geometryPolicy: 'grounded-material-only',
+    fieldTint: 0x29211e,
+    laneTint: 0x251c19,
+    smokeTint: 0x502a22,
+    accentColor: 0xa64a3d,
+    debrisTint: 0x76615a,
+    fieldOpacityScale: 0.98,
+    laneOpacityScale: 1.03,
+    dustDensityScale: 1.04,
+    debrisDensityScale: 1.08,
+    debrisOpacityScale: 1.02,
+    debrisLiftScale: 0.98,
+    pressureScale: 1.02,
+    accentCoverage: 0.06,
+  }),
+  'mirror-matron': Object.freeze({
+    id: 'mirror-matron',
+    materialName: 'Bruised Mirrorstone',
+    materialFamily: 'neutral-charcoal',
+    geometryPolicy: 'grounded-material-only',
+    fieldTint: 0x242024,
+    laneTint: 0x211c22,
+    smokeTint: 0x47294c,
+    accentColor: 0x85508d,
+    debrisTint: 0x746776,
+    fieldOpacityScale: 1,
+    laneOpacityScale: 1,
+    dustDensityScale: 1.04,
+    debrisDensityScale: 1.1,
+    debrisOpacityScale: 1.02,
+    debrisLiftScale: 1.04,
+    pressureScale: 1.03,
+    accentCoverage: 0.065,
+  }),
+  'tide-apostle': Object.freeze({
+    id: 'tide-apostle',
+    materialName: 'Tar Undertow',
+    materialFamily: 'neutral-charcoal',
+    geometryPolicy: 'grounded-material-only',
+    fieldTint: 0x201d20,
+    laneTint: 0x1d191d,
+    smokeTint: 0x3b2737,
+    accentColor: 0x69405a,
+    debrisTint: 0x5f5d62,
+    fieldOpacityScale: 1.02,
+    laneOpacityScale: 0.98,
+    dustDensityScale: 1.06,
+    debrisDensityScale: 1.04,
+    debrisOpacityScale: 0.98,
+    debrisLiftScale: 0.92,
+    pressureScale: 1.04,
+    accentCoverage: 0.065,
+  }),
+  'storm-engine': Object.freeze({
+    id: 'storm-engine',
+    materialName: 'Ozone Char',
+    materialFamily: 'neutral-charcoal',
+    geometryPolicy: 'grounded-material-only',
+    fieldTint: 0x202025,
+    laneTint: 0x1b1b22,
+    smokeTint: 0x34334d,
+    accentColor: 0x615b91,
+    debrisTint: 0x666672,
+    fieldOpacityScale: 1,
+    laneOpacityScale: 1.04,
+    dustDensityScale: 1.08,
+    debrisDensityScale: 1.08,
+    debrisOpacityScale: 1,
+    debrisLiftScale: 1.06,
+    pressureScale: 1.05,
+    accentCoverage: 0.07,
+  }),
+  chronophage: Object.freeze({
+    id: 'chronophage',
+    materialName: 'Dead-Hour Stone',
+    materialFamily: 'neutral-charcoal',
+    geometryPolicy: 'grounded-material-only',
+    fieldTint: 0x232126,
+    laneTint: 0x1f1c22,
+    smokeTint: 0x403446,
+    accentColor: 0x75617f,
+    debrisTint: 0x706977,
+    fieldOpacityScale: 1.02,
+    laneOpacityScale: 1.01,
+    dustDensityScale: 1.08,
+    debrisDensityScale: 1.12,
+    debrisOpacityScale: 1.02,
+    debrisLiftScale: 1.08,
+    pressureScale: 1.06,
+    accentCoverage: 0.07,
+  }),
+  'furnace-titan': Object.freeze({
+    id: 'furnace-titan',
+    materialName: 'Slag Rupture',
+    materialFamily: 'neutral-charcoal',
+    geometryPolicy: 'grounded-material-only',
+    fieldTint: 0x29201c,
+    laneTint: 0x251b17,
+    smokeTint: 0x4d291c,
+    accentColor: 0x9b4e30,
+    debrisTint: 0x786054,
+    fieldOpacityScale: 1.04,
+    laneOpacityScale: 1.04,
+    dustDensityScale: 1.1,
+    debrisDensityScale: 1.16,
+    debrisOpacityScale: 1.05,
+    debrisLiftScale: 1.1,
+    pressureScale: 1.08,
+    accentCoverage: 0.075,
+  }),
+  cartographer: Object.freeze({
+    id: 'cartographer',
+    materialName: 'Void Slate',
+    materialFamily: 'neutral-charcoal',
+    geometryPolicy: 'grounded-material-only',
+    fieldTint: 0x1e1f25,
+    laneTint: 0x191a21,
+    smokeTint: 0x292b40,
+    accentColor: 0x4d5076,
+    debrisTint: 0x60626f,
+    fieldOpacityScale: 1.04,
+    laneOpacityScale: 1.06,
+    dustDensityScale: 1.12,
+    debrisDensityScale: 1.18,
+    debrisOpacityScale: 1.04,
+    debrisLiftScale: 1.12,
+    pressureScale: 1.1,
+    accentCoverage: 0.08,
+  }),
+  'sun-eater': Object.freeze({
+    id: 'sun-eater',
+    materialName: 'Eclipse Umber',
+    materialFamily: 'neutral-charcoal',
+    geometryPolicy: 'grounded-material-only',
+    fieldTint: 0x261b1b,
+    laneTint: 0x211717,
+    smokeTint: 0x461d1c,
+    accentColor: 0x9f3d37,
+    debrisTint: 0x75605c,
+    fieldOpacityScale: 1.06,
+    laneOpacityScale: 1.06,
+    dustDensityScale: 1.14,
+    debrisDensityScale: 1.22,
+    debrisOpacityScale: 1.08,
+    debrisLiftScale: 1.14,
+    pressureScale: 1.12,
+    accentCoverage: 0.085,
+  }),
+} as const satisfies Readonly<Record<BossId, BossMaterialTreatmentProfile>>)
+
 const clamp = (value: number, minimum: number, maximum: number) =>
   Math.max(minimum, Math.min(maximum, value))
 
@@ -343,6 +577,12 @@ export function enemyPresentation(enemyId: EnemyId): EnemyPresentationProfile {
 
 export function bossPresentation(bossId: BossId): BossPresentationProfile {
   return BOSS_PRESENTATIONS[bossId]
+}
+
+export function bossMaterialTreatment(
+  bossId: BossId,
+): BossMaterialTreatmentProfile {
+  return BOSS_MATERIAL_TREATMENTS[bossId]
 }
 
 export function bossImpactProgress(
