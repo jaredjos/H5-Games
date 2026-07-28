@@ -1,6 +1,6 @@
 export type MusicScene = 'ambient' | 'boss' | 'ended'
-export type MusicFileExtension = 'ogg' | 'm4a'
 export type MusicVariant = 'full' | 'compact'
+export type MusicTrackId = 'haunted' | 'retro' | 'phonk'
 export type WeaponAudioCue = 'standard' | 'graveglass' | 'harrow'
 
 export interface MusicAvailability {
@@ -19,10 +19,16 @@ export interface MusicDeviceHints {
   deviceMemory?: number
 }
 
+export interface MusicRoute {
+  ambient: Exclude<MusicTrackId, 'phonk'>
+  boss: Extract<MusicTrackId, 'phonk'>
+}
+
 const AMBIENT_TRACK_LEVEL = 0.82
 const BOSS_TRACK_LEVEL = 0.96
 const TRACKED_DRONE_LEVEL = 0.055
 const FALLBACK_DRONE_LEVEL = 0.35
+const RETRO_LEVELS = new Set([3, 6, 8])
 
 export function resolveMusicLevels(
   scene: MusicScene,
@@ -60,10 +66,6 @@ export function musicCrossfadeSeconds(from: MusicScene, to: MusicScene) {
   return to === 'boss' ? 1.45 : 1.1
 }
 
-export function preferredMusicExtension(oggSupport: string): MusicFileExtension {
-  return oggSupport === 'probably' || oggSupport === 'maybe' ? 'ogg' : 'm4a'
-}
-
 export function chooseMusicVariant({
   saveData = false,
   deviceMemory,
@@ -71,13 +73,22 @@ export function chooseMusicVariant({
   return saveData || (deviceMemory !== undefined && deviceMemory <= 2) ? 'compact' : 'full'
 }
 
+export function musicRouteForLevel(levelId: number): MusicRoute {
+  const safeLevel = Number.isFinite(levelId)
+    ? Math.max(1, Math.min(10, Math.floor(levelId)))
+    : 1
+  return {
+    ambient: RETRO_LEVELS.has(safeLevel) ? 'retro' : 'haunted',
+    boss: 'phonk',
+  }
+}
+
 export function musicAssetName(
-  stem: 'dungeon' | 'sovereign',
-  extension: MusicFileExtension,
+  trackId: MusicTrackId,
   variant: MusicVariant,
 ) {
   const compactSuffix = variant === 'compact' ? '-compact' : ''
-  return `nighttrace-${stem}-loop${compactSuffix}.${extension}`
+  return `nighttrace-${trackId}-loop${compactSuffix}.mp3`
 }
 
 export function weaponAudioCue(weaponId: string): WeaponAudioCue {

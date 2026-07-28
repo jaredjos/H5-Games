@@ -16,7 +16,9 @@ export const MODULE_RANK_CAP = 3
 export const WEAPON_SLOT_CAP = 4
 export const MODULE_SLOT_CAP = 4
 export const TRACE_MOD_SLOT_CAP = 3
-export const GLOBAL_DIFFICULTY_MULTIPLIER = 1.1
+// Baseline balance. This had temporarily been raised to 1.1 for a global
+// difficulty experiment; restoring 1 keeps authored per-sector scaling intact.
+export const GLOBAL_DIFFICULTY_MULTIPLIER = 1
 export const BASE_FREE_REFRESHES_PER_RUN = 3
 export const BRIGHT_DRAFT_BONUS_REFRESHES = 1
 

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.12.0'
+const CACHE_VERSION = 'v1.13.0'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
 const ASSET_CACHE = `${CACHE_PREFIX}assets-${CACHE_VERSION}`
@@ -21,6 +21,8 @@ const SHELL_URLS = [
   new URL('assets/nighttrace-boss-atlas.webp', SCOPE_URL).href,
   new URL('assets/boss-animations/boss-motion-atlas-a.webp', SCOPE_URL).href,
   new URL('assets/boss-animations/boss-motion-atlas-b.webp', SCOPE_URL).href,
+  new URL('assets/enemy-animations/enemy-motion-atlas-a.webp', SCOPE_URL).href,
+  new URL('assets/enemy-animations/enemy-motion-atlas-b.webp', SCOPE_URL).href,
   new URL('assets/nighttrace-enemy-atlas.webp', SCOPE_URL).href,
   new URL('assets/nighttrace-pickup-atlas.webp', SCOPE_URL).href,
   new URL('assets/nighttrace-hero-sheet.png', SCOPE_URL).href,
@@ -32,18 +34,10 @@ const SHELL_URLS = [
   new URL('assets/character-vfx/hero-material-vfx-atlas-v1-mobile.webp', SCOPE_URL).href,
   new URL('assets/character-vfx/boss-material-vfx-atlas-v1-desktop.webp', SCOPE_URL).href,
   new URL('assets/character-vfx/boss-material-vfx-atlas-v1-mobile.webp', SCOPE_URL).href,
-  new URL('assets/audio/nighttrace-dungeon-loop.ogg', SCOPE_URL).href,
-  new URL('assets/audio/nighttrace-dungeon-loop.m4a', SCOPE_URL).href,
-  new URL('assets/audio/nighttrace-dungeon-loop-compact.ogg', SCOPE_URL).href,
-  new URL('assets/audio/nighttrace-dungeon-loop-compact.m4a', SCOPE_URL).href,
-  new URL('assets/audio/nighttrace-sovereign-loop.ogg', SCOPE_URL).href,
-  new URL('assets/audio/nighttrace-sovereign-loop.m4a', SCOPE_URL).href,
-  new URL('assets/audio/nighttrace-sovereign-loop-compact.ogg', SCOPE_URL).href,
-  new URL('assets/audio/nighttrace-sovereign-loop-compact.m4a', SCOPE_URL).href,
 ]
 
 function isCacheable(response) {
-  return response && response.ok && (response.type === 'basic' || response.type === 'default')
+  return response && response.status === 200 && (response.type === 'basic' || response.type === 'default')
 }
 
 function scopedResourcePath(url) {
@@ -178,6 +172,13 @@ self.addEventListener('fetch', (event) => {
       return
     }
     event.respondWith(navigationResponse(request))
+    return
+  }
+
+  // Media elements issue byte-range requests. A 206 response cannot be safely
+  // inserted into CacheStorage as though it were the complete MP3.
+  if (request.headers.has('range')) {
+    event.respondWith(fetch(request))
     return
   }
 

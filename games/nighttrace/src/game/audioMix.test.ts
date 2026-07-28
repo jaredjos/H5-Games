@@ -3,7 +3,7 @@ import {
   chooseMusicVariant,
   musicAssetName,
   musicCrossfadeSeconds,
-  preferredMusicExtension,
+  musicRouteForLevel,
   resolveMusicLevels,
   weaponAudioCue,
 } from './audioMix'
@@ -40,20 +40,45 @@ describe('music mix', () => {
 })
 
 describe('music asset selection', () => {
-  it('prefers OGG where supported and keeps an M4A fallback', () => {
-    expect(preferredMusicExtension('probably')).toBe('ogg')
-    expect(preferredMusicExtension('maybe')).toBe('ogg')
-    expect(preferredMusicExtension('')).toBe('m4a')
+  it('routes haunted sectors, mechanical sectors, and every boss deterministically', () => {
+    const routes = Array.from({ length: 10 }, (_, index) =>
+      musicRouteForLevel(index + 1),
+    )
+
+    expect(
+      routes
+        .map((route, index) => ({ level: index + 1, ambient: route.ambient }))
+        .filter(({ ambient }) => ambient === 'retro')
+        .map(({ level }) => level),
+    ).toEqual([3, 6, 8])
+    expect(
+      routes
+        .map((route, index) => ({ level: index + 1, ambient: route.ambient }))
+        .filter(({ ambient }) => ambient === 'haunted')
+        .map(({ level }) => level),
+    ).toEqual([1, 2, 4, 5, 7, 9, 10])
+    expect(routes.every(({ boss }) => boss === 'phonk')).toBe(true)
+    expect(musicRouteForLevel(Number.NaN)).toEqual({
+      ambient: 'haunted',
+      boss: 'phonk',
+    })
+    expect(musicRouteForLevel(99)).toEqual({
+      ambient: 'haunted',
+      boss: 'phonk',
+    })
   })
 
-  it('uses compact loops only for explicit data or very-low-memory hints', () => {
+  it('uses on-demand MP3 loops and compact variants only for constrained devices', () => {
     expect(chooseMusicVariant({})).toBe('full')
     expect(chooseMusicVariant({ deviceMemory: 4 })).toBe('full')
     expect(chooseMusicVariant({ saveData: true })).toBe('compact')
     expect(chooseMusicVariant({ deviceMemory: 2 })).toBe('compact')
-    expect(musicAssetName('dungeon', 'ogg', 'full')).toBe('nighttrace-dungeon-loop.ogg')
-    expect(musicAssetName('sovereign', 'm4a', 'compact')).toBe(
-      'nighttrace-sovereign-loop-compact.m4a',
+    expect(musicAssetName('haunted', 'full')).toBe('nighttrace-haunted-loop.mp3')
+    expect(musicAssetName('retro', 'compact')).toBe(
+      'nighttrace-retro-loop-compact.mp3',
+    )
+    expect(musicAssetName('phonk', 'compact')).toBe(
+      'nighttrace-phonk-loop-compact.mp3',
     )
   })
 })

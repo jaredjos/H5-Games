@@ -24,8 +24,20 @@ describe('Nighttrace PWA delivery', () => {
     expect(navigationSource).not.toContain('if (installedIndex) return installedIndex')
   })
 
-  it('uses the v1.12.0 cache namespace', () => {
-    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.12.0'")
+  it('uses the v1.13.0 cache namespace', () => {
+    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.13.0'")
+  })
+
+  it('streams range media without caching partial MP3 responses', () => {
+    const rangeGuard = serviceWorkerSource.indexOf(
+      "if (request.headers.has('range'))",
+    )
+    const assetCache = serviceWorkerSource.indexOf(
+      "if (resourcePath.startsWith('assets/')",
+    )
+    expect(rangeGuard).toBeGreaterThanOrEqual(0)
+    expect(rangeGuard).toBeLessThan(assetCache)
+    expect(serviceWorkerSource).toContain('response.status === 200')
   })
 
   it('refreshes same-scope windows only when activation replaced an older cache', () => {
@@ -59,7 +71,7 @@ describe('Nighttrace PWA delivery', () => {
 
     expect(reload).toHaveBeenCalledTimes(1)
     expect(storage.setItem).toHaveBeenCalledWith(
-      'nighttrace:pwa-controller-reload:v1.12.0',
+      'nighttrace:pwa-controller-reload:v1.13.0',
       '1',
     )
   })

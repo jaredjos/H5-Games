@@ -4,11 +4,11 @@ import {
   chooseMusicVariant,
   musicAssetName,
   musicCrossfadeSeconds,
-  preferredMusicExtension,
+  musicRouteForLevel,
   resolveMusicLevels,
   weaponAudioCue,
-  type MusicFileExtension,
   type MusicScene,
+  type MusicTrackId,
   type MusicVariant,
 } from './audioMix'
 
@@ -33,12 +33,10 @@ interface SoundShape {
 }
 
 interface MusicTrack {
-  stem: 'dungeon' | 'sovereign'
+  id: MusicTrackId
   element: HTMLAudioElement
   source: MediaElementAudioSourceNode
   gain: GainNode
-  extension: MusicFileExtension
-  fallbackAttempted: boolean
   available: boolean
   pendingPlay?: Promise<void>
   onError: () => void
@@ -84,9 +82,11 @@ export class NighttraceAudio {
   private lifecycleSuspend?: Promise<void>
   private musicStopTimer?: number
   private musicVariant: MusicVariant = 'full'
+  private readonly levelId: number
 
-  constructor(settings: GameSettings) {
+  constructor(settings: GameSettings, levelId = 1) {
     this.settings = settings
+    this.levelId = levelId
     document.addEventListener('visibilitychange', this.handleVisibilityChange)
     window.addEventListener('pagehide', this.suspendForLifecycle)
     window.addEventListener('pageshow', this.resumeFromLifecycle)
@@ -402,17 +402,14 @@ export class NighttraceAudio {
       saveData: navigatorHints.connection?.saveData,
       deviceMemory: navigatorHints.deviceMemory,
     })
-    const probe = new Audio()
-    const extension = preferredMusicExtension(
-      probe.canPlayType('audio/ogg; codecs="vorbis"'),
-    )
-    this.ambientTrack = this.createMusicTrack('dungeon', extension)
-    this.bossTrack = this.createMusicTrack('sovereign', extension)
+    const route = musicRouteForLevel(this.levelId)
+    this.ambientTrack = this.createMusicTrack(route.ambient, 'ambient')
+    this.bossTrack = this.createMusicTrack(route.boss, 'boss')
   }
 
   private createMusicTrack(
-    stem: 'dungeon' | 'sovereign',
-    extension: MusicFileExtension,
+    id: MusicTrackId,
+    role: 'ambient' | 'boss',
   ): MusicTrack | undefined {
     const context = this.context
     const output = this.music
@@ -421,21 +418,19 @@ export class NighttraceAudio {
     try {
       const element = new Audio()
       element.loop = true
-      element.preload = 'auto'
+      element.preload = role === 'ambient' ? 'auto' : 'metadata'
       element.volume = 1
-      element.src = this.musicTrackUrl(stem, extension)
+      element.src = this.musicTrackUrl(id)
       const source = context.createMediaElementSource(element)
       const gain = context.createGain()
       gain.gain.value = 0
       source.connect(gain)
       gain.connect(output)
       const track: MusicTrack = {
-        stem,
+        id,
         element,
         source,
         gain,
-        extension,
-        fallbackAttempted: false,
         available: false,
         onError: () => undefined,
       }
@@ -449,23 +444,15 @@ export class NighttraceAudio {
     }
   }
 
-  private musicTrackUrl(stem: 'dungeon' | 'sovereign', extension: MusicFileExtension) {
+  private musicTrackUrl(id: MusicTrackId) {
     return appAssetUrl(
-      `assets/audio/${musicAssetName(stem, extension, this.musicVariant)}`,
+      `assets/audio/${musicAssetName(id, this.musicVariant)}`,
     )
   }
 
   private handleTrackError(track: MusicTrack) {
     if (this.destroyed) return
     track.available = false
-    if (!track.fallbackAttempted && track.extension === 'ogg') {
-      track.fallbackAttempted = true
-      track.extension = 'm4a'
-      track.element.src = this.musicTrackUrl(track.stem, 'm4a')
-      track.element.load()
-      if (!document.hidden && this.musicScene !== 'ended') void this.startTrack(track)
-      return
-    }
     this.applyMusicScene(0.45)
   }
 

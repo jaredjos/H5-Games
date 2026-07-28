@@ -145,6 +145,8 @@ const runtimeAssets = [
   'assets/character-vfx/hero-material-vfx-atlas-v1-mobile.webp',
   'assets/character-vfx/boss-material-vfx-atlas-v1-desktop.webp',
   'assets/character-vfx/boss-material-vfx-atlas-v1-mobile.webp',
+  'assets/enemy-animations/enemy-motion-atlas-a.webp',
+  'assets/enemy-animations/enemy-motion-atlas-b.webp',
   'assets/nighttrace-enemy-atlas.webp',
   'assets/nighttrace-boss-atlas.webp',
   'assets/nighttrace-pickup-atlas.webp',

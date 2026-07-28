@@ -61,7 +61,6 @@ import { GameInput } from './input'
 import {
   bossAttackRecoverySeconds,
   bossHealthForBuild,
-  bossPatternForLevel,
   chooseSupportPickup,
   eligibleEnemyPool,
   estimateBossDps,
@@ -73,6 +72,11 @@ import {
   supportPickupIntervalSeconds,
   type SupportPickupKind,
 } from './balance'
+import {
+  createBossPatternDirectorState,
+  directBossPattern,
+  type BossPatternDirectorState,
+} from './bossPatternDirector'
 import {
   DeterministicRandom,
   clamp,
@@ -92,10 +96,21 @@ import {
   HOSTILE_IMPACT_COLOR,
   HOSTILE_SHADOW_COLOR,
   bossImpactProgress,
+  bossMaterialTreatment,
   bossPresentation,
   enemyPresentation,
   sampleHostileEnvelope,
 } from './enemyPresentation'
+import {
+  resolveHostileTelegraphPalette,
+  type HostileTelegraphMaterialPalette,
+} from './hostileTelegraphPalette'
+import {
+  advanceHostileProjectile,
+  hostileProjectilePoseAt,
+  queueHostileProjectile,
+  type HostileProjectileState,
+} from './hostileProjectiles'
 import {
   resolveWeaponVfxState,
   weaponVfxMotifProfile,
@@ -172,6 +187,11 @@ import {
   type ResolvedBossClipFrame,
 } from './bossAnimationClips'
 import {
+  ENEMY_MOTION_ATLASES,
+  resolveEnemyClipFrame,
+  type ResolvedEnemyClipFrame,
+} from './enemyAnimationClips'
+import {
   TRACE_MINIMUM_AREA,
   TRACE_MINIMUM_POINTS,
   TRACE_SAMPLE_DISTANCE,
@@ -190,14 +210,6 @@ const DAWNCASTER_WEAPON_IDS = new Set<WeaponId>([
   'comet-swarm',
   'mirror-bow',
 ])
-const ENEMY_IDS: EnemyId[] = [
-  'maskling',
-  'shardwing',
-  'cantor',
-  'railjaw',
-  'chronowisp',
-  'cinder-guard',
-]
 const GRID_SIZE = 112
 const HERO_RUNTIME_FRAME_SIZE = 512
 const HERO_RUNTIME_SCALE = HERO_RUNTIME_FRAME_SIZE / 768
@@ -363,6 +375,11 @@ interface TelegraphEntity {
   color?: number
 }
 
+interface RuntimeHostileProjectile {
+  state: HostileProjectileState
+  palette: HostileTelegraphMaterialPalette
+}
+
 interface RingEffect {
   x: number
   y: number
@@ -477,6 +494,7 @@ class NighttraceRuntime {
   private readonly groundedVfxDustGraphics = new Graphics()
   private readonly motionGraphics = new Graphics()
   private readonly projectileTrailGraphics = new Graphics()
+  private readonly hostileProjectileGraphics = new Graphics()
   private readonly weaponVfxAdditiveGraphics = new Graphics()
   private readonly weaponVfxGraphics = new Graphics()
   private readonly screenEffects = new Container()
@@ -506,7 +524,7 @@ class NighttraceRuntime {
   private heroWalkFrames: Texture[] = []
   private heroFireFrames: Texture[] = []
   private heroChargeFrames: Texture[] = []
-  private enemyFrames: Texture[] = []
+  private enemyMotionFrames: [Texture[], Texture[]] = [[], []]
   private bossFrames: Texture[] = []
   private bossMotionFrames: [Texture[], Texture[]] = [[], []]
   private pickupFrames: Texture[] = []
@@ -565,6 +583,7 @@ class NighttraceRuntime {
   private readonly particles: ParticleEntity[] = []
   private readonly motionEchoes: MotionEchoEntity[] = []
   private readonly telegraphs: TelegraphEntity[] = []
+  private readonly hostileProjectiles: RuntimeHostileProjectile[] = []
   private activeTelegraphCount = 0
   private readonly enemyGrid = new Map<number, EnemyEntity[]>()
   private readonly gridBuckets: EnemyEntity[][] = []
@@ -606,6 +625,9 @@ class NighttraceRuntime {
   private cameraY = WORLD_HEIGHT * 0.54
   private attackVolley = 0
   private pickupVisualSeed = 0
+  private hostileProjectileUid = 0
+  private bossPatternDirectorState: BossPatternDirectorState =
+    createBossPatternDirectorState()
   private qaUpgradeGranted = false
   private readonly qaMode =
     typeof location !== 'undefined' &&
@@ -632,7 +654,7 @@ class NighttraceRuntime {
     this.unlockedWeapons = [...new Set([...ALL_WEAPON_IDS, ...unlockedWeapons])]
     this.persistentUpgrades = persistentUpgrades
     this.callbacks = callbacks
-    this.audio = new NighttraceAudio(settings)
+    this.audio = new NighttraceAudio(settings, level.id)
     const requestedLod =
       typeof location === 'undefined'
         ? undefined
@@ -741,7 +763,8 @@ class NighttraceRuntime {
       Assets.load<Texture>(appAssetUrl('assets/hero-animations/hero-walk-runtime.webp')),
       Assets.load<Texture>(appAssetUrl('assets/hero-animations/hero-fire-runtime.webp')),
       Assets.load<Texture>(appAssetUrl('assets/hero-animations/hero-charge-runtime.webp')),
-      Assets.load<Texture>(appAssetUrl('assets/nighttrace-enemy-atlas.webp')),
+      Assets.load<Texture>(appAssetUrl(ENEMY_MOTION_ATLASES[0].path)),
+      Assets.load<Texture>(appAssetUrl(ENEMY_MOTION_ATLASES[1].path)),
       Assets.load<Texture>(appAssetUrl('assets/nighttrace-boss-atlas.webp')),
       Assets.load<Texture>(appAssetUrl(BOSS_MOTION_ATLASES[0].path)),
       Assets.load<Texture>(appAssetUrl(BOSS_MOTION_ATLASES[1].path)),
@@ -782,7 +805,8 @@ class NighttraceRuntime {
           heroWalkSheet,
           heroFireSheet,
           heroChargeSheet,
-          enemySheet,
+          enemyMotionSheetA,
+          enemyMotionSheetB,
           bossSheet,
           bossMotionSheetA,
           bossMotionSheetB,
@@ -834,7 +858,10 @@ class NighttraceRuntime {
       this.weaponMaterialLayer.sortableChildren = true
       this.pickupLayer.addChild(this.pickupAuraGraphics)
       this.enemyLayer.addChild(this.motionGraphics)
-      this.projectileLayer.addChild(this.projectileTrailGraphics)
+      this.projectileLayer.addChild(
+        this.projectileTrailGraphics,
+        this.hostileProjectileGraphics,
+      )
       this.weaponVfxAdditiveGraphics.blendMode = 'add'
       this.effectLayer.addChild(
         this.motionEchoLayer,
@@ -852,7 +879,18 @@ class NighttraceRuntime {
       this.heroWalkFrames = this.sliceTexture(heroWalkSheet, 4, 2)
       this.heroFireFrames = this.sliceTexture(heroFireSheet, 3, 2)
       this.heroChargeFrames = this.sliceTexture(heroChargeSheet, 3, 2)
-      this.enemyFrames = this.sliceTexture(enemySheet, 3, 2)
+      this.enemyMotionFrames = [
+        this.sliceTexture(
+          enemyMotionSheetA,
+          ENEMY_MOTION_ATLASES[0].columns,
+          ENEMY_MOTION_ATLASES[0].rows,
+        ),
+        this.sliceTexture(
+          enemyMotionSheetB,
+          ENEMY_MOTION_ATLASES[1].columns,
+          ENEMY_MOTION_ATLASES[1].rows,
+        ),
+      ]
       this.bossFrames = this.sliceTexture(bossSheet, 3, 2)
       this.bossMotionFrames = [
         this.sliceTexture(
@@ -1138,7 +1176,8 @@ class NighttraceRuntime {
       ...this.heroWalkFrames,
       ...this.heroFireFrames,
       ...this.heroChargeFrames,
-      ...this.enemyFrames,
+      ...this.enemyMotionFrames[0],
+      ...this.enemyMotionFrames[1],
       ...this.bossFrames,
       ...this.bossMotionFrames[0],
       ...this.bossMotionFrames[1],
@@ -1149,7 +1188,8 @@ class NighttraceRuntime {
     this.heroWalkFrames.length = 0
     this.heroFireFrames.length = 0
     this.heroChargeFrames.length = 0
-    this.enemyFrames.length = 0
+    this.enemyMotionFrames[0].length = 0
+    this.enemyMotionFrames[1].length = 0
     this.bossFrames.length = 0
     this.bossMotionFrames[0].length = 0
     this.bossMotionFrames[1].length = 0
@@ -1319,6 +1359,7 @@ class NighttraceRuntime {
     this.updateProjectiles(delta)
     if (!this.runConfig.bossOnly) this.updateSupportPickups()
     this.updatePickups(delta)
+    this.updateHostileProjectiles(delta)
     this.updateTelegraphs(delta)
     this.updateVisualEffects(delta)
 
@@ -1494,6 +1535,24 @@ class NighttraceRuntime {
         this.host.dataset.bossAnimationState = clipFrame.state
         this.host.dataset.bossAnimationPose = clipFrame.pose
         this.host.dataset.bossQuadruped = String(clipFrame.quadruped)
+      } else {
+        const clipFrame = resolveEnemyClipFrame({
+          enemyId: enemy.id,
+          uid: enemy.uid,
+          time: this.motionClock,
+          moving: moveRatio,
+          attackMotionStyle: enemy.attackMotionStyle,
+          attackMotionRemaining: enemy.attackMotionRemaining,
+          attackMotionDuration: enemy.attackMotionDuration,
+          hitMotionRemaining: enemy.hitMotionRemaining,
+          hitMotionDuration: enemy.hitMotionDuration,
+          deathMotionRemaining: enemy.deathMotionRemaining,
+          deathMotionDuration: enemy.deathMotionDuration,
+        })
+        const authoredTexture = this.enemyMotionTexture(clipFrame)
+        if (authoredTexture && enemy.sprite.texture !== authoredTexture) {
+          enemy.sprite.texture = authoredTexture
+        }
       }
       const pose = enemy.isBoss
         ? sampleBossMotion({
@@ -1611,6 +1670,7 @@ class NighttraceRuntime {
         projectileAlpha * Math.max(0.58, sceneVfxScale + 0.08)
       this.drawProjectileTrail(projectile, renderX, renderY)
     }
+    this.drawHostileProjectiles()
 
     this.pickupAuraGraphics.clear()
     for (const pickup of this.pickups) {
@@ -1717,12 +1777,23 @@ class NighttraceRuntime {
   }
 
   private spawnEnemy() {
-    if (!this.enemyFrames.length) return
+    if (!this.enemyMotionFrames.some((frames) => frames.length > 0)) return
     let enemy = this.enemies.find(
       (candidate) => !candidate.active && candidate.deathMotionRemaining <= 0,
     )
     if (!enemy) {
-      const sprite = new Sprite(this.enemyFrames[0])
+      const initialFrame = resolveEnemyClipFrame({
+        enemyId: 'maskling',
+        uid: 0,
+        time: 0,
+        moving: 0,
+        attackMotionStyle: 'none',
+        attackMotionRemaining: 0,
+        attackMotionDuration: 0,
+      })
+      const sprite = new Sprite(
+        this.enemyMotionTexture(initialFrame) ?? Texture.WHITE,
+      )
       sprite.anchor.set(0.5, 0.6)
       sprite.visible = false
       this.enemyLayer.addChild(sprite)
@@ -1774,7 +1845,6 @@ class NighttraceRuntime {
       this.elapsed,
     )
     const id = this.random.pick(eligibleEnemyPool(this.level.enemyPool, pressure.progress))
-    const frameIndex = Math.max(0, ENEMY_IDS.indexOf(id))
     const spawn = this.findSafeSpawnPoint(480, 680, 60, 54)
     const { x, y } = spawn
     const typeScale = {
@@ -1833,6 +1903,8 @@ class NighttraceRuntime {
     enemy.attackTimer =
       id === 'cantor'
         ? this.random.range(3.8, 5.6)
+        : id === 'shardwing' && this.level.id >= 7
+          ? this.random.range(5.4, 7.2)
         : id === 'railjaw'
           ? this.random.range(4.2, 6.2)
           : id === 'chronowisp'
@@ -1840,7 +1912,17 @@ class NighttraceRuntime {
             : id === 'cinder-guard'
               ? this.random.range(5.2, 7.8)
               : 99
-    enemy.sprite.texture = this.enemyFrames[frameIndex]
+    const initialFrame = resolveEnemyClipFrame({
+      enemyId: id,
+      uid: enemy.uid,
+      time: this.motionClock,
+      moving: 0,
+      attackMotionStyle: 'none',
+      attackMotionRemaining: 0,
+      attackMotionDuration: 0,
+    })
+    enemy.sprite.texture =
+      this.enemyMotionTexture(initialFrame) ?? enemy.sprite.texture
     enemy.sprite.anchor.set(0.5, 0.6)
     enemy.sprite.width = size
     enemy.sprite.height = size * 1.2
@@ -2102,6 +2184,7 @@ class NighttraceRuntime {
     enemy.sprite.visible = true
     enemy.sprite.position.set(x, y)
     this.boss = enemy
+    this.bossPatternDirectorState = createBossPatternDirectorState()
     this.bossIntroTimer = introDuration
     // The React HUD owns the sovereign name reveal. Keep the canvas layer focused
     // on the letterbox, shake, and particle entrance so the title is announced once.
@@ -2232,17 +2315,43 @@ class NighttraceRuntime {
 
   private performEnemySpecial(enemy: EnemyEntity, angle: number, distance: number) {
     if (enemy.id === 'cantor') {
-      this.triggerEnemyAttack(enemy, 'cast', 1.15, angle, true)
-      this.queueCircleTelegraph(
-        this.player.x,
-        this.player.y,
-        58,
-        1.15,
-        enemy.damage * 0.8,
-        false,
-        this.actorAccentColor(enemy),
-      )
+      const destination = this.predictedPlayerPoint(0.34)
+      this.triggerEnemyAttack(enemy, 'cast', 1.16, angle, true)
+      this.launchHostileProjectile(enemy, destination, {
+        windup: 0.98,
+        flight: 0.38,
+        arcHeight: 118,
+        radius: 58,
+        damage: enemy.damage * 0.8,
+        color: this.actorAccentColor(enemy),
+      })
       enemy.attackTimer = this.random.range(4.8, 6.8)
+      return
+    }
+
+    if (enemy.id === 'shardwing' && this.level.id >= 7) {
+      const destination = this.predictedPlayerPoint(0.42)
+      const normalX = -Math.sin(angle)
+      const normalY = Math.cos(angle)
+      this.triggerEnemyAttack(enemy, 'cast', 1.02, angle, true)
+      for (const side of [-1, 1]) {
+        this.launchHostileProjectile(
+          enemy,
+          {
+            x: destination.x + normalX * side * 42,
+            y: destination.y + normalY * side * 42,
+          },
+          {
+            windup: 0.82 + (side > 0 ? 0.08 : 0),
+            flight: 0.34,
+            arcHeight: 86,
+            radius: 42,
+            damage: enemy.damage * 0.58,
+            color: this.actorAccentColor(enemy),
+          },
+        )
+      }
+      enemy.attackTimer = this.random.range(6.1, 8)
       return
     }
 
@@ -2264,6 +2373,23 @@ class NighttraceRuntime {
     }
 
     if (enemy.id === 'chronowisp') {
+      if (
+        this.level.id >= 4 &&
+        this.random.next() < Math.min(0.8, 0.36 + this.level.id * 0.045)
+      ) {
+        const destination = this.predictedPlayerPoint(0.48)
+        this.triggerEnemyAttack(enemy, 'cast', 1.08, angle, true)
+        this.launchHostileProjectile(enemy, destination, {
+          windup: 0.9,
+          flight: 0.38,
+          arcHeight: 94,
+          radius: 55,
+          damage: enemy.damage * 0.88,
+          color: this.actorAccentColor(enemy),
+        })
+        enemy.attackTimer = this.random.range(5.6, 7.6)
+        return
+      }
       this.triggerEnemyAttack(enemy, 'blink', 0.52, angle, true)
       const blinkAngle = this.random.range(0, Math.PI * 2)
       const blinkDistance = this.random.range(190, 300)
@@ -2285,6 +2411,20 @@ class NighttraceRuntime {
     }
 
     if (enemy.id === 'cinder-guard') {
+      if (this.level.id >= 5 && this.random.next() < 0.62) {
+        const destination = this.predictedPlayerPoint(0.5)
+        this.triggerEnemyAttack(enemy, 'cast', 1.22, angle, true)
+        this.launchHostileProjectile(enemy, destination, {
+          windup: 1.04,
+          flight: 0.46,
+          arcHeight: 172,
+          radius: 82,
+          damage: enemy.damage * 1.05,
+          color: this.actorAccentColor(enemy),
+        })
+        enemy.attackTimer = this.random.range(6.2, 8.2)
+        return
+      }
       this.triggerEnemyAttack(enemy, 'slam', 0.92, angle, true)
       this.queueCircleTelegraph(
         enemy.x,
@@ -2296,6 +2436,28 @@ class NighttraceRuntime {
         this.actorAccentColor(enemy),
       )
       enemy.attackTimer = this.random.range(6.2, 8.4)
+    }
+  }
+
+  private predictedPlayerPoint(leadSeconds: number): Vec2 {
+    const velocityX = (this.player.x - this.player.previousX) / FIXED_STEP
+    const velocityY = (this.player.y - this.player.previousY) / FIXED_STEP
+    const velocity = Math.hypot(velocityX, velocityY)
+    const predictionScale =
+      velocity > 0.01
+        ? Math.min(1, 150 / Math.max(1, velocity * leadSeconds))
+        : 0
+    return {
+      x: clamp(
+        this.player.x + velocityX * leadSeconds * predictionScale,
+        64,
+        WORLD_WIDTH - 64,
+      ),
+      y: clamp(
+        this.player.y + velocityY * leadSeconds * predictionScale,
+        64,
+        WORLD_HEIGHT - 64,
+      ),
     }
   }
 
@@ -3104,6 +3266,174 @@ class NighttraceRuntime {
     }
   }
 
+  private launchHostileProjectile(
+    enemy: EnemyEntity,
+    destination: Vec2,
+    options: {
+      windup: number
+      flight: number
+      arcHeight: number
+      radius: number
+      damage: number
+      color?: number
+    },
+  ) {
+    const presentation = enemy.isBoss
+      ? bossPresentation(this.bossLevel.bossId)
+      : enemyPresentation(enemy.id)
+    const color = options.color ?? presentation.primaryColor
+    const state = queueHostileProjectile(
+      {
+        id: ++this.hostileProjectileUid,
+        sourceUid: enemy.uid,
+        origin: {
+          x: enemy.x,
+          y: enemy.y - enemy.radius * (enemy.isBoss ? 0.42 : 0.3),
+        },
+        destination: {
+          x: clamp(destination.x, options.radius + 24, WORLD_WIDTH - options.radius - 24),
+          y: clamp(destination.y, options.radius + 24, WORLD_HEIGHT - options.radius - 24),
+        },
+        windupSeconds: options.windup,
+        flightSeconds: options.flight,
+        impactHoldSeconds: 0.22,
+        arcHeight: options.arcHeight,
+        impactRadius: options.radius,
+        damage: options.damage,
+        color,
+        boss: enemy.isBoss,
+      },
+      {
+        lod: this.visualLod === 'mobile' ? 'mobile' : 'desktop',
+        activeCount: this.hostileProjectiles.length,
+      },
+    )
+    if (!state) return false
+    this.hostileProjectiles.push({
+      state,
+      palette: resolveHostileTelegraphPalette({
+        family: presentation.colorFamily,
+        actorColor: color,
+        emphasis: enemy.isBoss ? 1 : 0.18,
+      }),
+    })
+    return true
+  }
+
+  private updateHostileProjectiles(delta: number) {
+    for (let index = this.hostileProjectiles.length - 1; index >= 0; index -= 1) {
+      const projectile = this.hostileProjectiles[index]
+      const step = advanceHostileProjectile(projectile.state, delta)
+      projectile.state = step.state
+      for (const event of step.events) {
+        if (event.type === 'release') {
+          this.spawnBurst(
+            event.origin.x,
+            event.origin.y,
+            projectile.palette.seepTint,
+            projectile.state.config.boss ? 9 : 5,
+            projectile.state.config.boss ? 165 : 110,
+          )
+          continue
+        }
+        if (
+          distanceSquared(event.destination, this.player) <=
+          (event.radius + 18) ** 2
+        ) {
+          this.damagePlayer(event.damage)
+        }
+        this.spawnBurst(
+          event.destination.x,
+          event.destination.y,
+          projectile.palette.impactTint,
+          event.boss ? 13 : 7,
+          event.boss ? 210 : 145,
+        )
+        if (event.boss) {
+          this.shake = Math.max(this.shake, 8)
+          this.screenFlashAlpha = Math.max(
+            this.screenFlashAlpha,
+            this.settings.reducedFlash ? 0.025 : 0.075,
+          )
+        }
+      }
+      if (step.pose.phase === 'expired') {
+        this.hostileProjectiles.splice(index, 1)
+      }
+    }
+    this.host.dataset.hostileProjectiles = String(this.hostileProjectiles.length)
+  }
+
+  private drawHostileProjectiles() {
+    this.hostileProjectileGraphics.clear()
+    for (const projectile of this.hostileProjectiles) {
+      const pose = hostileProjectilePoseAt(projectile.state)
+      if (!pose.projectileVisible) continue
+      const { config } = projectile.state
+      const radius = config.boss ? 12 : 8
+      const shadowAlpha = 0.2 + pose.flightProgress * 0.16
+      this.hostileProjectileGraphics
+        .ellipse(
+          pose.shadowPosition.x,
+          pose.shadowPosition.y + 4,
+          radius * pose.shadowScale * 1.55,
+          radius * pose.shadowScale * 0.58,
+        )
+        .fill({ color: HOSTILE_SHADOW_COLOR, alpha: shadowAlpha })
+
+      const trailSteps = this.visualLod === 'mobile' ? 2 : 4
+      for (let trail = trailSteps; trail >= 1; trail -= 1) {
+        const t = Math.max(0, pose.flightProgress - trail * 0.035)
+        const trailX = lerp(config.origin.x, config.destination.x, t)
+        const trailY =
+          lerp(config.origin.y, config.destination.y, t) -
+          4 * config.arcHeight * t * (1 - t)
+        this.hostileProjectileGraphics
+          .ellipse(
+            trailX,
+            trailY,
+            radius * (0.74 - trail * 0.07),
+            radius * (0.48 - trail * 0.035),
+          )
+          .fill({
+            color: projectile.palette.smokeTint,
+            alpha: Math.max(0.035, 0.16 - trail * 0.026),
+          })
+      }
+
+      const flutter = Math.sin(this.motionClock * 14 + config.sourceUid) * 0.18
+      this.hostileProjectileGraphics
+        .poly(
+          [
+            pose.position.x,
+            pose.position.y - radius * 1.45,
+            pose.position.x + radius * (0.72 + flutter),
+            pose.position.y,
+            pose.position.x,
+            pose.position.y + radius * 1.1,
+            pose.position.x - radius * (0.72 - flutter),
+            pose.position.y,
+          ],
+          true,
+        )
+        .fill({
+          color: projectile.palette.seepTint,
+          alpha: config.boss ? 0.96 : 0.88,
+        })
+      this.hostileProjectileGraphics
+        .ellipse(
+          pose.position.x,
+          pose.position.y,
+          radius * 0.34,
+          radius * 0.54,
+        )
+        .fill({
+          color: projectile.palette.impactTint,
+          alpha: this.settings.reducedFlash ? 0.58 : 0.82,
+        })
+    }
+  }
+
   private updateVisualEffects(delta: number) {
     for (const echo of this.motionEchoes) {
       if (!echo.active) continue
@@ -3709,7 +4039,16 @@ class NighttraceRuntime {
     // late-phase casts, hazards, and ordinary specials from flooding the arena.
     if (this.activeTelegraphCount > 24) return
     const angle = Math.atan2(this.player.y - enemy.y, this.player.x - enemy.x)
-    const pattern = bossPatternForLevel(this.bossLevel.id)
+    const patternDecision = directBossPattern({
+      levelId: this.bossLevel.id,
+      phase: enemy.phase,
+      roll: this.random.next(),
+      state: this.bossPatternDirectorState,
+    })
+    this.bossPatternDirectorState = patternDecision.state
+    const pattern = patternDecision.patternId
+    this.host.dataset.bossPattern = String(pattern)
+    this.host.dataset.bossPatternPool = patternDecision.pool.join(',')
     const warningTime = Math.max(0.52, 0.9 - enemy.phase * 0.08)
     const attackStyle: AttackMotionStyle = [
       'boss-line',
@@ -3749,13 +4088,19 @@ class NighttraceRuntime {
       for (let index = 0; index < circles; index += 1) {
         const orbit = (Math.PI * 2 * index) / circles + this.elapsed * 0.35
         const radius = 92 + enemy.phase * 18
-        this.queueCircleTelegraph(
-          clamp(this.player.x + Math.cos(orbit) * radius, 64, WORLD_WIDTH - 64),
-          clamp(this.player.y + Math.sin(orbit) * radius, 64, WORLD_HEIGHT - 64),
-          58 + enemy.phase * 4,
-          warningTime + 0.12,
-          enemy.damage,
-          true,
+        this.launchHostileProjectile(
+          enemy,
+          {
+            x: clamp(this.player.x + Math.cos(orbit) * radius, 64, WORLD_WIDTH - 64),
+            y: clamp(this.player.y + Math.sin(orbit) * radius, 64, WORLD_HEIGHT - 64),
+          },
+          {
+            windup: warningTime,
+            flight: 0.42,
+            arcHeight: 126 + index * 9,
+            radius: 58 + enemy.phase * 4,
+            damage: enemy.damage,
+          },
         )
       }
       return
@@ -3793,13 +4138,27 @@ class NighttraceRuntime {
       for (let index = 0; index < clusterCount; index += 1) {
         const spread = 58 + index * 28
         const clusterAngle = angle + index * 2.4
-        this.queueCircleTelegraph(
-          clamp(this.player.x + Math.cos(clusterAngle) * spread, 64, WORLD_WIDTH - 64),
-          clamp(this.player.y + Math.sin(clusterAngle) * spread, 64, WORLD_HEIGHT - 64),
-          66 + enemy.phase * 5,
-          warningTime + index * 0.06,
-          enemy.damage * 1.08,
-          true,
+        this.launchHostileProjectile(
+          enemy,
+          {
+            x: clamp(
+              this.player.x + Math.cos(clusterAngle) * spread,
+              64,
+              WORLD_WIDTH - 64,
+            ),
+            y: clamp(
+              this.player.y + Math.sin(clusterAngle) * spread,
+              64,
+              WORLD_HEIGHT - 64,
+            ),
+          },
+          {
+            windup: warningTime + index * 0.06,
+            flight: 0.4,
+            arcHeight: 154 + index * 13,
+            radius: 66 + enemy.phase * 5,
+            damage: enemy.damage * 1.08,
+          },
         )
       }
       return
@@ -3840,23 +4199,40 @@ class NighttraceRuntime {
       const rotation = this.elapsed * 0.7 + enemy.phase * 0.35
       for (let index = 0; index < spiralCount; index += 1) {
         const orbit = rotation + (Math.PI * 2 * index) / spiralCount
-        this.queueCircleTelegraph(
-          clamp(this.player.x + Math.cos(orbit) * orbitRadius, 62, WORLD_WIDTH - 62),
-          clamp(this.player.y + Math.sin(orbit) * orbitRadius, 62, WORLD_HEIGHT - 62),
-          48 + enemy.phase * 3,
-          warningTime + index * 0.045,
-          enemy.damage,
-          true,
+        this.launchHostileProjectile(
+          enemy,
+          {
+            x: clamp(
+              this.player.x + Math.cos(orbit) * orbitRadius,
+              62,
+              WORLD_WIDTH - 62,
+            ),
+            y: clamp(
+              this.player.y + Math.sin(orbit) * orbitRadius,
+              62,
+              WORLD_HEIGHT - 62,
+            ),
+          },
+          {
+            windup: warningTime + index * 0.045,
+            flight: 0.38,
+            arcHeight: 116 + (index % 3) * 18,
+            radius: 48 + enemy.phase * 3,
+            damage: enemy.damage,
+          },
         )
       }
       if (enemy.phase >= 3) {
-        this.queueCircleTelegraph(
-          this.player.x,
-          this.player.y,
-          58,
-          warningTime + 0.18,
-          enemy.damage * 1.08,
-          true,
+        this.launchHostileProjectile(
+          enemy,
+          { x: this.player.x, y: this.player.y },
+          {
+            windup: warningTime + 0.18,
+            flight: 0.4,
+            arcHeight: 188,
+            radius: 58,
+            damage: enemy.damage * 1.08,
+          },
         )
       }
       return
@@ -3882,13 +4258,19 @@ class NighttraceRuntime {
       ]
       for (let index = 0; index < Math.min(centers.length, 1 + enemy.phase); index += 1) {
         const center = centers[index]
-        this.queueCircleTelegraph(
-          clamp(center.x, 68, WORLD_WIDTH - 68),
-          clamp(center.y, 68, WORLD_HEIGHT - 68),
-          70 + enemy.phase * 5,
-          warningTime + index * 0.1,
-          enemy.damage * 1.06,
-          true,
+        this.launchHostileProjectile(
+          enemy,
+          {
+            x: clamp(center.x, 68, WORLD_WIDTH - 68),
+            y: clamp(center.y, 68, WORLD_HEIGHT - 68),
+          },
+          {
+            windup: warningTime + index * 0.1,
+            flight: 0.38,
+            arcHeight: 172 + index * 22,
+            radius: 70 + enemy.phase * 5,
+            damage: enemy.damage * 1.06,
+          },
         )
       }
       if (enemy.phase >= 2) {
@@ -4507,6 +4889,7 @@ class NighttraceRuntime {
     boss = false,
     opacityScale = 1,
     bossId?: BossId,
+    hostilePalette?: HostileTelegraphMaterialPalette,
   ) {
     const texture = this.hostileGroundFieldTexture
     if (!texture) return
@@ -4536,16 +4919,43 @@ class NighttraceRuntime {
     sprite.height = diameter * (0.9 + variant * 0.07)
     sprite.rotation =
       groundedVfxCosmeticUnit(seed, 1, 19) * Math.PI * 2
-    sprite.tint = profile.bossTreatment?.fieldTint ?? 0xffffff
+    const treatment = bossId
+      ? bossMaterialTreatment(bossId)
+      : profile.bossTreatment
+    sprite.tint =
+      treatment?.fieldTint ?? hostilePalette?.groundTint ?? 0xffffff
     sprite.alpha = clamp(
       profile.material.opacity *
         pose.alpha *
         opacityScale *
+        (treatment?.fieldOpacityScale ?? 1) *
         (0.9 + pose.impact * 0.1),
       0,
       0.82,
     )
     sprite.zIndex = Math.round(y * 10)
+
+    if (hostilePalette) {
+      const seep = this.acquireGroundedVfxMaterialSprite(texture)
+      seep.position.set(
+        x + (variant - 0.5) * radius * 0.06,
+        y + radius * (0.04 + variant * 0.025),
+      )
+      seep.width = diameter * (0.88 + variant * 0.05)
+      seep.height = diameter * (0.78 + variant * 0.06)
+      seep.rotation =
+        sprite.rotation + (groundedVfxCosmeticUnit(seed, 2, 71) - 0.5) * 0.18
+      seep.tint = hostilePalette.seepTint
+      seep.alpha = clamp(
+        hostilePalette.seepOpacity *
+          pose.alpha *
+          opacityScale *
+          (0.72 + pose.impact * 0.5),
+        0,
+        0.28,
+      )
+      seep.zIndex = sprite.zIndex + 1
+    }
 
     const dustCount = Math.min(
       profile.dust.count,
@@ -4573,7 +4983,10 @@ class NighttraceRuntime {
           size * 0.62,
         )
         .fill({
-          color: dust % 3 === 0 ? 0x645751 : 0x312c2d,
+          color:
+            dust % 3 === 0
+              ? hostilePalette?.smokeTint ?? treatment?.smokeTint ?? 0x645751
+              : 0x312c2d,
           alpha:
             profile.dust.opacity *
             pose.alpha *
@@ -4618,7 +5031,7 @@ class NighttraceRuntime {
         )
         .fill({
           color:
-            profile.bossTreatment?.debrisTint ??
+            treatment?.debrisTint ??
             (debris % 3 === 0 ? 0x675d58 : 0x3b3838),
           alpha:
             profile.debris.opacity *
@@ -4640,6 +5053,7 @@ class NighttraceRuntime {
     boss = false,
     opacityScale = 1,
     bossId?: BossId,
+    hostilePalette?: HostileTelegraphMaterialPalette,
   ) {
     const texture = this.hostileGroundLaneTexture
     if (!texture) return
@@ -4665,6 +5079,9 @@ class NighttraceRuntime {
       kind === 'hostile-lane'
         ? Math.max(1, Math.min(3, Math.ceil(length / segmentTarget)))
         : 1
+    const treatment = bossId
+      ? bossMaterialTreatment(bossId)
+      : profile.bossTreatment
     for (let segment = 0; segment < segmentCount; segment += 1) {
       const centerT = (segment + 0.5) / segmentCount
       const sprite = this.acquireGroundedVfxMaterialSprite(texture)
@@ -4681,16 +5098,41 @@ class NighttraceRuntime {
         profile.material.scale *
         pose.scale
       sprite.rotation = angle
-      sprite.tint = profile.bossTreatment?.laneTint ?? 0xffffff
+      sprite.tint =
+        treatment?.laneTint ?? hostilePalette?.groundTint ?? 0xffffff
       sprite.alpha = clamp(
         profile.material.opacity *
           pose.alpha *
           opacityScale *
+          (treatment?.laneOpacityScale ?? 1) *
           (0.9 + pose.impact * 0.1),
         0,
         0.78,
       )
       sprite.zIndex = Math.round(sprite.y * 10)
+
+      if (hostilePalette) {
+        const seep = this.acquireGroundedVfxMaterialSprite(texture)
+        const lateral =
+          (groundedVfxCosmeticUnit(seed, segment, 101) - 0.5) * width * 0.16
+        seep.position.set(
+          sprite.x + normalX * lateral,
+          sprite.y + normalY * lateral,
+        )
+        seep.width = sprite.width * (0.94 + variant * 0.04)
+        seep.height = sprite.height * (0.62 + variant * 0.08)
+        seep.rotation = angle
+        seep.tint = hostilePalette.seepTint
+        seep.alpha = clamp(
+          hostilePalette.seepOpacity *
+            pose.alpha *
+            opacityScale *
+            (0.76 + pose.impact * 0.48),
+          0,
+          0.27,
+        )
+        seep.zIndex = sprite.zIndex + 1
+      }
     }
 
     const dustCount = Math.min(
@@ -4715,7 +5157,10 @@ class NighttraceRuntime {
           size * 0.58,
         )
         .fill({
-          color: dust % 3 === 0 ? 0x695a53 : 0x302b2c,
+          color:
+            dust % 3 === 0
+              ? hostilePalette?.smokeTint ?? treatment?.smokeTint ?? 0x695a53
+              : 0x302b2c,
           alpha:
             profile.dust.opacity *
             pose.alpha *
@@ -4758,7 +5203,7 @@ class NighttraceRuntime {
         )
         .fill({
           color:
-            profile.bossTreatment?.debrisTint ??
+            treatment?.debrisTint ??
             (debris % 3 === 0 ? 0x675d58 : 0x3b3838),
           alpha:
             profile.debris.opacity *
@@ -5503,6 +5948,28 @@ class NighttraceRuntime {
     this.finishAuthoredSpellMaterialFrame()
   }
 
+  private telegraphMaterialPalette(
+    color: number | undefined,
+    bossAttack: boolean,
+  ) {
+    if (bossAttack) {
+      const presentation = bossPresentation(this.bossLevel.bossId)
+      return resolveHostileTelegraphPalette({
+        family: presentation.colorFamily,
+        actorColor: color ?? presentation.primaryColor,
+        emphasis: 1,
+      })
+    }
+    const actorColor = color ?? 0x8f3348
+    const red = (actorColor >> 16) & 0xff
+    const blue = actorColor & 0xff
+    return resolveHostileTelegraphPalette({
+      family: blue > red * 0.72 ? 'violet' : 'crimson',
+      actorColor,
+      emphasis: 0.18,
+    })
+  }
+
   private drawEffects() {
     this.beginGroundedVfxFrame()
     this.drawWeaponEffects()
@@ -5565,6 +6032,10 @@ class NighttraceRuntime {
         Math.round(telegraph.x * 17 + telegraph.y * 31) ^
         Math.round(telegraph.angle * 997) ^
         Math.round(telegraph.total * 10_007)
+      const hostilePalette = this.telegraphMaterialPalette(
+        telegraph.color,
+        telegraph.bossAttack,
+      )
       if (telegraph.kind === 'circle') {
         this.drawGroundedFieldMaterial(
           'hostile-field',
@@ -5577,6 +6048,7 @@ class NighttraceRuntime {
           telegraph.bossAttack,
           telegraph.bossAttack ? 0.84 : 0.72,
           telegraph.bossAttack ? this.bossLevel.bossId : undefined,
+          hostilePalette,
         )
       } else {
         const end = {
@@ -5594,8 +6066,42 @@ class NighttraceRuntime {
           telegraph.bossAttack,
           telegraph.bossAttack ? 0.86 : 0.74,
           telegraph.bossAttack ? this.bossLevel.bossId : undefined,
+          hostilePalette,
         )
       }
+    }
+    for (const projectile of this.hostileProjectiles) {
+      const pose = hostileProjectilePoseAt(projectile.state)
+      if (!pose.destinationVisible) continue
+      const { config } = projectile.state
+      const impactAt = config.windupSeconds + config.flightSeconds
+      const progress = clamp(
+        projectile.state.elapsedSeconds / Math.max(0.01, impactAt),
+        0,
+        0.995,
+      )
+      const stage: GroundedVfxStage = config.boss
+        ? this.bossLevel.id >= 8
+          ? 'final'
+          : this.bossLevel.id >= 5
+            ? 'mastered'
+            : this.bossLevel.id >= 3
+              ? 'combined'
+              : 'solo'
+        : 'solo'
+      this.drawGroundedFieldMaterial(
+        'hostile-field',
+        config.destination.x,
+        config.destination.y,
+        config.impactRadius,
+        progress,
+        stage,
+        Number(config.id) * 7_919 + config.sourceUid * 131,
+        config.boss,
+        config.boss ? 0.92 : 0.78,
+        config.boss ? this.bossLevel.bossId : undefined,
+        projectile.palette,
+      )
     }
     this.finishGroundedVfxFrame()
 
@@ -6513,6 +7019,10 @@ class NighttraceRuntime {
 
   private bossMotionTexture(frame: ResolvedBossClipFrame) {
     return this.bossMotionFrames[frame.atlasIndex]?.[frame.frameIndex]
+  }
+
+  private enemyMotionTexture(frame: ResolvedEnemyClipFrame) {
+    return this.enemyMotionFrames[frame.atlasIndex]?.[frame.frameIndex]
   }
 
   private handleVisibility = () => {
