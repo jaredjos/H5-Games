@@ -1,4 +1,4 @@
-NIGHTTRACE v1.11.0 bundled runtime documentation
+NIGHTTRACE v1.12.0 bundled runtime documentation
 
 NIGHTTRACE_Combat_Systems_Codex.pdf
   Full player-facing and implementation-derived reference for weapon states,
@@ -37,3 +37,10 @@ ground material, smoke, pressure, rubble, and boss-specific restrained tints
 instead of rings, grids, rails, rays, or hard polygon outlines. All eight
 weapons enter the campaign draft pool immediately; each descent includes three
 free refreshes, and every weapon follows one normalized connected-DPS budget.
+
+The v1.12.0 delivery pass forces old cache-first clients onto the current
+runtime, snaps irregular boss-atlas grids to whole-pixel cells, centers every
+gameplay dialog with symmetric safe-area gutters, exposes all seven alternate
+starting powers across the opening choice and three free refreshes, extends the
+base trace by 40%, and awards Pulse only after a valid trace encloses an active
+enemy.

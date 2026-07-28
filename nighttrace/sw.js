@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.11.0'
+const CACHE_VERSION = 'v1.12.0'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
 const ASSET_CACHE = `${CACHE_PREFIX}assets-${CACHE_VERSION}`
@@ -84,33 +84,48 @@ self.addEventListener('install', (event) => {
   )
 })
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter(
-              (key) =>
-                key.startsWith(CACHE_PREFIX) &&
-                key !== SHELL_CACHE &&
-                key !== ASSET_CACHE,
-            )
-            .map((key) => caches.delete(key)),
-        ),
-      )
-      .then(() => self.clients.claim()),
+async function activateServiceWorker() {
+  const keys = await caches.keys()
+  const staleCacheKeys = keys.filter(
+    (key) =>
+      key.startsWith(CACHE_PREFIX) &&
+      key !== SHELL_CACHE &&
+      key !== ASSET_CACHE,
   )
+
+  await Promise.all(staleCacheKeys.map((key) => caches.delete(key)))
+  await self.clients.claim()
+
+  if (staleCacheKeys.length === 0) return
+
+  const windowClients = await self.clients.matchAll({
+    type: 'window',
+    includeUncontrolled: true,
+  })
+  await Promise.allSettled(
+    windowClients.map((client) => {
+      try {
+        const url = new URL(client.url)
+        if (scopedResourcePath(url) === undefined || typeof client.navigate !== 'function') {
+          return undefined
+        }
+        return client.navigate(client.url)
+      } catch {
+        return undefined
+      }
+    }),
+  )
+}
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(activateServiceWorker())
 })
 
 async function navigationResponse(request) {
   const cache = await caches.open(SHELL_CACHE)
-  const installedIndex = await cache.match(INDEX_URL)
-  if (installedIndex) return installedIndex
 
   try {
-    const response = await fetch(request)
+    const response = await fetch(request, { cache: 'reload' })
     if (isCacheable(response)) {
       await cache.put(INDEX_URL, response.clone())
     }
