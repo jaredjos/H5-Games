@@ -5,12 +5,17 @@ import {
   bossHealthForBuild,
   bossPatternForLevel,
   bossTargetTtkSeconds,
+  canSpawnPlannedDawnheart,
   chooseSupportPickup,
   eligibleEnemyPool,
   estimateBossDps,
   experienceToNextLevel,
   hordeActiveCap,
   hordePressureAt,
+  PLANNED_DAWNHEART_HEAL_FRACTION,
+  PLANNED_DAWNHEART_LIFETIME_SECONDS,
+  PLANNED_DAWNHEART_PROGRESS,
+  plannedDawnheartWindows,
   sectorBaselineAt,
   supportPickupFirstDropSeconds,
   supportPickupIntervalSeconds,
@@ -208,18 +213,9 @@ describe('support pickup pacing', () => {
     )
   })
 
-  it('prioritizes the resource the player most needs', () => {
+  it('keeps generic support focused on XP and pulse resources', () => {
     expect(
       chooseSupportPickup({
-        hpRatio: 0.4,
-        activeExperiencePickups: 0,
-        pulseCharge: 100,
-        dropIndex: 0,
-      }),
-    ).toBe('dawnheart')
-    expect(
-      chooseSupportPickup({
-        hpRatio: 1,
         activeExperiencePickups: 20,
         pulseCharge: 100,
         dropIndex: 0,
@@ -227,7 +223,6 @@ describe('support pickup pacing', () => {
     ).toBe('gravestar')
     expect(
       chooseSupportPickup({
-        hpRatio: 1,
         activeExperiencePickups: 0,
         pulseCharge: 12,
         dropIndex: 0,
@@ -235,11 +230,62 @@ describe('support pickup pacing', () => {
     ).toBe('pulse-core')
     expect(
       chooseSupportPickup({
-        hpRatio: 1,
         activeExperiencePickups: 4,
         pulseCharge: 100,
         dropIndex: 0,
       }),
     ).toBeUndefined()
+  })
+
+  it('plans exactly two conditional Dawnhearts before every boss', () => {
+    for (const level of LEVELS) {
+      const windows = plannedDawnheartWindows(level.duration)
+      const bossArrival = level.duration - 38
+
+      expect(windows).toHaveLength(PLANNED_DAWNHEART_PROGRESS.length)
+      expect(windows[0].opensAt).toBeGreaterThan(60)
+      expect(windows[1].opensAt).toBeGreaterThan(windows[0].closesAt)
+      expect(
+        windows.at(-1)!.closesAt + PLANNED_DAWNHEART_LIFETIME_SECONDS,
+      ).toBeLessThanOrEqual(bossArrival - 30)
+    }
+  })
+
+  it('only opens an emergency heart while health is low and revive relief is cold', () => {
+    const [window] = plannedDawnheartWindows(300)
+    const baseline = {
+      elapsed: window.opensAt + 1,
+      hpRatio: 0.5,
+      activeDawnheart: false,
+      lastReviveAt: Number.NEGATIVE_INFINITY,
+      window,
+    }
+
+    expect(canSpawnPlannedDawnheart(baseline)).toBe(true)
+    expect(canSpawnPlannedDawnheart({ ...baseline, hpRatio: 0.53 })).toBe(false)
+    expect(canSpawnPlannedDawnheart({ ...baseline, activeDawnheart: true })).toBe(false)
+    expect(
+      canSpawnPlannedDawnheart({
+        ...baseline,
+        lastReviveAt: baseline.elapsed - 20,
+      }),
+    ).toBe(false)
+    expect(
+      canSpawnPlannedDawnheart({
+        ...baseline,
+        elapsed: window.closesAt + 0.01,
+      }),
+    ).toBe(false)
+  })
+
+  it('keeps planned HP relief below the current minimum assistance budget', () => {
+    const proposedHealBudget =
+      PLANNED_DAWNHEART_HEAL_FRACTION * PLANNED_DAWNHEART_PROGRESS.length
+    const currentMinimumHealBudget = 0.28
+    const inverseEffectiveHealthDifficulty =
+      (1 + currentMinimumHealBudget) / (1 + proposedHealBudget)
+
+    expect(proposedHealBudget).toBe(0.2)
+    expect(inverseEffectiveHealthDifficulty).toBeGreaterThanOrEqual(0.97)
   })
 })

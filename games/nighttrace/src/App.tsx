@@ -47,6 +47,7 @@ import {
   GameLoading,
   MobileTouchControls,
   PauseOverlay,
+  ReviveOverlay,
   UpgradeOverlay,
 } from './ui/GameUI'
 import {
@@ -352,6 +353,14 @@ export default function App() {
     gameRef.current?.beginEncounter()
   }, [])
 
+  const revive = useCallback(() => {
+    gameRef.current?.revive()
+  }, [])
+
+  const declineRevive = useCallback(() => {
+    gameRef.current?.declineRevive()
+  }, [])
+
   useEffect(() => {
     const handleKeyboard = (event: KeyboardEvent) => {
       if (event.repeat) return
@@ -361,12 +370,21 @@ export default function App() {
         return
       }
       if (screen !== 'game') return
-      if ((event.code === 'Escape' || event.code === 'KeyP') && !snapshot?.upgradeOptions?.length) {
+      if (
+        (event.code === 'Escape' || event.code === 'KeyP') &&
+        !snapshot?.revivePending &&
+        !snapshot?.upgradeOptions?.length
+      ) {
         event.preventDefault()
         togglePause()
         return
       }
-      if (event.code === 'Space' && !snapshot?.paused && !snapshot?.upgradeOptions?.length) {
+      if (
+        event.code === 'Space' &&
+        !snapshot?.paused &&
+        !snapshot?.revivePending &&
+        !snapshot?.upgradeOptions?.length
+      ) {
         event.preventDefault()
         activatePulse()
         return
@@ -382,7 +400,16 @@ export default function App() {
     }
     window.addEventListener('keydown', handleKeyboard)
     return () => window.removeEventListener('keydown', handleKeyboard)
-  }, [activatePulse, screen, selectUpgrade, snapshot?.paused, snapshot?.upgradeOptions, toggleMute, togglePause])
+  }, [
+    activatePulse,
+    screen,
+    selectUpgrade,
+    snapshot?.paused,
+    snapshot?.revivePending,
+    snapshot?.upgradeOptions,
+    toggleMute,
+    togglePause,
+  ])
 
   const purchaseNode = useCallback((node: AstrariumNodeDefinition) => {
     const rank = save.upgrades[node.id] ?? 0
@@ -559,6 +586,7 @@ export default function App() {
               className="game-interface"
               aria-hidden={
                 snapshot.paused ||
+                snapshot.revivePending ||
                 snapshot.awaitingStart ||
                 Boolean(snapshot.upgradeOptions?.length)
                   ? true
@@ -566,6 +594,7 @@ export default function App() {
               }
               inert={
                 snapshot.paused ||
+                snapshot.revivePending ||
                 snapshot.awaitingStart ||
                 Boolean(snapshot.upgradeOptions?.length)
                   ? true
@@ -588,7 +617,7 @@ export default function App() {
                 onPause={togglePause}
               />
             </div>
-            {snapshot.upgradeOptions?.length ? (
+            {snapshot.upgradeOptions?.length && !snapshot.revivePending ? (
               <UpgradeOverlay
                 snapshot={snapshot}
                 weapons={WEAPON_LIST}
@@ -600,14 +629,18 @@ export default function App() {
                 onReroll={rerollUpgrade}
               />
             ) : null}
-            {snapshot.awaitingStart && !isTouchDevicePortrait ? (
+            {snapshot.awaitingStart && !snapshot.revivePending && !isTouchDevicePortrait ? (
               <EncounterGate
                 mode={snapshot.runMode}
                 bossName={currentBossLevel.bossName}
                 onBegin={beginEncounter}
               />
             ) : null}
+            {snapshot.revivePending && !isTouchDevicePortrait ? (
+              <ReviveOverlay onRevive={revive} onDecline={declineRevive} />
+            ) : null}
             {snapshot.paused &&
+            !snapshot.revivePending &&
             !snapshot.awaitingStart &&
             !isTouchDevicePortrait &&
             !snapshot.upgradeOptions?.length ? (

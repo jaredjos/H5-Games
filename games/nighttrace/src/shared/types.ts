@@ -165,6 +165,8 @@ export interface GameSnapshot {
   runMode: RunMode
   invincible: boolean
   awaitingStart: boolean
+  revivePending: boolean
+  revivesRemaining: number
   hp: number
   maxHp: number
   shield: number

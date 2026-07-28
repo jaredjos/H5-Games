@@ -5,6 +5,7 @@ export const SUPPORT_PICKUP_LIFETIME_SECONDS = 42
 export interface PickupPresentationSettings {
   reducedFlash: boolean
   highContrast: boolean
+  lifetimeSeconds?: number
 }
 
 export interface PickupFragment {
@@ -89,8 +90,15 @@ export function supportPickupPresentation(
   const seed = Math.max(0, Math.floor(Number.isFinite(visualSeed) ? visualSeed : 0))
   const arrival = smoothstep(age / 0.24)
   const arrivalHold = 1 - smoothstep((age - 0.24) / 0.96)
+  const lifetime = Math.max(
+    5,
+    typeof settings.lifetimeSeconds === 'number' &&
+      Number.isFinite(settings.lifetimeSeconds)
+      ? settings.lifetimeSeconds
+      : SUPPORT_PICKUP_LIFETIME_SECONDS,
+  )
   const warning = smoothstep(
-    (age - (SUPPORT_PICKUP_LIFETIME_SECONDS - 4)) / 3.2,
+    (age - (lifetime - 4)) / 3.2,
   )
   const breath = 0.5 + 0.5 * Math.sin(age * (2.2 + (seed % 5) * 0.07) + seed * 0.19)
   const flashScale = settings.reducedFlash ? 0.62 : 1

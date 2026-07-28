@@ -16,7 +16,7 @@ const rule = (selector, source = styles) => {
 }
 
 describe('modal centering contracts', () => {
-  it('centers upgrade, pause, and encounter content through one safe-area shell', () => {
+  it('centers upgrade, pause, revive, and encounter content through one safe-area shell', () => {
     const shell = rule('.upgrade-overlay,\n.pause-overlay')
     const content = rule('.upgrade-overlay__content,\n.pause-overlay__content')
 
@@ -34,8 +34,9 @@ describe('modal centering contracts', () => {
 
   it('keeps every gameplay dialog inside the centered content wrapper', () => {
     expect(gameUiSource.match(/className="upgrade-overlay__content"/g)).toHaveLength(1)
-    expect(gameUiSource.match(/className="pause-overlay__content"/g)).toHaveLength(2)
-    expect(gameUiSource.match(/className="pause-panel"/g)).toHaveLength(2)
+    expect(gameUiSource.match(/className="pause-overlay__content"/g)).toHaveLength(3)
+    expect(gameUiSource.match(/className="pause-panel(?: [^"]+)?"/g)).toHaveLength(3)
+    expect(gameUiSource).toContain('className="pause-panel revive-panel"')
   })
 
   it('uses equal left and right safe-area gutters in mobile landscape', () => {

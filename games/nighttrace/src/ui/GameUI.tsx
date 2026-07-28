@@ -285,7 +285,14 @@ function VitalityHud({ snapshot }: { snapshot: GameSnapshot }) {
       className="vitality-hud"
       aria-label={hasNoVitalityLimit ? 'Infinite vitality, no damage limit' : 'Vitality and shield'}
     >
-      <div className="vitality-crest"><StarMark small /></div>
+      <div className="vitality-crest">
+        <StarMark small />
+        {snapshot.revivesRemaining > 0 ? (
+          <span className="vitality-revive" aria-label="Free revive ready">
+            <HeartPulse size={12} strokeWidth={1.8} />
+          </span>
+        ) : null}
+      </div>
       <div className="vitality-bars">
         <div className="health-line">
           <span style={{ width: hasNoVitalityLimit ? '100%' : `${clampPercent(snapshot.hp, snapshot.maxHp)}%` }} />
@@ -425,7 +432,7 @@ const encounterGateCopy: Record<RunMode, {
   'boss-trial': {
     eyebrow: 'Boss Trial',
     fallbackTitle: 'Sovereign Trial',
-    description: 'One sovereign. One life. Cross the threshold when you are ready.',
+    description: 'One sovereign. One free return. Cross the threshold when you are ready.',
     button: 'Begin Trial',
   },
   'combat-lab': {
@@ -551,6 +558,56 @@ export function GameHud({
         </div>
       ) : null}
     </div>
+  )
+}
+
+export function ReviveOverlay({
+  onRevive,
+  onDecline,
+}: {
+  onRevive: () => void
+  onDecline: () => void
+}) {
+  const dialogRef = useRef<HTMLElement>(null)
+  useModalFocusTrap(dialogRef)
+
+  return (
+    <section
+      ref={dialogRef}
+      className="pause-overlay revive-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="revive-title"
+      aria-describedby="revive-description"
+      tabIndex={-1}
+    >
+      <div className="pause-overlay__veil" />
+      <div className="pause-overlay__content">
+        <PanelFrame className="pause-panel revive-panel">
+          <span className="revive-panel__sigil" aria-hidden="true">
+            <HeartPulse size={30} strokeWidth={1.35} />
+          </span>
+          <small>One free return per level</small>
+          <h1 id="revive-title">The Trace Still Burns</h1>
+          <OrnamentRule />
+          <p id="revive-description" className="revive-panel__copy">
+            Rise with 35% vitality and a brief sanctuary. Time, horde pressure,
+            loadout, and Sovereign vitality remain exactly where they are.
+          </p>
+          <div className="revive-panel__terms" aria-label="Revive conditions">
+            <span><strong>35%</strong> vitality</span>
+            <span><strong>0%</strong> shield</span>
+            <span><strong>2.2s</strong> grace</span>
+          </div>
+          <CrestButton onClick={onRevive}>
+            <HeartPulse size={17} /> Rise Again — Free
+          </CrestButton>
+          <button className="pause-action pause-action--exit" onClick={onDecline}>
+            <ArrowLeft size={17} /> Accept defeat
+          </button>
+        </PanelFrame>
+      </div>
+    </section>
   )
 }
 

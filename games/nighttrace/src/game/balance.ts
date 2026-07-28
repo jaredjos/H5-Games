@@ -35,11 +35,29 @@ export interface BossBuildSnapshot {
 }
 
 export interface SupportPickupChoiceInput {
-  hpRatio: number
   activeExperiencePickups: number
   pulseCharge: number
   dropIndex: number
 }
+
+export interface PlannedDawnheartWindow {
+  opensAt: number
+  closesAt: number
+}
+
+export interface PlannedDawnheartEligibilityInput {
+  elapsed: number
+  hpRatio: number
+  activeDawnheart: boolean
+  lastReviveAt: number
+  window: PlannedDawnheartWindow
+}
+
+export const PLANNED_DAWNHEART_HEAL_FRACTION = 0.1
+export const PLANNED_DAWNHEART_WINDOW_SECONDS = 12
+export const PLANNED_DAWNHEART_LIFETIME_SECONDS = 22
+export const PLANNED_DAWNHEART_REVIVE_LOCKOUT_SECONDS = 45
+export const PLANNED_DAWNHEART_PROGRESS = Object.freeze([0.45, 0.68] as const)
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
 
@@ -236,18 +254,47 @@ export function supportPickupIntervalSeconds(difficulty: number, progress: numbe
   return 72 + safeDifficulty * 6 + safeProgress * 20
 }
 
-export function chooseSupportPickup({
+export function plannedDawnheartWindows(durationSeconds: number): PlannedDawnheartWindow[] {
+  const safeDuration = Math.max(1, Number.isFinite(durationSeconds) ? durationSeconds : 1)
+  const bossArrival = Math.max(45, safeDuration - 38)
+  return PLANNED_DAWNHEART_PROGRESS.map((progress) => {
+    const opensAt = bossArrival * progress
+    return {
+      opensAt,
+      closesAt: opensAt + PLANNED_DAWNHEART_WINDOW_SECONDS,
+    }
+  })
+}
+
+export function canSpawnPlannedDawnheart({
+  elapsed,
   hpRatio,
+  activeDawnheart,
+  lastReviveAt,
+  window,
+}: PlannedDawnheartEligibilityInput) {
+  const safeElapsed = Math.max(0, Number.isFinite(elapsed) ? elapsed : 0)
+  const safeHpRatio = clamp01(Number.isFinite(hpRatio) ? hpRatio : 1)
+  const revivedRecently =
+    Number.isFinite(lastReviveAt) &&
+    safeElapsed - lastReviveAt < PLANNED_DAWNHEART_REVIVE_LOCKOUT_SECONDS
+  return (
+    safeElapsed >= window.opensAt &&
+    safeElapsed <= window.closesAt &&
+    safeHpRatio <= 0.52 &&
+    !activeDawnheart &&
+    !revivedRecently
+  )
+}
+
+export function chooseSupportPickup({
   activeExperiencePickups,
   pulseCharge,
   dropIndex,
 }: SupportPickupChoiceInput): SupportPickupKind | undefined {
-  if (hpRatio <= 0.52) return 'dawnheart'
-
   const eligible: SupportPickupKind[] = []
   if (activeExperiencePickups >= 18) eligible.push('gravestar')
   if (pulseCharge <= 68) eligible.push('pulse-core')
-  if (hpRatio <= 0.66) eligible.push('dawnheart')
   if (eligible.length === 0) return undefined
 
   return eligible[Math.max(0, Math.floor(dropIndex)) % eligible.length]

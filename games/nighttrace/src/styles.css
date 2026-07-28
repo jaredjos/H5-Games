@@ -2265,6 +2265,22 @@ kbd {
   transform: rotate(-45deg);
 }
 
+.vitality-revive {
+  position: absolute;
+  right: -12px;
+  bottom: -11px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(240, 201, 129, .72);
+  border-radius: 50%;
+  color: #f0c981;
+  background: #0a0b0d;
+  box-shadow: 0 0 15px rgba(147, 34, 51, .45);
+  transform: rotate(-45deg);
+}
+
 .vitality-bars {
   display: grid;
   gap: 6px;
@@ -3135,6 +3151,78 @@ kbd {
   margin: 20px 0 0;
   color: #6c6a65;
   font-size: .57rem;
+}
+
+.revive-overlay .pause-overlay__veil {
+  background:
+    radial-gradient(circle at 50% 48%, rgba(88, 17, 31, .24), transparent 34%),
+    linear-gradient(180deg, rgba(1, 5, 8, .68), rgba(1, 4, 7, .92));
+}
+
+.revive-panel {
+  width: min(500px, 90vw);
+  background:
+    linear-gradient(145deg, rgba(58, 18, 27, .18), transparent 45%),
+    rgba(3, 10, 14, .94);
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, .72),
+    inset 0 0 70px rgba(103, 26, 39, .08);
+}
+
+.revive-panel__sigil {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin-bottom: 17px;
+  border: 1px solid rgba(225, 182, 108, .42);
+  color: #f0c981;
+  background:
+    radial-gradient(circle, rgba(124, 25, 43, .42), rgba(10, 14, 18, .78) 64%);
+  box-shadow:
+    0 0 32px rgba(154, 39, 57, .24),
+    inset 0 0 18px rgba(239, 193, 112, .08);
+  transform: rotate(45deg);
+}
+
+.revive-panel__sigil svg {
+  transform: rotate(-45deg);
+}
+
+.revive-panel > .revive-panel__copy {
+  max-width: 390px;
+  margin: 0 0 19px;
+  color: #aaa49a;
+  font: 400 .68rem/1.75 var(--body);
+}
+
+.revive-panel__terms {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+  margin-bottom: 19px;
+  border-block: 1px solid rgba(203, 170, 101, .16);
+}
+
+.revive-panel__terms span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 8px;
+  color: #77746e;
+  font: 500 .52rem/1 var(--display);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.revive-panel__terms span + span {
+  border-left: 1px solid rgba(203, 170, 101, .13);
+}
+
+.revive-panel__terms strong {
+  color: #e8c37e;
+  font: 500 .86rem/1 var(--display);
+  letter-spacing: .06em;
 }
 
 .game-loading {
@@ -5200,6 +5288,37 @@ kbd {
 
   .pause-panel > p {
     margin-top: 4px;
+  }
+
+  .revive-panel__sigil {
+    width: 34px;
+    height: 34px;
+    margin-bottom: 4px;
+  }
+
+  .revive-panel__sigil svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .revive-panel > .revive-panel__copy {
+    max-width: 470px;
+    margin: 0 0 6px;
+    font-size: .56rem;
+    line-height: 1.45;
+  }
+
+  .revive-panel__terms {
+    margin-bottom: 6px;
+  }
+
+  .revive-panel__terms span {
+    gap: 2px;
+    padding: 6px;
+  }
+
+  .revive-panel__terms strong {
+    font-size: .72rem;
   }
 
   .results-screen {

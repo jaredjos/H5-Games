@@ -61,17 +61,28 @@ import { GameInput } from './input'
 import {
   bossAttackRecoverySeconds,
   bossHealthForBuild,
+  canSpawnPlannedDawnheart,
   chooseSupportPickup,
   eligibleEnemyPool,
   estimateBossDps,
   experienceToNextLevel,
   hordeActiveCap,
   hordePressureAt,
+  PLANNED_DAWNHEART_HEAL_FRACTION,
+  PLANNED_DAWNHEART_LIFETIME_SECONDS,
+  plannedDawnheartWindows,
   sectorBaselineAt,
   supportPickupFirstDropSeconds,
   supportPickupIntervalSeconds,
+  type PlannedDawnheartWindow,
   type SupportPickupKind,
 } from './balance'
+import {
+  REVIVE_INVULNERABILITY_SECONDS,
+  REVIVE_SANCTUARY_RADIUS,
+  initialFreeRevives,
+  revivedHealth,
+} from './revivePolicy'
 import {
   createBossPatternDirectorState,
   directBossPattern,
@@ -231,6 +242,8 @@ const HERO_MATERIAL_FRAME = Object.freeze({
 
 export interface GameCanvasHandle {
   beginEncounter(): void
+  revive(): void
+  declineRevive(): void
   selectUpgrade(optionId: string): void
   rerollUpgrade(): void
   togglePause(): void
@@ -343,6 +356,7 @@ interface PickupEntity {
   previousY: number
   value: number
   age: number
+  lifetime: number
   visualSeed: number
   sprite: Sprite
 }
@@ -597,6 +611,12 @@ class NighttraceRuntime {
   private hazardTimer = 22
   private nextSupportPickupAt = 60
   private supportPickupDrops = 0
+  private readonly plannedDawnheartWindows: PlannedDawnheartWindow[]
+  private plannedDawnheartIndex = 0
+  private lastReviveAt = Number.NEGATIVE_INFINITY
+  private revivesRemaining = 0
+  private revivePending = false
+  private reviveInvulnerability = 0
   private bossSpawned = false
   private boss?: EnemyEntity
   private bossIntroTimer = 0
@@ -655,6 +675,11 @@ class NighttraceRuntime {
     this.persistentUpgrades = persistentUpgrades
     this.callbacks = callbacks
     this.audio = new NighttraceAudio(settings, level.id)
+    this.revivesRemaining = initialFreeRevives(runConfig.mode, runConfig.invincible)
+    this.plannedDawnheartWindows =
+      runConfig.mode === 'campaign' && !runConfig.bossOnly
+        ? plannedDawnheartWindows(level.duration)
+        : []
     const requestedLod =
       typeof location === 'undefined'
         ? undefined
@@ -1015,6 +1040,107 @@ class NighttraceRuntime {
     this.emitSnapshot(true)
   }
 
+  revive() {
+    if (
+      !this.initialized ||
+      this.completed ||
+      !this.revivePending ||
+      this.revivesRemaining <= 0
+    ) {
+      return
+    }
+
+    this.revivesRemaining -= 1
+    this.revivePending = false
+    this.lastReviveAt = this.elapsed
+    this.player.hp = revivedHealth(this.player.maxHp)
+    this.player.shield = 0
+    this.reviveInvulnerability = REVIVE_INVULNERABILITY_SECONDS
+    this.hurtCooldown = REVIVE_INVULNERABILITY_SECONDS
+    this.shieldDelay = Math.max(this.shieldDelay, REVIVE_INVULNERABILITY_SECONDS + 1.8)
+    this.heroHurtRemaining = 0
+    this.heroHurtDuration = 0
+    this.trace.length = 0
+    this.trace.push({ x: this.player.x, y: this.player.y })
+    this.clearReviveSanctuary()
+    this.spawnBurst(this.player.x, this.player.y, 0xffe5a3, 38, 330)
+    this.screenFlashAlpha = this.settings.reducedFlash ? 0.04 : 0.18
+    this.shake = Math.max(this.shake, 10)
+    this.audio.play('pulse', 0.82)
+    this.host.dataset.revivesUsed = '1'
+    this.emitSnapshot(true)
+  }
+
+  declineRevive() {
+    if (!this.revivePending || this.completed) return
+    this.revivePending = false
+    this.finish(false)
+  }
+
+  private clearReviveSanctuary() {
+    const sanctuaryRadius = REVIVE_SANCTUARY_RADIUS
+    const sanctuaryRadiusSquared = sanctuaryRadius ** 2
+
+    for (const enemy of this.enemies) {
+      if (!enemy.active || enemy.isBoss) continue
+      const dx = enemy.x - this.player.x
+      const dy = enemy.y - this.player.y
+      const distanceSquaredFromPlayer = dx * dx + dy * dy
+      if (distanceSquaredFromPlayer > sanctuaryRadiusSquared) continue
+      const distance = Math.sqrt(distanceSquaredFromPlayer)
+      const angle =
+        distance > 0.01
+          ? Math.atan2(dy, dx)
+          : this.random.range(0, Math.PI * 2)
+      enemy.x = clamp(
+        this.player.x + Math.cos(angle) * sanctuaryRadius,
+        38,
+        WORLD_WIDTH - 38,
+      )
+      enemy.y = clamp(
+        this.player.y + Math.sin(angle) * sanctuaryRadius,
+        34,
+        WORLD_HEIGHT - 34,
+      )
+      enemy.previousX = enemy.x
+      enemy.previousY = enemy.y
+      enemy.pendingContactDamage = 0
+      enemy.contactCooldown = Math.max(enemy.contactCooldown, 1.1)
+    }
+
+    for (const telegraph of this.telegraphs) {
+      if (!telegraph.active) continue
+      const dx = this.player.x - telegraph.x
+      const dy = this.player.y - telegraph.y
+      const localX = Math.cos(telegraph.angle) * dx + Math.sin(telegraph.angle) * dy
+      const localY = -Math.sin(telegraph.angle) * dx + Math.cos(telegraph.angle) * dy
+      const overlapsSanctuary =
+        telegraph.kind === 'circle'
+          ? dx * dx + dy * dy <= (telegraph.radius + sanctuaryRadius) ** 2
+          : localX >= -sanctuaryRadius &&
+            localX <= telegraph.length + sanctuaryRadius &&
+            Math.abs(localY) <= telegraph.width * 0.5 + sanctuaryRadius
+      if (!overlapsSanctuary) continue
+      telegraph.active = false
+      this.activeTelegraphCount = Math.max(0, this.activeTelegraphCount - 1)
+    }
+
+    for (let index = this.hostileProjectiles.length - 1; index >= 0; index -= 1) {
+      const projectile = this.hostileProjectiles[index]
+      const destination = projectile.state.config.destination
+      const safeRadius = sanctuaryRadius + projectile.state.config.impactRadius
+      if (distanceSquared(destination, this.player) <= safeRadius ** 2) {
+        this.hostileProjectiles.splice(index, 1)
+      }
+    }
+
+    for (const pickup of this.pickups) {
+      if (!pickup.active || pickup.kind !== 'dawnheart') continue
+      pickup.active = false
+      pickup.sprite.visible = false
+    }
+  }
+
   selectUpgrade(optionId: string) {
     if (!this.upgradeOptions?.length || this.completed) return
     const option = this.upgradeOptions.find((candidate) => candidate.id === optionId)
@@ -1101,7 +1227,12 @@ class NighttraceRuntime {
   }
 
   togglePause() {
-    if (!this.initialized || this.completed || this.upgradeOptions?.length) return
+    if (
+      !this.initialized ||
+      this.completed ||
+      this.revivePending ||
+      this.upgradeOptions?.length
+    ) return
     this.manualPaused = !this.manualPaused
     this.emitSnapshot(true)
   }
@@ -1242,6 +1373,7 @@ class NighttraceRuntime {
       }
       return
     }
+    if (this.revivePending) return
     if (this.awaitingStart) {
       this.updateVisualEffects(delta)
       this.snapshotClock += delta
@@ -1280,6 +1412,7 @@ class NighttraceRuntime {
     this.elapsed += delta
     this.snapshotClock += delta
     this.hurtCooldown = Math.max(0, this.hurtCooldown - delta)
+    this.reviveInvulnerability = Math.max(0, this.reviveInvulnerability - delta)
     this.shieldDelay = Math.max(0, this.shieldDelay - delta)
     if (this.shieldDelay <= 0 && this.player.shield < this.player.maxShield) {
       this.player.shield = Math.min(this.player.maxShield, this.player.shield + delta * 2.6)
@@ -1354,10 +1487,17 @@ class NighttraceRuntime {
     this.updateTrace()
     if (!this.runConfig.bossOnly) this.updateSpawning(delta)
     this.updateEnemies(delta)
+    if (this.revivePending) {
+      this.emitSnapshot(true)
+      return
+    }
     this.rebuildEnemyGrid()
     this.updateWeapons(delta)
     this.updateProjectiles(delta)
-    if (!this.runConfig.bossOnly) this.updateSupportPickups()
+    if (!this.runConfig.bossOnly) {
+      this.updatePlannedDawnheartDrops()
+      this.updateSupportPickups()
+    }
     this.updatePickups(delta)
     this.updateHostileProjectiles(delta)
     this.updateTelegraphs(delta)
@@ -3113,7 +3253,6 @@ class NighttraceRuntime {
     }
 
     const kind = chooseSupportPickup({
-      hpRatio: this.player.hp / this.player.maxHp,
       activeExperiencePickups: this.pickups.reduce(
         (count, pickup) => count + (pickup.active && pickup.kind === 'xp' ? 1 : 0),
         0,
@@ -3136,6 +3275,46 @@ class NighttraceRuntime {
       )
   }
 
+  private updatePlannedDawnheartDrops() {
+    if (this.bossSpawned || this.completed) return
+
+    while (this.plannedDawnheartIndex < this.plannedDawnheartWindows.length) {
+      const window = this.plannedDawnheartWindows[this.plannedDawnheartIndex]
+      if (this.elapsed < window.opensAt) return
+      if (this.elapsed > window.closesAt) {
+        this.plannedDawnheartIndex += 1
+        continue
+      }
+
+      const activeDawnheart = this.pickups.some(
+        (pickup) => pickup.active && pickup.kind === 'dawnheart',
+      )
+      if (
+        !canSpawnPlannedDawnheart({
+          elapsed: this.elapsed,
+          hpRatio: this.player.hp / this.player.maxHp,
+          activeDawnheart,
+          lastReviveAt: this.lastReviveAt,
+          window,
+        })
+      ) {
+        return
+      }
+
+      const point = this.findSafeSpawnPoint(300, 380, 86, 78)
+      this.spawnPickup(
+        point.x,
+        point.y,
+        PLANNED_DAWNHEART_HEAL_FRACTION,
+        'dawnheart',
+        PLANNED_DAWNHEART_LIFETIME_SECONDS,
+      )
+      this.plannedDawnheartIndex += 1
+      this.host.dataset.plannedDawnheartDrops = String(this.plannedDawnheartIndex)
+      return
+    }
+  }
+
   private updatePickups(delta: number) {
     const magnetRank = this.persistentUpgrades.magnetism ?? 0
     const gravRank = this.modules.find((module) => module.id === 'grav-anchor')?.rank ?? 0
@@ -3146,10 +3325,7 @@ class NighttraceRuntime {
       pickup.previousX = pickup.x
       pickup.previousY = pickup.y
       pickup.age += delta
-      if (
-        pickup.age >
-        (pickup.kind === 'xp' ? 32 : SUPPORT_PICKUP_LIFETIME_SECONDS)
-      ) {
+      if (pickup.age > pickup.lifetime) {
         pickup.active = false
         pickup.sprite.visible = false
         continue
@@ -3172,7 +3348,7 @@ class NighttraceRuntime {
           this.collectExperience(pickup.value)
           this.audio.play('pickup', 0.36)
         } else {
-          this.collectSupportPickup(pickup.kind)
+          this.collectSupportPickup(pickup.kind, pickup.value)
         }
       }
     }
@@ -3186,11 +3362,19 @@ class NighttraceRuntime {
     }
   }
 
-  private collectSupportPickup(kind: SupportPickupKind) {
+  private collectSupportPickup(kind: SupportPickupKind, value: number) {
     let color = 0x70ecff
     if (kind === 'dawnheart') {
       color = 0xff6f86
-      this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.player.maxHp * 0.14)
+      const healFraction = clamp(
+        value || PLANNED_DAWNHEART_HEAL_FRACTION,
+        0,
+        PLANNED_DAWNHEART_HEAL_FRACTION,
+      )
+      this.player.hp = Math.min(
+        this.player.maxHp,
+        this.player.hp + this.player.maxHp * healFraction,
+      )
     } else if (kind === 'gravestar') {
       color = 0xffd978
       let gatheredExperience = 0
@@ -3582,7 +3766,7 @@ class NighttraceRuntime {
     trackWeaponDamage = true,
     allowFaultline = true,
   ) {
-    if (!enemy.active || rawDamage <= 0) return
+    if (this.revivePending || !enemy.active || rawDamage <= 0) return
     const forceRank = this.persistentUpgrades.force ?? 0
     const critRank = this.persistentUpgrades['parallax-eye'] ?? 0
     const bossRank = this.persistentUpgrades['dawn-within'] ?? 0
@@ -3678,7 +3862,12 @@ class NighttraceRuntime {
   }
 
   private damagePlayer(amount: number) {
-    if (this.hurtCooldown > 0 || this.completed) return
+    if (
+      this.hurtCooldown > 0 ||
+      this.reviveInvulnerability > 0 ||
+      this.revivePending ||
+      this.completed
+    ) return
     let remaining =
       amount *
       GLOBAL_DIFFICULTY_MULTIPLIER *
@@ -3701,12 +3890,23 @@ class NighttraceRuntime {
     this.heroHurtDuration = 0.32
     this.heroHurtRemaining = this.heroHurtDuration
     this.audio.play('hurt')
+    if (this.player.hp <= 0) {
+      if (this.revivesRemaining > 0) {
+        this.player.shield = 0
+        this.revivePending = true
+        this.accumulator = 0
+        this.emitSnapshot(true)
+      } else {
+        this.finish(false)
+      }
+      return
+    }
     this.emitSnapshot(true)
-    if (this.player.hp <= 0) this.finish(false)
   }
 
   private finish(victory: boolean) {
     if (this.completed) return
+    this.revivePending = false
     this.completed = true
     this.manualPaused = false
     this.upgradeOptions = undefined
@@ -3760,6 +3960,7 @@ class NighttraceRuntime {
     y: number,
     value: number,
     kind: 'xp' | SupportPickupKind = 'xp',
+    lifetime = kind === 'xp' ? 32 : SUPPORT_PICKUP_LIFETIME_SECONDS,
   ) {
     let pickup = this.pickups.find((candidate) => !candidate.active)
     if (!pickup && this.pickups.length >= 320) {
@@ -3789,6 +3990,7 @@ class NighttraceRuntime {
         previousY: 0,
         value: 1,
         age: 0,
+        lifetime: 32,
         visualSeed: 0,
         sprite,
       }
@@ -3802,6 +4004,7 @@ class NighttraceRuntime {
     pickup.previousY = y
     pickup.value = value
     pickup.age = 0
+    pickup.lifetime = lifetime
     pickup.visualSeed = this.pickupVisualSeed
     this.pickupVisualSeed += 1
     const supportPickup = kind !== 'xp'
@@ -5395,6 +5598,7 @@ class NighttraceRuntime {
       {
         reducedFlash: this.settings.reducedFlash,
         highContrast: this.settings.highContrastPickups,
+        lifetimeSeconds: pickup.lifetime,
       },
     )
     const beamTop = y - presentation.beamHeight
@@ -6970,6 +7174,8 @@ class NighttraceRuntime {
       traceMods: [...this.traceMods],
       upgradeOptions: this.upgradeOptions?.map((option) => ({ ...option })),
       rerollsRemaining: Math.max(0, this.rerollLimit - this.rerollsUsed),
+      revivePending: this.revivePending,
+      revivesRemaining: this.revivesRemaining,
       tutorial:
         this.showcase
           ? showcaseLabel(this.showcase)
@@ -6991,6 +7197,7 @@ class NighttraceRuntime {
       this.manualPaused ||
       this.visibilityPaused ||
       this.orientationPaused ||
+      this.revivePending ||
       Boolean(this.upgradeOptions?.length)
     )
   }
@@ -7061,6 +7268,8 @@ const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCa
     ref,
     () => ({
       beginEncounter: () => void runtimeRef.current?.beginEncounter(),
+      revive: () => runtimeRef.current?.revive(),
+      declineRevive: () => runtimeRef.current?.declineRevive(),
       selectUpgrade: (optionId) => runtimeRef.current?.selectUpgrade(optionId),
       rerollUpgrade: () => runtimeRef.current?.rerollUpgrade(),
       togglePause: () => runtimeRef.current?.togglePause(),

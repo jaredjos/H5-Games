@@ -30,6 +30,7 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.11.0` — every sovereign gains authored idle, locomotion-contact, attack-windup, and special-release poses (including alternating four-leg contact for quadrupeds); boss and horde warnings become grounded smoke, pressure, rubble, and material disturbance; all eight weapons enter the first draft with three free refreshes and a normalized connected-DPS budget; upgrade and pause overlays are optically centered
 - `v1.12.0` — delivery-correctness release: network-first navigation replaces the stale cache-first shell; existing old tabs refresh once; boss atlas cells snap to whole pixels; all gameplay dialogs use symmetric safe-area centering; the opening draft/refresh cycle exposes every starting power; trace capacity starts 40% longer and Pulse charges only when a valid enclosure traps an enemy
 - `v1.13.0` — hostile-motion release: three supplied scores route across sectors and boss encounters; the temporary global 10% difficulty increase is removed; bosses gain expanding multi-pattern repertoires and ranged projectile impacts; material-only crimson/violet warnings gain contrast; every horde species uses authored idle, A/B contact, windup, and release frames, with late-sector ranged specialists
+- `v1.14.0` — one free revive per mortal level attempt returns the hero at 35% vitality without resetting time, pressure, build, or Sovereign health; campaign healing is tightened to two conditional 10% Dawnheart windows, with expiry, post-revive lockout, and unchanged hostile pressure
 
 ## Runtime guide and visual evidence
 
@@ -235,13 +236,24 @@ Timed support relics add positional decisions without undoing the campaign
 curve. Their opportunities are based on elapsed minutes rather than kill count:
 the first useful relic appears around 45–50 seconds, later opportunities slow
 down as sector pressure and run progress rise, and all relic drops stop before
-the boss window. Dawnheart restores 14% vitality, Gravestar gathers existing XP
-motes, and Pulse Core restores 35 Pulse charge. A relic only appears when its
-effect would be useful, spawns outside automatic pickup range, and remains
-visually distinct through a dedicated atlas frame and persistent aura.
+the boss window. Gravestar gathers existing XP motes and Pulse Core restores 35
+Pulse charge. Each campaign also has exactly two emergency Dawnheart windows:
+the heart appears only at 52% vitality or lower, restores 10% maximum vitality,
+expires after 22 seconds, and cannot appear for 45 seconds after a revive. The
+maximum planned healing budget is therefore 20%, below the previous adaptive
+28–56% budget. A relic only appears when its effect would be useful, spawns
+outside automatic pickup range, and remains visually distinct through a
+dedicated atlas frame and persistent aura.
 In v1.6.0, every support relic also projects a tapered vertical light shaft onto
 a broken landing rune. That heaven-to-ground beacon persists until collection
 or expiry, making a valuable drop readable even when the horde fills the arena.
+
+Every mortal Campaign and Boss Trial attempt also carries one free revive,
+shown by the small heart marker on the vitality crest. The first lethal hit
+pauses combat for an explicit choice. Reviving restores 35% vitality, zero
+shield, 2.2 seconds of protection, and a small safety radius; it does not rewind
+the clock, horde pressure, loadout, boss vitality, or boss phase. Combat Lab
+remains invincible and does not advertise a redundant revive.
 
 Victories relight the next sector and can earn three mastery seals: clear,
 Trace, and Aegis. Failed runs do not unlock the next sector, but they still

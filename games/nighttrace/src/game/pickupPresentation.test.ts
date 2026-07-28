@@ -40,6 +40,16 @@ describe('support pickup presentation', () => {
     expect(warning.beamCoreAlpha).toBeGreaterThan(settled.beamCoreAlpha)
   })
 
+  it('adapts the warning beat to shorter emergency-heart lifetimes', () => {
+    const warning = supportPickupPresentation('dawnheart', 21, 5, {
+      reducedFlash: false,
+      highContrast: false,
+      lifetimeSeconds: 22,
+    })
+
+    expect(warning.warning).toBeGreaterThan(0.8)
+  })
+
   it('honors reduced-flash and high-contrast accessibility settings', () => {
     const normal = supportPickupPresentation('pulse-core', 0.4, 9, {
       reducedFlash: false,
