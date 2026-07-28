@@ -1,0 +1,65 @@
+name: Deploy Nighttrace
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - games/nighttrace/**
+      - .github/workflows/deploy-nighttrace.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-nighttrace
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: games/nighttrace/package-lock.json
+
+      - name: Install dependencies
+        working-directory: games/nighttrace
+        run: npm ci
+
+      - name: Build the production game
+        working-directory: games/nighttrace
+        run: npm run build
+
+      - name: Publish Nighttrace to GitHub Pages
+        shell: bash
+        run: |
+          git worktree add --detach /tmp/h5-pages origin/gh-pages
+          rm -rf /tmp/h5-pages/nighttrace
+          mkdir -p /tmp/h5-pages/nighttrace
+          cp -a games/nighttrace/dist/. /tmp/h5-pages/nighttrace/
+          touch /tmp/h5-pages/.nojekyll
+
+          cd /tmp/h5-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A nighttrace .nojekyll
+
+          if git diff --cached --quiet; then
+            echo "Nighttrace Pages build is already current."
+            exit 0
+          fi
+
+          git commit -m "deploy(nighttrace): publish v1.11.0"
+          git push origin HEAD:gh-pages
