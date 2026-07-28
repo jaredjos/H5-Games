@@ -1,4 +1,4 @@
-NIGHTTRACE v1.10.0 bundled runtime documentation
+NIGHTTRACE v1.11.0 bundled runtime documentation
 
 NIGHTTRACE_Combat_Systems_Codex.pdf
   Full player-facing and implementation-derived reference for weapon states,
@@ -29,3 +29,11 @@ starbursts, rune wheels, outlined gates, decorative rails, and generic
 diamond debris from all hero powers. Authored fractured stone, smoke, ash,
 grit, physical fragments, and localized material light replace those
 diagrammatic overlays. Combat timing and collision geometry are unchanged.
+
+The v1.11.0 live runtime adds authored idle, two-contact locomotion, attack
+windup, and special-release poses to every sovereign silhouette. Quadruped
+bosses use alternating four-leg contact poses. Hostile warnings use compressed
+ground material, smoke, pressure, rubble, and boss-specific restrained tints
+instead of rings, grids, rails, rays, or hard polygon outlines. All eight
+weapons enter the campaign draft pool immediately; each descent includes three
+free refreshes, and every weapon follows one normalized connected-DPS budget.
