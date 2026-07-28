@@ -2677,6 +2677,16 @@ kbd {
 
 .upgrade-overlay,
 .pause-overlay {
+  --overlay-safe-inline: max(
+    22px,
+    calc(var(--safe-left) + 12px),
+    calc(var(--safe-right) + 12px)
+  );
+  --overlay-safe-block: max(
+    22px,
+    calc(var(--safe-top) + 12px),
+    calc(var(--safe-bottom) + 12px)
+  );
   position: absolute;
   z-index: 80;
   inset: 0;
@@ -2685,11 +2695,7 @@ kbd {
   align-items: center;
   height: 100%;
   min-height: 0;
-  padding:
-    max(22px, calc(var(--safe-top) + 12px))
-    max(22px, calc(var(--safe-right) + 12px))
-    max(22px, calc(var(--safe-bottom) + 12px))
-    max(22px, calc(var(--safe-left) + 12px));
+  padding: var(--overlay-safe-block) var(--overlay-safe-inline);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -2706,6 +2712,7 @@ kbd {
   justify-items: center;
   width: 100%;
   margin-block: auto;
+  text-align: center;
 }
 
 .upgrade-overlay__veil,
@@ -4022,12 +4029,18 @@ kbd {
   }
 
   .upgrade-overlay {
+    --overlay-safe-inline: max(
+      14px,
+      calc(var(--safe-left) + 10px),
+      calc(var(--safe-right) + 10px)
+    );
+    --overlay-safe-block: max(
+      22px,
+      calc(var(--safe-top) + 12px),
+      calc(var(--safe-bottom) + 12px)
+    );
     overflow-y: auto;
-    padding:
-      max(22px, calc(var(--safe-top) + 12px))
-      max(14px, calc(var(--safe-right) + 10px))
-      max(40px, calc(var(--safe-bottom) + 22px))
-      max(14px, calc(var(--safe-left) + 10px));
+    padding: var(--overlay-safe-block) var(--overlay-safe-inline);
   }
 
   .upgrade-heading {
@@ -4538,13 +4551,19 @@ kbd {
   }
 
   .upgrade-overlay {
+    --overlay-safe-inline: max(
+      14px,
+      calc(var(--safe-left) + 10px),
+      calc(var(--safe-right) + 10px)
+    );
+    --overlay-safe-block: max(
+      20px,
+      calc(var(--safe-top) + 12px),
+      calc(var(--safe-bottom) + 12px)
+    );
     overflow-x: hidden;
     overflow-y: auto;
-    padding:
-      max(20px, calc(var(--safe-top) + 12px))
-      max(14px, calc(var(--safe-right) + 10px))
-      max(54px, calc(var(--safe-bottom) + 26px))
-      max(14px, calc(var(--safe-left) + 10px));
+    padding: var(--overlay-safe-block) var(--overlay-safe-inline);
   }
 
   .upgrade-loadout {
@@ -5032,13 +5051,19 @@ kbd {
   }
 
   .upgrade-overlay {
+    --overlay-safe-inline: max(
+      12px,
+      calc(var(--safe-left) + 8px),
+      calc(var(--safe-right) + 8px)
+    );
+    --overlay-safe-block: max(
+      8px,
+      calc(var(--safe-top) + 4px),
+      calc(var(--safe-bottom) + 4px)
+    );
     overflow-x: hidden;
     overflow-y: auto;
-    padding:
-      max(8px, calc(var(--safe-top) + 4px))
-      max(12px, calc(var(--safe-right) + 8px))
-      max(8px, calc(var(--safe-bottom) + 4px))
-      max(12px, calc(var(--safe-left) + 8px));
+    padding: var(--overlay-safe-block) var(--overlay-safe-inline);
   }
 
   .upgrade-heading {
@@ -5128,13 +5153,18 @@ kbd {
   }
 
   .pause-overlay {
-    align-content: start;
+    --overlay-safe-inline: max(
+      8px,
+      calc(var(--safe-left) + 4px),
+      calc(var(--safe-right) + 4px)
+    );
+    --overlay-safe-block: max(
+      8px,
+      calc(var(--safe-top) + 4px),
+      calc(var(--safe-bottom) + 4px)
+    );
     max-height: 100dvh;
-    padding:
-      max(8px, calc(var(--safe-top) + 4px))
-      max(8px, calc(var(--safe-right) + 4px))
-      max(8px, calc(var(--safe-bottom) + 4px))
-      max(8px, calc(var(--safe-left) + 4px));
+    padding: var(--overlay-safe-block) var(--overlay-safe-inline);
     overflow-y: auto;
     overscroll-behavior: contain;
   }
@@ -5242,6 +5272,16 @@ kbd {
 
 @media (max-width: 900px) and (orientation: portrait) {
   .landscape-gate {
+    --landscape-gate-safe-inline: max(
+      28px,
+      calc(var(--safe-left) + 22px),
+      calc(var(--safe-right) + 22px)
+    );
+    --landscape-gate-safe-block: max(
+      28px,
+      calc(var(--safe-top) + 22px),
+      calc(var(--safe-bottom) + 22px)
+    );
     position: fixed;
     z-index: 220;
     inset: 0;
@@ -5252,10 +5292,8 @@ kbd {
     gap: 10px 13px;
     min-height: 100dvh;
     padding:
-      max(28px, calc(var(--safe-top) + 22px))
-      max(28px, calc(var(--safe-right) + 22px))
-      max(28px, calc(var(--safe-bottom) + 22px))
-      max(28px, calc(var(--safe-left) + 22px));
+      var(--landscape-gate-safe-block)
+      var(--landscape-gate-safe-inline);
     overflow: hidden;
     color: var(--ivory);
     background:
@@ -5394,12 +5432,19 @@ kbd {
 
 @media (max-width: 900px) and (orientation: landscape) {
   .upgrade-overlay {
-    padding:
-      max(6px, calc(var(--safe-top) + 3px))
-      max(12px, calc(var(--safe-right) + 8px))
-      max(6px, calc(var(--safe-bottom) + 3px))
-      max(12px, calc(var(--safe-left) + 8px));
-    overflow: hidden;
+    --overlay-safe-inline: max(
+      12px,
+      calc(var(--safe-left) + 8px),
+      calc(var(--safe-right) + 8px)
+    );
+    --overlay-safe-block: max(
+      6px,
+      calc(var(--safe-top) + 3px),
+      calc(var(--safe-bottom) + 3px)
+    );
+    padding: var(--overlay-safe-block) var(--overlay-safe-inline);
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .upgrade-heading {
@@ -5422,6 +5467,7 @@ kbd {
       linear-gradient(90deg, transparent, rgba(203, 170, 101, .17) 18% 82%, transparent);
     font-size: clamp(.88rem, 2.8vw, 1.24rem);
     line-height: 1;
+    text-align: center;
     text-shadow: 0 2px 9px #000;
   }
 

@@ -114,6 +114,31 @@ describe('seeded upgrade drafts', () => {
     expect(draft.options.some((option) => option.id === 'module:prism-lens:1')).toBe(true)
   })
 
+  it('guarantees a new universally available weapon in the first campaign draft', () => {
+    const firstCampaignSeed = (1 * 0x9e3779b1) >>> 0
+    const draft = createUpgradeDraft(
+      {
+        weapons: [{ id: 'helio-lance', rank: 1 }],
+        modules: [],
+        traceMods: [],
+        hp: 100,
+        maxHp: 100,
+        shield: 28,
+        maxShield: 28,
+      },
+      firstCampaignSeed,
+    )
+    const newWeapon = draft.options.find(
+      (option) =>
+        option.type === 'weapon' &&
+        option.rank === 1 &&
+        option.weaponId !== 'helio-lance',
+    )
+
+    expect(newWeapon?.weaponId).toBeDefined()
+    expect(ALL_WEAPON_IDS).toContain(newWeapon?.weaponId)
+  })
+
   it('makes every unowned weapon available without campaign unlock data', () => {
     const offeredWeaponIds = new Set<string>()
     for (let seed = 1; seed <= 48; seed += 1) {
@@ -132,6 +157,48 @@ describe('seeded upgrade drafts', () => {
     }
 
     expect(offeredWeaponIds).toEqual(
+      new Set(ALL_WEAPON_IDS.filter((weaponId) => weaponId !== 'helio-lance')),
+    )
+  })
+
+  it('surfaces all seven alternate starting powers across the free refresh cycle', () => {
+    const freshContext = {
+      weapons: [{ id: 'helio-lance' as const, rank: 1 }],
+      modules: [],
+      traceMods: [] as TraceModId[],
+      hp: 100,
+      maxHp: 100,
+      shield: 28,
+      maxShield: 28,
+    }
+    const rejectedIds = new Set<string>()
+    const alternateWeapons = new Set<string>()
+    let draft = createUpgradeDraft(freshContext, (1 * 0x9e3779b1) >>> 0)
+
+    for (let refresh = 0; refresh <= BASE_FREE_REFRESHES_PER_RUN; refresh += 1) {
+      for (const option of draft.options) {
+        if (
+          option.type === 'weapon' &&
+          option.rank === 1 &&
+          option.weaponId !== 'helio-lance'
+        ) {
+          alternateWeapons.add(option.weaponId ?? '')
+        }
+        rejectedIds.add(option.id)
+      }
+      if (refresh === BASE_FREE_REFRESHES_PER_RUN) break
+      draft = createUpgradeDraft(
+        {
+          ...freshContext,
+          rerollsUsed: refresh,
+          excludeOptionIds: [...rejectedIds],
+        },
+        draft.seed,
+        true,
+      )
+    }
+
+    expect(alternateWeapons).toEqual(
       new Set(ALL_WEAPON_IDS.filter((weaponId) => weaponId !== 'helio-lance')),
     )
   })

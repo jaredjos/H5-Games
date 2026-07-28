@@ -171,6 +171,13 @@ import {
   resolveBossClipFrame,
   type ResolvedBossClipFrame,
 } from './bossAnimationClips'
+import {
+  TRACE_MINIMUM_AREA,
+  TRACE_MINIMUM_POINTS,
+  TRACE_SAMPLE_DISTANCE,
+  tracePointAllowance,
+  tracePulseReward,
+} from './tracePulse'
 
 const WORLD_WIDTH = 1672
 const WORLD_HEIGHT = 941
@@ -544,6 +551,7 @@ class NighttraceRuntime {
   private kills = 0
   private closedLoops = 0
   private largestChain = 0
+  private primedTracePulseBonus = 0
   private readonly showcase = currentLocalWeaponShowcase()
   private showcaseFrozen = false
   private weapons: OwnedWeapon[] = []
@@ -993,7 +1001,7 @@ class NighttraceRuntime {
         this.player.maxShield += 6
         this.player.shield = this.player.maxShield
       } else if (option.id.includes('pulse')) {
-        this.player.pulseCharge = 100
+        this.primedTracePulseBonus = Math.max(this.primedTracePulseBonus, 100)
       } else {
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.player.maxHp * 0.3)
       }
@@ -1441,12 +1449,6 @@ class NighttraceRuntime {
         .ellipse(playerRenderX, playerRenderY + 16, 33, 10)
         .fill({ color: 0x010307, alpha: 0.26 })
     }
-    if (heroGlow > 0.04) {
-      this.motionGraphics
-        .ellipse(playerRenderX, playerRenderY + 8, 46 + heroGlow * 18, 16 + heroGlow * 6)
-        .stroke({ color: 0xffdf83, width: 2 + heroGlow * 3, alpha: heroGlow * 0.42 })
-    }
-
     const activeHordeCount = this.enemies.reduce(
       (count, enemy) => count + (enemy.active && !enemy.isBoss ? 1 : 0),
       0,
@@ -3015,7 +3017,6 @@ class NighttraceRuntime {
   }
 
   private collectExperience(value: number) {
-    this.player.pulseCharge = clamp(this.player.pulseCharge + value * 0.16, 0, 100)
     if (this.runConfig.fixedLoadout) return
     this.player.xp += value
     while (this.player.xp >= this.player.xpToNext && !this.upgradeOptions?.length) {
@@ -3039,7 +3040,7 @@ class NighttraceRuntime {
       }
       if (gatheredExperience > 0) this.collectExperience(gatheredExperience)
     } else {
-      this.player.pulseCharge = clamp(this.player.pulseCharge + 35, 0, 100)
+      this.primedTracePulseBonus = Math.max(this.primedTracePulseBonus, 35)
     }
 
     this.audio.play('pickup', 1.05)
@@ -3155,12 +3156,15 @@ class NighttraceRuntime {
   private updateTrace() {
     const last = this.trace[this.trace.length - 1]
     const point = { x: this.player.x, y: this.player.y }
-    if (distanceSquared(last, point) < 11 ** 2) return
+    if (distanceSquared(last, point) < TRACE_SAMPLE_DISTANCE ** 2) return
     this.trace.push(point)
     const memoryRank = this.persistentUpgrades.pulse ?? 0
-    const maxPoints = 72 + memoryRank * 3 + (this.traceMods.includes('afterimage') ? 22 : 0)
+    const maxPoints = tracePointAllowance(
+      memoryRank,
+      this.traceMods.includes('afterimage'),
+    )
     if (this.trace.length > maxPoints) this.trace.splice(0, this.trace.length - maxPoints)
-    if (this.trace.length < 10) return
+    if (this.trace.length < TRACE_MINIMUM_POINTS) return
 
     // Let a near-return close the circuit as well as an exact segment crossing.
     // Keyboard and touch movement rarely land on the identical sub-pixel, so this
@@ -3169,7 +3173,7 @@ class NighttraceRuntime {
       if (distanceSquared(point, this.trace[index]) > 30 ** 2) continue
       const polygon = [this.trace[index], ...this.trace.slice(index + 1)]
       const area = polygonArea(polygon)
-      if (area < 2100) continue
+      if (area < TRACE_MINIMUM_AREA) continue
       this.closeLoop(polygon, area)
       this.trace.length = 0
       this.trace.push(point)
@@ -3188,7 +3192,7 @@ class NighttraceRuntime {
       if (!intersection) continue
       const polygon = [intersection, ...this.trace.slice(index + 1)]
       const area = polygonArea(polygon)
-      if (area < 2100) continue
+      if (area < TRACE_MINIMUM_AREA) continue
       this.closeLoop(polygon, area)
       this.trace.length = 0
       this.trace.push(point)
@@ -3209,7 +3213,16 @@ class NighttraceRuntime {
     }
     this.closedLoops += 1
     this.largestChain = Math.max(this.largestChain, chain)
-    this.player.pulseCharge = clamp(this.player.pulseCharge + 17 + Math.min(46, chain * 2.8), 0, 100)
+    const pulseReward = tracePulseReward({
+      pointCount: polygon.length,
+      area,
+      enemiesTrapped: chain,
+      primedBonus: this.primedTracePulseBonus,
+    })
+    if (pulseReward > 0) {
+      this.player.pulseCharge = clamp(this.player.pulseCharge + pulseReward, 0, 100)
+      this.primedTracePulseBonus = 0
+    }
     this.loopEffects.push({
       points: polygon.map((point) => ({ ...point })),
       life: 0.58,
@@ -3299,7 +3312,6 @@ class NighttraceRuntime {
       // Settle the primary defeat before chained fractures. If a fracture also
       // defeats the sovereign, the emitted results already include this kill.
       this.kills += 1
-      this.player.pulseCharge = clamp(this.player.pulseCharge + 1.1, 0, 100)
       this.spawnPickup(enemy.x, enemy.y, enemy.xp)
       if (this.traceMods.includes('sunblood') && this.kills % 20 === 0) {
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.player.maxHp * 0.035)
@@ -5502,9 +5514,7 @@ class NighttraceRuntime {
         continue
       }
       const alpha = clamp(effect.life / effect.total, 0, 1)
-      const flattened = effect.points.flatMap((point) => [point.x, point.y])
       if (effect.closed !== false) {
-        this.loopGraphics.poly(flattened, true).fill({ color: effect.color, alpha: alpha * 0.12 })
         const center = effect.points.reduce(
           (sum, point) => ({ x: sum.x + point.x, y: sum.y + point.y }),
           { x: 0, y: 0 },
@@ -6480,15 +6490,20 @@ class NighttraceRuntime {
   }
 
   private sliceTexture(texture: Texture, columns: number, rows: number) {
-    const frameWidth = texture.width / columns
-    const frameHeight = texture.height / rows
     const frames: Texture[] = []
     for (let row = 0; row < rows; row += 1) {
       for (let column = 0; column < columns; column += 1) {
+        // Authoring tools can emit atlases whose overall dimensions are not
+        // perfectly divisible by the grid. Snap every boundary independently
+        // so Pixi never samples a fractional texel from the neighboring pose.
+        const left = Math.round((column * texture.width) / columns)
+        const right = Math.round(((column + 1) * texture.width) / columns)
+        const top = Math.round((row * texture.height) / rows)
+        const bottom = Math.round(((row + 1) * texture.height) / rows)
         frames.push(
           new Texture({
             source: texture.source,
-            frame: new Rectangle(column * frameWidth, row * frameHeight, frameWidth, frameHeight),
+            frame: new Rectangle(left, top, right - left, bottom - top),
           }),
         )
       }

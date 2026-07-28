@@ -28,6 +28,7 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 
 - `v1.10.0` — every hero power abandons concentric/dotted rings, radial ticks, starbursts, rune wheels, outlined gates, decorative rails, and generic diamond debris in favor of authored fractured stone, localized smoke, ash, grit, physical fragments, and material impact light; combat geometry is unchanged
 - `v1.11.0` — every sovereign gains authored idle, locomotion-contact, attack-windup, and special-release poses (including alternating four-leg contact for quadrupeds); boss and horde warnings become grounded smoke, pressure, rubble, and material disturbance; all eight weapons enter the first draft with three free refreshes and a normalized connected-DPS budget; upgrade and pause overlays are optically centered
+- `v1.12.0` — delivery-correctness release: network-first navigation replaces the stale cache-first shell; existing old tabs refresh once; boss atlas cells snap to whole pixels; all gameplay dialogs use symmetric safe-area centering; the opening draft/refresh cycle exposes every starting power; trace capacity starts 40% longer and Pulse charges only when a valid enclosure traps an enemy
 
 ## Runtime guide and visual evidence
 

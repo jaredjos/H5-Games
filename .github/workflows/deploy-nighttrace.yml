@@ -27,24 +27,30 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: games/nighttrace/package-lock.json
+          cache: pnpm
+          cache-dependency-path: games/nighttrace/pnpm-lock.yaml
 
-      - name: Install dependencies
+      - name: Install locked dependencies
         working-directory: games/nighttrace
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build the production game
         working-directory: games/nighttrace
-        run: npm run build
+        run: pnpm build
 
       - name: Publish Nighttrace to GitHub Pages
         shell: bash
         run: |
+          GAME_VERSION="$(node -p "require('./games/nighttrace/package.json').version")"
           git worktree add --detach /tmp/h5-pages origin/gh-pages
           rm -rf /tmp/h5-pages/nighttrace
           mkdir -p /tmp/h5-pages/nighttrace
@@ -61,5 +67,5 @@ jobs:
             exit 0
           fi
 
-          git commit -m "deploy(nighttrace): publish v1.11.0"
+          git commit -m "deploy(nighttrace): publish v${GAME_VERSION}"
           git push origin HEAD:gh-pages

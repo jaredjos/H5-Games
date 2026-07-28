@@ -1,8 +1,56 @@
 const UPDATE_EVENT = 'nighttrace:pwa-update'
 const UPDATE_CHECK_INTERVAL = 15 * 60 * 1000
+const CONTROLLER_RELOAD_KEY = 'nighttrace:pwa-controller-reload:v1.12.0'
 
 type IdleWindow = Window & {
   requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+}
+
+type ReloadStorage = Pick<Storage, 'getItem' | 'setItem'>
+
+function hasReloadedForCurrentRelease(storage?: ReloadStorage) {
+  if (!storage) return false
+  try {
+    return storage.getItem(CONTROLLER_RELOAD_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function rememberCurrentReleaseReload(storage?: ReloadStorage) {
+  if (!storage) return
+  try {
+    storage.setItem(CONTROLLER_RELOAD_KEY, '1')
+  } catch {
+    // Session storage can be unavailable in privacy-restricted browsers.
+  }
+}
+
+function getReloadStorage() {
+  try {
+    return window.sessionStorage
+  } catch {
+    return undefined
+  }
+}
+
+export function createControllerChangeReloadHandler({
+  shouldReload,
+  reload,
+  storage,
+}: {
+  shouldReload: boolean
+  reload: () => void
+  storage?: ReloadStorage
+}) {
+  let reloadStarted = false
+
+  return () => {
+    if (!shouldReload || reloadStarted || hasReloadedForCurrentRelease(storage)) return
+    reloadStarted = true
+    rememberCurrentReleaseReload(storage)
+    reload()
+  }
 }
 
 function canRegisterServiceWorker() {
@@ -51,6 +99,16 @@ function notifyUpdate(registration: ServiceWorkerRegistration) {
 async function register() {
   try {
     const appBaseUrl = getAppBaseUrl()
+    const shouldReloadOnControllerChange = Boolean(navigator.serviceWorker.controller)
+    const controllerChangeHandler = createControllerChangeReloadHandler({
+      shouldReload: shouldReloadOnControllerChange,
+      reload: () => window.location.reload(),
+      storage: getReloadStorage(),
+    })
+    navigator.serviceWorker.addEventListener('controllerchange', controllerChangeHandler, {
+      once: true,
+    })
+
     const registration = await navigator.serviceWorker.register(
       new URL('sw.js', appBaseUrl).href,
       {

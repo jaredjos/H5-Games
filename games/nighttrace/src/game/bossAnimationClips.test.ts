@@ -10,6 +10,7 @@ import {
   resolveBossClipFrame,
   type BossClipResolverInput,
 } from './bossAnimationClips'
+import { LEVELS } from './content'
 
 const BOSS_IDS: readonly BossId[] = [
   'gloam-stag',
@@ -41,6 +42,13 @@ const input = (
 })
 
 describe('boss authored motion atlas metadata', () => {
+  it('covers the complete ten-level campaign boss order', () => {
+    expect(LEVELS.map(({ bossId }) => bossId)).toEqual(BOSS_IDS)
+    expect(Object.keys(BOSS_CLIP_PROFILES)).toEqual(
+      LEVELS.map(({ bossId }) => bossId),
+    )
+  })
+
   it('maps all ten bosses onto six art rows across two 5x3 desktop atlases', () => {
     expect(Object.keys(BOSS_CLIP_PROFILES)).toEqual(BOSS_IDS)
     expect(BOSS_MOTION_ATLASES).toHaveLength(2)
@@ -93,6 +101,93 @@ describe('boss authored motion atlas metadata', () => {
 })
 
 describe('boss authored pose resolution', () => {
+  it('resolves all five authored poses for every one of the ten bosses', () => {
+    const reachedCells = new Set<string>()
+
+    for (const bossId of BOSS_IDS) {
+      const profile = bossClipProfile(bossId)
+      const contactBTime = 1 / profile.contactRateHz + 0.0001
+      const frames = [
+        resolveBossClipFrame(input({ bossId })),
+        resolveBossClipFrame(input({ bossId, moving: 1, time: 0 })),
+        resolveBossClipFrame(
+          input({ bossId, moving: 1, time: contactBTime }),
+        ),
+        resolveBossClipFrame(
+          input({
+            bossId,
+            moving: 1,
+            attackMotionStyle: 'boss-line',
+            attackMotionRemaining: 0.9,
+            attackMotionDuration: 1,
+          }),
+        ),
+        resolveBossClipFrame(
+          input({
+            bossId,
+            moving: 1,
+            attackMotionStyle: 'boss-line',
+            attackMotionRemaining: 0.1,
+            attackMotionDuration: 1,
+          }),
+        ),
+      ]
+
+      expect(
+        frames.map(({ state, pose, column }) => ({ state, pose, column })),
+      ).toEqual([
+        { state: 'idle', pose: 'idle', column: 0 },
+        { state: 'move', pose: 'move-contact-a', column: 1 },
+        { state: 'move', pose: 'move-contact-b', column: 2 },
+        {
+          state: 'attack-windup',
+          pose: 'attack-windup',
+          column: 3,
+        },
+        {
+          state: 'special-release',
+          pose: 'special-release',
+          column: 4,
+        },
+      ])
+
+      for (const frame of frames) {
+        expect(frame.bossId).toBe(bossId)
+        expect(frame.atlasIndex).toBe(profile.atlasIndex)
+        expect(frame.atlasRow).toBe(profile.atlasRow)
+        expect(frame.assetPath).toBe(
+          BOSS_MOTION_ATLASES[profile.atlasIndex].path,
+        )
+        expect(frame.frameIndex).toBe(profile.atlasRow * 5 + frame.column)
+        reachedCells.add(
+          `${frame.atlasIndex}:${frame.atlasRow}:${frame.column}`,
+        )
+      }
+    }
+
+    // Ten encounter identities intentionally share six authored silhouettes.
+    // This proves every one of the 30 physical atlas cells remains reachable.
+    expect(reachedCells.size).toBe(6 * 5)
+  })
+
+  it('alternates both contact poses for every boss locomotion clip', () => {
+    for (const bossId of BOSS_IDS) {
+      const rate = bossClipProfile(bossId).contactRateHz
+      const contactA = resolveBossClipFrame(
+        input({ bossId, moving: 1, time: 0 }),
+      )
+      const contactB = resolveBossClipFrame(
+        input({ bossId, moving: 1, time: 1 / rate + 0.0001 }),
+      )
+
+      expect(contactA.state).toBe('move')
+      expect(contactB.state).toBe('move')
+      expect(contactA.frameIndex).not.toBe(contactB.frameIndex)
+      expect(contactA.pose).toBe('move-contact-a')
+      expect(contactB.pose).toBe('move-contact-b')
+    }
+  })
+
   it('alternates quadruped contact A and B deterministically while moving', () => {
     for (const bossId of QUADRUPED_BOSS_IDS) {
       const rate = bossClipProfile(bossId).contactRateHz
@@ -115,6 +210,9 @@ describe('boss authored pose resolution', () => {
       expect(nextA.pose).toBe('move-contact-a')
       expect(contactA.column).toBe(BOSS_POSE_COLUMNS['move-contact-a'])
       expect(contactB.column).toBe(BOSS_POSE_COLUMNS['move-contact-b'])
+      expect(contactA.quadruped).toBe(true)
+      expect(contactB.quadruped).toBe(true)
+      expect(contactA.frameIndex).not.toBe(contactB.frameIndex)
     }
   })
 
@@ -150,6 +248,66 @@ describe('boss authored pose resolution', () => {
     expect(specialWindup.state).toBe('attack-windup')
     expect(specialRelease.state).toBe('special-release')
     expect(specialRelease.pose).toBe('special-release')
+  })
+
+  it('gives every sovereign special style a distinct windup and release window', () => {
+    const specialStyles = [
+      'boss-line',
+      'boss-orbit',
+      'boss-cross',
+      'boss-mirror',
+      'boss-cluster',
+      'boss-phase',
+      'boss-intro',
+    ] as const
+
+    for (const bossId of BOSS_IDS) {
+      for (const attackMotionStyle of specialStyles) {
+        const windup = resolveBossClipFrame(
+          input({
+            bossId,
+            moving: 1,
+            attackMotionStyle,
+            attackMotionRemaining: 0.9,
+            attackMotionDuration: 1,
+          }),
+        )
+        const release = resolveBossClipFrame(
+          input({
+            bossId,
+            moving: 1,
+            attackMotionStyle,
+            attackMotionRemaining: 0.1,
+            attackMotionDuration: 1,
+          }),
+        )
+
+        expect(windup.state).toBe('attack-windup')
+        expect(windup.pose).toBe('attack-windup')
+        expect(windup.column).toBe(BOSS_POSE_COLUMNS['attack-windup'])
+        expect(release.state).toBe('special-release')
+        expect(release.pose).toBe('special-release')
+        expect(release.column).toBe(BOSS_POSE_COLUMNS['special-release'])
+        expect(windup.frameIndex).not.toBe(release.frameIndex)
+      }
+    }
+  })
+
+  it('keeps idle distinct from locomotion below and above its motion threshold', () => {
+    for (const bossId of BOSS_IDS) {
+      const still = resolveBossClipFrame(
+        input({ bossId, moving: 0.179999, time: 4 }),
+      )
+      const moving = resolveBossClipFrame(
+        input({ bossId, moving: 0.18, time: 4 }),
+      )
+
+      expect(still.state).toBe('idle')
+      expect(still.pose).toBe('idle')
+      expect(moving.state).toBe('move')
+      expect(moving.pose).toMatch(/^move-contact-[ab]$/)
+      expect(still.frameIndex).not.toBe(moving.frameIndex)
+    }
   })
 
   it('gives death and hit fallbacks precedence over special attacks', () => {

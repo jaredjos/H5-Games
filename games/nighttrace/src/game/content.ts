@@ -480,7 +480,14 @@ export interface UpgradeDraftResult {
   rerollsRemaining: number
 }
 
-type CandidateLane = 'awakening' | 'weapon' | 'synergy' | 'trace' | 'utility' | 'general'
+type CandidateLane =
+  | 'awakening'
+  | 'weapon'
+  | 'new-weapon'
+  | 'synergy'
+  | 'trace'
+  | 'utility'
+  | 'general'
 
 interface UpgradeCandidate {
   option: UpgradeOption
@@ -608,7 +615,7 @@ function utilityCandidates(context: UpgradeDraftContext): UpgradeCandidate[] {
         type: 'heal',
         title: 'Pulse Prime',
         category: 'Overdrive',
-        description: 'Immediately charge the Dawn Pulse to 100%.',
+        description: 'The next enemy trapped by a closed trace fully primes the Dawn Pulse.',
         icon: '◉',
         rarity: 'standard',
       },
@@ -662,6 +669,11 @@ export function createUpgradeDraft(
   const ownedWeapons = new Map(context.weapons.map((weapon) => [weapon.id, weapon]))
   const ownedModules = new Map(context.modules.map((module) => [module.id, module]))
   const ownedTraces = new Set(context.traceMods)
+  const isFreshStartingBuild =
+    context.weapons.length === 1 &&
+    context.weapons[0].rank <= 1 &&
+    context.modules.length === 0 &&
+    context.traceMods.length === 0
   const candidateMap = new Map<string, UpgradeCandidate>()
 
   const addCandidate = (candidate: UpgradeCandidate) => {
@@ -692,7 +704,7 @@ export function createUpgradeDraft(
       addCandidate({
         option: weaponRankOption(weapon, 1),
         weight: 42,
-        lane: 'general',
+        lane: 'new-weapon',
       })
     }
   }
@@ -747,8 +759,9 @@ export function createUpgradeDraft(
 
   const hasAwakening = [...candidateMap.values()].some((candidate) => candidate.lane === 'awakening')
   takeFrom(hasAwakening ? ['awakening'] : ['weapon'])
-  if (selected.length === 0) takeFrom(['general'])
+  if (selected.length === 0) takeFrom(['new-weapon', 'general'])
   takeFrom(['synergy'])
+  if (isFreshStartingBuild) takeFrom(['new-weapon'])
 
   const tracePoolExists = [...candidateMap.values()].some((candidate) => candidate.lane === 'trace')
   if (selected.length < 3 && tracePoolExists && rng.next() < 0.42) takeFrom(['trace'])
