@@ -11,6 +11,7 @@ import {
   GROUNDED_VFX_ASSET_LODS,
   GROUNDED_VFX_STAGES,
 } from './groundedVfxPresentation'
+import { resolveHostileTelegraphPalette } from './hostileTelegraphPalette'
 
 const FORBIDDEN_GEOMETRY_KEYS = new Set([
   'points',
@@ -140,6 +141,45 @@ describe('boss telegraph particles', () => {
 
     expect(mobile.length).toBeLessThan(desktop.length)
     expect(budgeted).toHaveLength(4)
+  })
+
+  it('keeps boss cues readable and gives elite horde warnings restrained physical particles', () => {
+    const boss = sampleBossTelegraphParticles({
+      bossId: 'gloam-stag',
+      footprint: 'lane',
+      stage: 'solo',
+      lod: 'desktop',
+      progress: 0.72,
+      motionTime: 4.25,
+      seed: 117,
+    })
+    expect(boss).toHaveLength(16)
+    expect(boss.filter((particle) => particle.kind === 'cinder').length)
+      .toBeGreaterThanOrEqual(3)
+    expect(Math.max(...boss.map((particle) => particle.alpha)))
+      .toBeGreaterThan(0.12)
+
+    const hordePalette = resolveHostileTelegraphPalette({
+      family: 'violet',
+      actorColor: 0x6b355f,
+      emphasis: 0.18,
+    })
+    const horde = sampleBossTelegraphParticles({
+      palette: hordePalette,
+      prominence: 'horde',
+      footprint: 'field',
+      stage: 'solo',
+      lod: 'desktop',
+      progress: 0.72,
+      motionTime: 4.25,
+      seed: 119,
+    })
+    expect(horde).toHaveLength(7)
+    expect(new Set(horde.map((particle) => particle.kind))).toEqual(
+      new Set(['smoke', 'grit', 'cinder']),
+    )
+    expect(Math.max(...horde.map((particle) => particle.alpha)))
+      .toBeLessThan(Math.max(...boss.map((particle) => particle.alpha)))
   })
 
   it('reduces luminous energy without changing spatial placement', () => {

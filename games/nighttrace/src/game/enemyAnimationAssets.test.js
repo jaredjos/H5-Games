@@ -1,9 +1,16 @@
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { ENEMY_MOTION_ATLASES } from './enemyAnimationClips'
 
 const MAX_ATLAS_BYTES = 1_250_000
+const EXPECTED_SHA256 = Object.freeze({
+  'assets/enemy-animations/enemy-motion-atlas-a.webp':
+    '1796be90eaadb8f0dfbc951514e791073e552a993c56d52791363c4cae856ad8',
+  'assets/enemy-animations/enemy-motion-atlas-b.webp':
+    '4482932ec85a069bc6d26285a8243945bb0e17fcd6887585a4996ba0d307c81b',
+})
 
 const assetPath = (relativePath) =>
   fileURLToPath(new URL(`../../public/${relativePath}`, import.meta.url))
@@ -56,8 +63,8 @@ describe('horde authored animation WebP assets', () => {
       )
       expect(image.bytes.length).toBeGreaterThan(700_000)
       expect(image.bytes.length).toBeLessThanOrEqual(MAX_ATLAS_BYTES)
-      expect(image.width).toBe(1619)
-      expect(image.height).toBe(971)
+      expect(image.width).toBe(1920)
+      expect(image.height).toBe(1152)
 
       const snappedWidths = Array.from(
         { length: atlas.columns },
@@ -71,10 +78,11 @@ describe('horde authored animation WebP assets', () => {
           Math.round(((row + 1) * image.height) / atlas.rows) -
           Math.round((row * image.height) / atlas.rows),
       )
-      expect(Math.min(...snappedWidths)).toBeGreaterThanOrEqual(323)
-      expect(Math.max(...snappedWidths)).toBeLessThanOrEqual(324)
-      expect(Math.min(...snappedHeights)).toBeGreaterThanOrEqual(323)
-      expect(Math.max(...snappedHeights)).toBeLessThanOrEqual(324)
+      expect(new Set(snappedWidths)).toEqual(new Set([384]))
+      expect(new Set(snappedHeights)).toEqual(new Set([384]))
+      expect(createHash('sha256').update(image.bytes).digest('hex')).toBe(
+        EXPECTED_SHA256[atlas.path],
+      )
     }
   })
 

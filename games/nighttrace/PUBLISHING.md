@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.16.0`
+- Current web release: `v1.16.1`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -129,6 +129,20 @@ The v1.16.0 all-boss grounded-particle gate additionally requires:
 - the rectangular hero-sanctum quad and shader are absent; the small filtered
   hero ground shadow remains beneath the actor
 
+The v1.16.1 renderer-artifact hotfix additionally requires:
+
+- no hero ground-material plate, filtered white-texture actor shadow, or
+  filtered boss-atmosphere surface is present in the runtime
+- native ellipse contact shadows retain grounding without custom filter quads
+- every boss and horde atlas is a divisible 5x3 grid of isolated 384 px alpha
+  cells; the audited pose content keeps at least a 10 px transparent gutter
+- boss fields, lanes, and destinations guarantee multiple readable cinders
+  plus less-blurred smoke and larger grit within bounded budgets
+- elite/ranged horde fields, lanes, and projectile destinations use the same
+  physical particle language at deliberately lower prominence
+- collision, damage, warning duration, targeting, and encounter scheduling
+  remain unchanged
+
 ## Release archives
 
 The Windows archive contains:
@@ -172,6 +186,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.14.0`: one free Campaign/Boss Trial revive restores 35% vitality without resetting encounter state; two conditional 10% Dawnheart windows replace the larger adaptive heal budget; active hearts are removed on revive, post-revive healing is locked for 45 seconds, and all enemy, boss, spawn, and hazard pressure remains at the v1.13 baseline.
 - `v1.15.0`: original XP and normal-kill Pulse charge paths return without weakening valid-enclosure rewards; NastelBom's supplied boss score replaces the former boss track through normalized full/compact derivatives; a dedicated 1024×1536 transparent title hero replaces the stretched 627×627 atlas cell.
 - `v1.16.0`: deterministic smoke, grit, and restrained cinders give every boss field, lane, and projectile-destination warning material depth across bounded desktop, mobile, and reduced-flash budgets; no diagrammatic primitives or gameplay geometry change; the rectangular hero-sanctum quad is removed while the small filtered ground shadow remains.
+- `v1.16.1`: removes every remaining broad normal-blended/custom-filter actor-ground surface, isolates all 60 boss/horde pose cells behind transparent gutters, strengthens boss warning smoke/grit/cinders, and adds restrained physical particles to elite/ranged horde warnings without changing combat mechanics.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

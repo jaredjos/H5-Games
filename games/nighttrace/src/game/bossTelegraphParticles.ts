@@ -9,7 +9,10 @@ import {
   type GroundedVfxAssetLod,
   type GroundedVfxStage,
 } from './groundedVfxPresentation'
-import { resolveHostileTelegraphPalette } from './hostileTelegraphPalette'
+import {
+  resolveHostileTelegraphPalette,
+  type HostileTelegraphMaterialPalette,
+} from './hostileTelegraphPalette'
 
 export const BOSS_TELEGRAPH_PARTICLE_KINDS = Object.freeze([
   'smoke',
@@ -23,7 +26,10 @@ export type BossTelegraphParticleKind =
 export type BossTelegraphFootprint = 'field' | 'lane'
 
 export interface BossTelegraphParticleSampleInput {
-  readonly bossId: BossId
+  readonly bossId?: BossId
+  /** Explicit palette is used by elite/ranged horde warnings. */
+  readonly palette?: HostileTelegraphMaterialPalette
+  readonly prominence?: 'boss' | 'horde'
   readonly footprint: BossTelegraphFootprint
   readonly stage: GroundedVfxStage
   readonly lod: GroundedVfxAssetLod
@@ -79,9 +85,13 @@ const smoothstep = (value: number) => {
 const particleCount = (
   stage: GroundedVfxStage,
   lod: GroundedVfxAssetLod,
+  prominence: 'boss' | 'horde',
 ) => {
   const stageIndex = STAGE_INDEX[stage]
-  return lod === 'mobile' ? 5 + stageIndex : 10 + stageIndex * 2
+  if (prominence === 'horde') {
+    return lod === 'mobile' ? 4 + stageIndex : 7 + stageIndex * 2
+  }
+  return lod === 'mobile' ? 8 + stageIndex * 2 : 16 + stageIndex * 3
 }
 
 export function sampleBossTelegraphParticles(
@@ -94,14 +104,25 @@ export function sampleBossTelegraphParticles(
   })
   if (!pose.visible) return Object.freeze([])
 
-  const presentation = bossPresentation(input.bossId)
-  const treatment = bossMaterialTreatment(input.bossId)
-  const palette = resolveHostileTelegraphPalette({
-    family: presentation.colorFamily,
-    actorColor: presentation.primaryColor,
-    emphasis: 1,
-  })
-  const requested = particleCount(input.stage, input.lod)
+  const prominence =
+    input.prominence ?? (input.bossId ? 'boss' : 'horde')
+  const presentation = input.bossId
+    ? bossPresentation(input.bossId)
+    : undefined
+  const treatment = input.bossId
+    ? bossMaterialTreatment(input.bossId)
+    : undefined
+  const palette =
+    input.palette ??
+    (presentation
+      ? resolveHostileTelegraphPalette({
+          family: presentation.colorFamily,
+          actorColor: presentation.primaryColor,
+          emphasis: 1,
+        })
+      : undefined)
+  if (!palette) return Object.freeze([])
+  const requested = particleCount(input.stage, input.lod, prominence)
   const limit = clamp(
     Math.floor(finiteOr(input.maxParticles ?? requested, requested)),
     0,
@@ -111,17 +132,25 @@ export function sampleBossTelegraphParticles(
 
   const reducedEnergy = input.reducedFlash ? 0.62 : 1
   const accentCoverage = Math.min(
-    treatment.accentCoverage,
+    treatment?.accentCoverage ?? palette.accentCoverage,
     palette.accentCoverage,
   )
   const accentCount = Math.min(
-    input.lod === 'mobile' ? 1 : 2,
-    Math.max(1, Math.round(limit * accentCoverage * 2.4)),
+    prominence === 'boss'
+      ? input.lod === 'mobile'
+        ? 2
+        : 3
+      : input.lod === 'mobile'
+        ? 1
+        : 2,
+    Math.max(1, Math.round(limit * accentCoverage * 3.4)),
   )
   const nonAccentCount = Math.max(0, limit - accentCount)
   const smokeCount = Math.ceil(nonAccentCount * 0.48)
   const warningGain =
-    (0.48 + pose.rise * 0.22 + pose.impact * 0.3) * pose.alpha
+    (prominence === 'boss'
+      ? 0.68 + pose.rise * 0.24 + pose.impact * 0.36
+      : 0.5 + pose.rise * 0.2 + pose.impact * 0.28) * pose.alpha
   const motionTime = finiteOr(input.motionTime, 0)
   const seed = Math.trunc(finiteOr(input.seed, 0))
   const particles: BossTelegraphParticle[] = []
@@ -186,10 +215,13 @@ export function sampleBossTelegraphParticles(
     const baseSize = groundedVfxCosmeticUnit(seed, index, 47)
     const size =
       particleKind === 'smoke'
-        ? 0.048 + baseSize * 0.058
+        ? (prominence === 'boss' ? 0.066 : 0.052) +
+          baseSize * (prominence === 'boss' ? 0.074 : 0.058)
         : particleKind === 'cinder'
-          ? 0.012 + baseSize * 0.012
-          : 0.018 + baseSize * 0.022
+          ? (prominence === 'boss' ? 0.018 : 0.014) +
+            baseSize * (prominence === 'boss' ? 0.018 : 0.013)
+          : (prominence === 'boss' ? 0.024 : 0.019) +
+            baseSize * (prominence === 'boss' ? 0.027 : 0.022)
     const stretch =
       particleKind === 'smoke'
         ? 1.55 + groundedVfxCosmeticUnit(seed, index, 53) * 0.9
@@ -232,12 +264,12 @@ export function sampleBossTelegraphParticles(
             warningGain
     const tint =
       particleKind === 'smoke'
-        ? treatment.smokeTint
+        ? treatment?.smokeTint ?? palette.smokeTint
         : particleKind === 'cinder'
           ? index % 2 === 0
             ? palette.impactTint
-            : treatment.accentColor
-          : treatment.debrisTint
+            : treatment?.accentColor ?? palette.seepTint
+          : treatment?.debrisTint ?? palette.groundTint
     const glowAlpha =
       particleKind === 'cinder'
         ? clamp01(

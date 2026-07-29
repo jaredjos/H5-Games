@@ -6,44 +6,44 @@ import { BOSS_MOTION_ATLASES } from './bossAnimationClips'
 
 const EXPECTED_ASSETS = Object.freeze({
   'assets/boss-animations/boss-motion-atlas-a.webp': Object.freeze({
-    width: 1619,
-    height: 971,
-    bytes: 456_128,
+    width: 1920,
+    height: 1152,
+    bytes: 1_061_216,
     sha256:
-      'bd032630a22a3551ed3a3060208f673cab15f2dbd5ee5d7f3040b591eb17a65b',
+      'b09525a931d6156353e9e0a6be2b19f77fb6c6cb2aacd0e740cb27fb19559ea1',
   }),
   'assets/boss-animations/boss-motion-atlas-b.webp': Object.freeze({
-    width: 1536,
-    height: 1024,
-    bytes: 533_266,
+    width: 1920,
+    height: 1152,
+    bytes: 1_142_326,
     sha256:
-      'd47d44190239fc564190b6f22afaa1f3ffc52c4e023e1a26fb8c008007223609',
+      'eee4759c86a16cb1c2455b657f71142fe3537ccdb0ad6fa274565ab505e69201',
   }),
 })
 
-const readUint24LE = (buffer, offset) =>
-  buffer[offset] | (buffer[offset + 1] << 8) | (buffer[offset + 2] << 16)
-
-const inspectExtendedWebp = (buffer) => {
+const inspectLosslessWebp = (buffer) => {
   expect(buffer.subarray(0, 4).toString('ascii')).toBe('RIFF')
   expect(buffer.subarray(8, 12).toString('ascii')).toBe('WEBP')
-  expect(buffer.subarray(12, 16).toString('ascii')).toBe('VP8X')
   expect(buffer.readUInt32LE(4) + 8).toBe(buffer.byteLength)
-  expect(buffer.readUInt32LE(16)).toBe(10)
 
   const chunks = []
+  let losslessOffset = -1
   let offset = 12
   while (offset + 8 <= buffer.byteLength) {
     const chunkType = buffer.subarray(offset, offset + 4).toString('ascii')
     const chunkBytes = buffer.readUInt32LE(offset + 4)
     chunks.push(chunkType)
+    if (chunkType === 'VP8L') losslessOffset = offset + 8
     offset += 8 + chunkBytes + (chunkBytes % 2)
   }
+  expect(losslessOffset).toBeGreaterThanOrEqual(0)
+  expect(buffer[losslessOffset]).toBe(0x2f)
+  const dimensions = buffer.readUInt32LE(losslessOffset + 1)
 
   return {
-    width: readUint24LE(buffer, 24) + 1,
-    height: readUint24LE(buffer, 27) + 1,
-    hasAlpha: (buffer[20] & 0x10) !== 0,
+    width: (dimensions & 0x3fff) + 1,
+    height: ((dimensions >>> 14) & 0x3fff) + 1,
+    hasAlpha: (dimensions & 0x10000000) !== 0,
     chunks,
   }
 }
@@ -55,23 +55,22 @@ describe('published sovereign WebP animation atlases', () => {
       const expected = EXPECTED_ASSETS[atlas.path]
       const assetUrl = new URL(`../../public/${atlas.path}`, import.meta.url)
       const buffer = readFileSync(fileURLToPath(assetUrl))
-      const metadata = inspectExtendedWebp(buffer)
+      const metadata = inspectLosslessWebp(buffer)
 
       expect(buffer.byteLength).toBe(expected.bytes)
       expect(metadata.width).toBe(expected.width)
       expect(metadata.height).toBe(expected.height)
       expect(metadata.hasAlpha).toBe(true)
-      expect(metadata.chunks).toEqual(['VP8X', 'ALPH', 'VP8 '])
+      expect(metadata.chunks).toEqual(['VP8L'])
       expect(createHash('sha256').update(buffer).digest('hex')).toBe(
         expected.sha256,
       )
 
-      // A decoded RGBA atlas would occupy over 6 MB. The authored WebP files
-      // remain below ten percent of that footprint without discarding alpha.
+      // The isolated 5x3 atlas remains compact while preserving lossless alpha.
       expect(buffer.byteLength / (metadata.width * metadata.height * 4))
-        .toBeLessThan(0.1)
-      expect(metadata.width / atlas.columns).toBeGreaterThan(300)
-      expect(metadata.height / atlas.rows).toBeGreaterThan(320)
+        .toBeLessThan(0.14)
+      expect(metadata.width / atlas.columns).toBe(384)
+      expect(metadata.height / atlas.rows).toBe(384)
     },
   )
 
