@@ -4,6 +4,8 @@ export const TRACE_MINIMUM_AREA = 2100
 export const TRACE_BASE_POINT_ALLOWANCE = Math.round(72 * 1.4)
 export const TRACE_MEMORY_POINT_BONUS = 3
 export const TRACE_AFTERIMAGE_POINT_BONUS = 22
+export const PULSE_CHARGE_PER_EXPERIENCE = 0.16
+export const PULSE_CHARGE_PER_NORMAL_KILL = 1.1
 
 const finiteNonNegative = (value: number) =>
   Number.isFinite(value) ? Math.max(0, value) : 0
@@ -21,6 +23,14 @@ export function tracePointAllowance(memoryRank: number, hasAfterimage: boolean) 
   )
 }
 
+export function pulseChargeFromExperience(value: number) {
+  return finiteNonNegative(value) * PULSE_CHARGE_PER_EXPERIENCE
+}
+
+export function pulseChargeFromNormalKill() {
+  return PULSE_CHARGE_PER_NORMAL_KILL
+}
+
 export interface TracePulseRewardInput {
   pointCount: number
   area: number
@@ -29,8 +39,9 @@ export interface TracePulseRewardInput {
 }
 
 /**
- * Pulse is awarded only after a mechanically valid enclosure captures an
- * active enemy. Pickup and upgrade bonuses remain dormant until that event.
+ * Trace and primed upgrade rewards are awarded only after a mechanically
+ * valid enclosure captures an active enemy. XP and normal kills remain
+ * supplemental charge sources and do not weaken that enclosure gate.
  */
 export function tracePulseReward({
   pointCount,

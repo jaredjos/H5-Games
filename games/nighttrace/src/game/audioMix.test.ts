@@ -57,14 +57,14 @@ describe('music asset selection', () => {
         .filter(({ ambient }) => ambient === 'haunted')
         .map(({ level }) => level),
     ).toEqual([1, 2, 4, 5, 7, 9, 10])
-    expect(routes.every(({ boss }) => boss === 'phonk')).toBe(true)
+    expect(routes.every(({ boss }) => boss === 'boss')).toBe(true)
     expect(musicRouteForLevel(Number.NaN)).toEqual({
       ambient: 'haunted',
-      boss: 'phonk',
+      boss: 'boss',
     })
     expect(musicRouteForLevel(99)).toEqual({
       ambient: 'haunted',
-      boss: 'phonk',
+      boss: 'boss',
     })
   })
 
@@ -77,8 +77,8 @@ describe('music asset selection', () => {
     expect(musicAssetName('retro', 'compact')).toBe(
       'nighttrace-retro-loop-compact.mp3',
     )
-    expect(musicAssetName('phonk', 'compact')).toBe(
-      'nighttrace-phonk-loop-compact.mp3',
+    expect(musicAssetName('boss', 'compact')).toBe(
+      'nighttrace-boss-loop-compact.mp3',
     )
   })
 })

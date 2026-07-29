@@ -541,33 +541,34 @@ button:disabled {
 }
 
 .title-screen__hero {
+  --title-core-size: clamp(46px, 6vw, 86px);
   position: absolute;
   z-index: 2;
   right: clamp(2%, 9vw, 12%);
   bottom: -2%;
   width: min(48vw, 720px);
-  height: min(94vh, 940px);
+  height: min(88vh, 768px);
   pointer-events: none;
   filter: drop-shadow(0 34px 44px rgba(0, 0, 0, .75));
   animation: heroReveal 1100ms 180ms cubic-bezier(.18,.76,.22,1) both;
 }
 
-.title-screen__hero .atlas-sprite {
+.title-screen__hero-image {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  background-size: 200% 200%;
-  background-position: 0 0;
-  filter: brightness(1.1) contrast(1.05);
+  object-fit: contain;
+  object-position: center bottom;
+  image-rendering: auto;
 }
 
 .title-screen__hero-glow {
   position: absolute;
-  left: 47%;
-  top: 29%;
-  width: 86px;
-  height: 86px;
+  left: 50.5%;
+  top: 27%;
+  width: var(--title-core-size);
+  height: var(--title-core-size);
   border-radius: 50%;
   background: radial-gradient(circle, #fffbe3, rgba(242, 197, 92, .7) 10%, rgba(98, 221, 245, .18) 28%, transparent 66%);
   mix-blend-mode: screen;
@@ -1207,8 +1208,8 @@ button:disabled {
 }
 
 @keyframes corePulse {
-  0%, 100% { opacity: .64; transform: scale(.88); }
-  50% { opacity: 1; transform: scale(1.16); }
+  0%, 100% { opacity: .64; transform: translate(-50%, -50%) scale(.88); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.16); }
 }
 
 @keyframes campaignSettle {
@@ -4606,6 +4607,10 @@ kbd {
     height: 70vh;
     opacity: .3;
     filter: brightness(.78) drop-shadow(0 28px 42px rgba(0, 0, 0, .8));
+  }
+
+  .title-screen__hero-glow {
+    top: 33.5%;
   }
 
   .title-screen__content {

@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.14.0`
+- Current web release: `v1.15.0`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -61,12 +61,13 @@ The v1.6.0 remote-power, pickup, and music gate additionally requires:
   Final; both Final states remain legible at 844x390
 - Dawnheart, Gravestar, and Pulse Core project persistent tapered vertical
   beacons without obscuring boss telegraphs
-- original ambient and sovereign music assets load through lifecycle-safe
+- licensed, mastered supplied ambient and sovereign music assets load through lifecycle-safe
   playback, crossfade on boss entry, and degrade to the procedural fallback if
   a streamed asset cannot start
 - the runtime capture report, public contact sheets, capture manifest, and
   Combat Systems Codex are regenerated from the stable v1.6.0 build
-- no supplied reference frame, artwork, or audio is included in the package
+- no supplied reference frame or artwork is included in the package; approved
+  music sources appear only as mastered runtime derivatives
 
 The v1.7.2 remote-power presentation-parity gate additionally requires:
 
@@ -156,6 +157,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.12.0`: network-first navigation and automatic stale-client replacement deliver the current runtime; rounded atlas cells prevent pose bleed; every modal uses symmetric safe-area centering; the fresh three-card draft plus its free refresh cycle exposes all eight starting powers; base trace memory is 40% longer and only successful enemy enclosures charge Pulse.
 - `v1.13.0`: three normalized supplied scores replace the retired procedural music; the global difficulty multiplier returns to baseline; boss repertoires expand from level 2 and include visible fixed-destination ranged attacks; crimson/violet warning chroma remains embedded in physical ground material; all six horde species use authored five-pose motion sheets, with ranged specialists in later sectors.
 - `v1.14.0`: one free Campaign/Boss Trial revive restores 35% vitality without resetting encounter state; two conditional 10% Dawnheart windows replace the larger adaptive heal budget; active hearts are removed on revive, post-revive healing is locked for 45 seconds, and all enemy, boss, spawn, and hazard pressure remains at the v1.13 baseline.
+- `v1.15.0`: original XP and normal-kill Pulse charge paths return without weakening valid-enclosure rewards; NastelBom's supplied boss score replaces the former boss track through normalized full/compact derivatives; a dedicated 1024×1536 transparent title hero replaces the stretched 627×627 atlas cell.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

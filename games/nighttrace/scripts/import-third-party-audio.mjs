@@ -43,16 +43,17 @@ const TRACKS = {
     sourceUrl:
       'https://pixabay.com/music/video-games-creepy-retro-gaming-music-no-copyright-401536/',
   },
-  phonk: {
-    argument: 'phonk',
-    title: 'Drift Phonk Music (Phonk Mix)',
-    artist: 'Tunetank',
+  boss: {
+    argument: 'boss',
+    title: 'Scary Trailer',
+    artist: 'NastelBom',
     sourceSha256:
-      'f41d3e5998b51be53457d2485f5bf09897d3aa5bbee91bfb7907dd9913eacc28',
-    audibleEndSeconds: 144.45,
-    seamSeconds: 1.5,
+      '2c6258c29da47a86a942bd871845748f64283b1596178461e39fd84930bd9117',
+    audibleStartSeconds: 0.605,
+    audibleEndSeconds: 86.967,
+    seamSeconds: 2.5,
     sourceUrl:
-      'https://pixabay.com/music/video-games-drift-phonk-music-phonk-mix-349313/',
+      'https://pixabay.com/music/main-title-scary-trailer-454039/',
   },
 }
 
@@ -62,7 +63,7 @@ function usage() {
     '',
     'Usage:',
     '  node scripts/import-third-party-audio.mjs \\',
-    '    --haunted <source.mp3> --retro <source.mp3> --phonk <source.mp3> \\',
+    '    --haunted <source.mp3> --retro <source.mp3> --boss <source.mp3> \\',
     '    [--ffmpeg <ffmpeg executable>]',
     '',
     'FFmpeg may also be supplied through FFMPEG_PATH or resolved from PATH.',
@@ -142,13 +143,15 @@ function measureLoudness(ffmpegPath, inputPath) {
 }
 
 function renderCircularLoop(ffmpegPath, sourcePath, track, outputPath) {
+  const start = track.audibleStartSeconds ?? 0
   const end = track.audibleEndSeconds
+  const duration = end - start
   const seam = track.seamSeconds
-  const middleEnd = end - seam
+  const middleEnd = duration - seam
   const filter = [
-    `[0:a]atrim=start=0:end=${end},asetpts=PTS-STARTPTS,asplit=3[headsrc][midsrc][tailsrc]`,
+    `[0:a]atrim=start=${start}:end=${end},asetpts=PTS-STARTPTS,asplit=3[headsrc][midsrc][tailsrc]`,
     `[headsrc]atrim=start=0:end=${seam},asetpts=PTS-STARTPTS[head]`,
-    `[tailsrc]atrim=start=${middleEnd}:end=${end},asetpts=PTS-STARTPTS[tail]`,
+    `[tailsrc]atrim=start=${middleEnd}:end=${duration},asetpts=PTS-STARTPTS[tail]`,
     `[tail][head]acrossfade=d=${seam}:c1=qsin:c2=qsin[cross]`,
     `[midsrc]atrim=start=${seam}:end=${middleEnd},asetpts=PTS-STARTPTS[middle]`,
     '[cross][middle]concat=n=2:v=0:a=1,aresample=48000[loop]',
@@ -312,9 +315,13 @@ try {
     report[trackId] = {
       source: basename(sourcePath),
       sourceSha256: track.sourceSha256,
+      audibleStartSeconds: track.audibleStartSeconds ?? 0,
       audibleEndSeconds: track.audibleEndSeconds,
       equalPowerSeamSeconds: track.seamSeconds,
-      deliveredLoopSeconds: track.audibleEndSeconds - track.seamSeconds,
+      deliveredLoopSeconds:
+        track.audibleEndSeconds -
+        (track.audibleStartSeconds ?? 0) -
+        track.seamSeconds,
       variants,
     }
   }

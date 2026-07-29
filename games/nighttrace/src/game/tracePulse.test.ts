@@ -4,6 +4,8 @@ import {
   TRACE_AFTERIMAGE_POINT_BONUS,
   TRACE_BASE_POINT_ALLOWANCE,
   TRACE_MEMORY_POINT_BONUS,
+  pulseChargeFromExperience,
+  pulseChargeFromNormalKill,
   tracePointAllowance,
   tracePulseReward,
 } from './tracePulse'
@@ -57,15 +59,22 @@ describe('enemy-gated Pulse rewards', () => {
     expect(tracePulseReward({ ...validTrace, primedBonus: 35 })).toBeCloseTo(54.8)
   })
 
-  it('keeps the runtime free of XP, kill, pickup, and instant-upgrade charge paths', () => {
+  it('restores XP and normal-kill charge without adding an instant-upgrade fill', () => {
     const positiveChargeMutations = runtimeSource.match(
-      /pulseCharge\s*=\s*clamp\(this\.player\.pulseCharge\s*\+/g,
+      /this\.player\.pulseCharge\s*=\s*clamp\(/g,
     )
 
-    expect(positiveChargeMutations).toHaveLength(1)
-    expect(runtimeSource).not.toContain('pulseCharge + value * 0.16')
-    expect(runtimeSource).not.toContain('pulseCharge + 1.1')
+    expect(positiveChargeMutations).toHaveLength(3)
+    expect(runtimeSource).toContain('pulseChargeFromExperience(value)')
+    expect(runtimeSource).toContain('pulseChargeFromNormalKill()')
     expect(runtimeSource).not.toContain('this.player.pulseCharge = 100')
     expect(runtimeSource).toContain('const pulseReward = tracePulseReward({')
+  })
+
+  it('uses the original XP and normal-kill charge rates safely', () => {
+    expect(pulseChargeFromExperience(4)).toBeCloseTo(0.64)
+    expect(pulseChargeFromExperience(-2)).toBe(0)
+    expect(pulseChargeFromExperience(Number.NaN)).toBe(0)
+    expect(pulseChargeFromNormalKill()).toBe(1.1)
   })
 })

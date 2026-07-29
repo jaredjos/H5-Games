@@ -2,7 +2,7 @@
 
 ## Shipping target
 
-NIGHTTRACE v1.14.0 is an installable mobile web app suitable for HTTPS static
+NIGHTTRACE v1.15.0 is an installable mobile web app suitable for HTTPS static
 hosting and Add to Home Screen on current Android and iOS browsers. Menus remain
 usable in portrait; combat is landscape-first and pauses behind an accessible
 rotate gate when required. It supports safe-area insets, 44 px minimum touch
@@ -48,7 +48,7 @@ or remote backend. Campaign progress and settings are stored locally under
   diagrammatic rays, rings, ticks, or polygon outlines
 - Rare support drops: persistent heaven-to-ground beacons and broken landing
   runes remain readable in dense landscape combat
-- Audio: original ambient and sovereign music layers use boss-entry crossfades,
+- Audio: licensed, mastered supplied ambient and sovereign music layers use boss-entry crossfades,
   lifecycle-safe pause/resume, and procedural fallback
 - Public modes: Combat Lab validated with arbitrary arena/boss/loadout
   selection and infinite vitality; Boss Trials validated with sequential

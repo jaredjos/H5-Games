@@ -206,6 +206,8 @@ import {
   TRACE_MINIMUM_AREA,
   TRACE_MINIMUM_POINTS,
   TRACE_SAMPLE_DISTANCE,
+  pulseChargeFromExperience,
+  pulseChargeFromNormalKill,
   tracePointAllowance,
   tracePulseReward,
 } from './tracePulse'
@@ -3355,6 +3357,11 @@ class NighttraceRuntime {
   }
 
   private collectExperience(value: number) {
+    this.player.pulseCharge = clamp(
+      this.player.pulseCharge + pulseChargeFromExperience(value),
+      0,
+      100,
+    )
     if (this.runConfig.fixedLoadout) return
     this.player.xp += value
     while (this.player.xp >= this.player.xpToNext && !this.upgradeOptions?.length) {
@@ -3826,6 +3833,11 @@ class NighttraceRuntime {
       // Settle the primary defeat before chained fractures. If a fracture also
       // defeats the sovereign, the emitted results already include this kill.
       this.kills += 1
+      this.player.pulseCharge = clamp(
+        this.player.pulseCharge + pulseChargeFromNormalKill(),
+        0,
+        100,
+      )
       this.spawnPickup(enemy.x, enemy.y, enemy.xp)
       if (this.traceMods.includes('sunblood') && this.kills % 20 === 0) {
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.player.maxHp * 0.035)

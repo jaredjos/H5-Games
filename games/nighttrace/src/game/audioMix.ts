@@ -1,6 +1,6 @@
 export type MusicScene = 'ambient' | 'boss' | 'ended'
 export type MusicVariant = 'full' | 'compact'
-export type MusicTrackId = 'haunted' | 'retro' | 'phonk'
+export type MusicTrackId = 'haunted' | 'retro' | 'boss'
 export type WeaponAudioCue = 'standard' | 'graveglass' | 'harrow'
 
 export interface MusicAvailability {
@@ -20,8 +20,8 @@ export interface MusicDeviceHints {
 }
 
 export interface MusicRoute {
-  ambient: Exclude<MusicTrackId, 'phonk'>
-  boss: Extract<MusicTrackId, 'phonk'>
+  ambient: Exclude<MusicTrackId, 'boss'>
+  boss: Extract<MusicTrackId, 'boss'>
 }
 
 const AMBIENT_TRACK_LEVEL = 0.82
@@ -79,7 +79,7 @@ export function musicRouteForLevel(levelId: number): MusicRoute {
     : 1
   return {
     ambient: RETRO_LEVELS.has(safeLevel) ? 'retro' : 'haunted',
-    boss: 'phonk',
+    boss: 'boss',
   }
 }
 

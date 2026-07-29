@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.14.0'
+const CACHE_VERSION = 'v1.15.0'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
 const ASSET_CACHE = `${CACHE_PREFIX}assets-${CACHE_VERSION}`
@@ -26,6 +26,7 @@ const SHELL_URLS = [
   new URL('assets/nighttrace-enemy-atlas.webp', SCOPE_URL).href,
   new URL('assets/nighttrace-pickup-atlas.webp', SCOPE_URL).href,
   new URL('assets/nighttrace-hero-sheet.png', SCOPE_URL).href,
+  new URL('assets/nighttrace-title-hero-v2.png', SCOPE_URL).href,
   new URL('assets/nighttrace-wordmark.png', SCOPE_URL).href,
   new URL('assets/hero-animations/hero-charge-runtime.webp', SCOPE_URL).href,
   new URL('assets/hero-animations/hero-fire-runtime.webp', SCOPE_URL).href,

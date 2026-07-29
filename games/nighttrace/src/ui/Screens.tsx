@@ -120,7 +120,13 @@ export function TitleScreen({
       <div className="title-screen__world" aria-hidden="true" />
       <div className="title-screen__aurora" aria-hidden="true" />
       <div className="title-screen__hero" aria-hidden="true">
-        <AtlasSprite atlas="hero" frame={0} columns={2} rows={2} />
+        <img
+          className="title-screen__hero-image"
+          src={appAssetUrl('assets/nighttrace-title-hero-v2.png')}
+          alt=""
+          decoding="async"
+          fetchPriority="high"
+        />
         <span className="title-screen__hero-glow" />
       </div>
       <button className="title-audio" onClick={onToggleMute} aria-label={muted ? 'Unmute audio' : 'Mute audio'}>

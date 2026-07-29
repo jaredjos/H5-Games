@@ -120,6 +120,7 @@ assert(
 for (const asset of [
   'first-beacon-arena.webp',
   'nighttrace-hero-sheet.png',
+  'nighttrace-title-hero-v2.png',
   'nighttrace-enemy-atlas.webp',
   'nighttrace-boss-atlas.webp',
 ]) {
@@ -151,6 +152,7 @@ const runtimeAssets = [
   'assets/nighttrace-boss-atlas.webp',
   'assets/nighttrace-pickup-atlas.webp',
   'assets/nighttrace-hero-sheet.png',
+  'assets/nighttrace-title-hero-v2.png',
   'assets/first-beacon-arena.webp',
   'assets/glassreed-mire-arena.webp',
   'assets/cinder-foundry-arena.webp',
@@ -163,6 +165,20 @@ for (const asset of runtimeAssets) {
     `Runtime gameplay asset is not install-precached: ${asset}`,
   )
 }
+
+const titleHeroPng = readFileSync(
+  join(distRoot, 'assets/nighttrace-title-hero-v2.png'),
+)
+assert.equal(
+  titleHeroPng.subarray(1, 4).toString('ascii'),
+  'PNG',
+  'Title hero must remain a lossless PNG with alpha',
+)
+assert(
+  titleHeroPng.readUInt32BE(16) >= 1024 &&
+    titleHeroPng.readUInt32BE(20) >= 1536,
+  'Title hero must remain at least 1024x1536 instead of reusing a low-resolution atlas cell',
+)
 
 console.log(
   `Subpath release contract passed: ${distFiles.length} files resolve under ${nestedBase.pathname}; no production sourcemaps or root-absolute app references.`,

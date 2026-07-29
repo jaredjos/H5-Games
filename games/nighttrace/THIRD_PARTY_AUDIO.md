@@ -11,7 +11,7 @@ stream, or monetization use has received separate legal clearance.
 
 ## Source record
 
-Downloaded on 2026-07-28.
+Sources were supplied on 2026-07-28 and 2026-07-29.
 
 ### Haunted House Explorer - Instrumental
 
@@ -41,33 +41,26 @@ Downloaded on 2026-07-28.
 - Source page designation at download: AI-generated and free for use under the
   Pixabay Content License.
 
-### Drift Phonk Music (Phonk Mix)
+### Scary Trailer
 
-- Creator: Tunetank
+- Creator: NastelBom
 - Source platform: Pixabay
 - Source page:
-  <https://pixabay.com/music/video-games-drift-phonk-music-phonk-mix-349313/>
+  <https://pixabay.com/music/main-title-scary-trailer-454039/>
 - Supplied filename:
-  `tunetank-drift-phonk-music-phonk-mix-349313.mp3`
+  `nastelbom-scary-trailer-454039.mp3`
 - SHA-256:
-  `F41D3E5998B51BE53457D2485F5BF09897D3AA5BBEE91BFB7907DD9913EACC28`
+  `2C6258C29DA47A86A942BD871845748F64283B1596178461E39FD84930BD9117`
 - Runtime use: every boss encounter.
 - Source page designation at download: free for use under the Pixabay Content
   License and registered with Content ID.
 
-#### Tunetank licensing and Content ID warning
+#### Content ID warning
 
 The Pixabay asset page presents this download under the Pixabay Content
-License. Tunetank's separately published license page currently lists video
-games among prohibited uses:
-<https://tunetank.com/legal/license/>.
-
-Those two statements are not treated here as equivalent or reconciled legal
-clearance. Preserve the original Pixabay download record and dated license-page
-evidence. Before a commercial storefront release, obtain explicit game-use
-confirmation from the relevant rights holder or replace the track. Because the
-asset is registered with Content ID, videos and livestreams containing the boss
-music may also receive automated claims even when the in-game use relies on a
+License and marks it Content ID Registered. Preserve the original download
+record and dated license-page evidence. Videos and livestreams containing the
+boss music may receive automated claims even when the in-game use relies on a
 valid license.
 
 ## Runtime derivatives
@@ -78,8 +71,8 @@ The import produces only the selected sector track and boss track at runtime:
 - `public/assets/audio/nighttrace-haunted-loop-compact.mp3`
 - `public/assets/audio/nighttrace-retro-loop.mp3`
 - `public/assets/audio/nighttrace-retro-loop-compact.mp3`
-- `public/assets/audio/nighttrace-phonk-loop.mp3`
-- `public/assets/audio/nighttrace-phonk-loop-compact.mp3`
+- `public/assets/audio/nighttrace-boss-loop.mp3`
+- `public/assets/audio/nighttrace-boss-loop-compact.mp3`
 
 Full variants use 192 kbps MP3. Compact variants use 96 kbps MP3 and are
 selected only for Save-Data clients or devices reporting at most 2 GB of
@@ -94,7 +87,7 @@ Use an FFmpeg build with `libmp3lame`, `acrossfade`, and `loudnorm`:
 node scripts/import-third-party-audio.mjs `
   --haunted "PATH\TO\uniquecreativeaudio-haunted-house-explorer-instrumental-168968.mp3" `
   --retro "PATH\TO\bouncyrunner-creepy-retro-gaming-music-no-copyright-401536.mp3" `
-  --phonk "PATH\TO\tunetank-drift-phonk-music-phonk-mix-349313.mp3" `
+  --boss "PATH\TO\nastelbom-scary-trailer-454039.mp3" `
   --ffmpeg "PATH\TO\ffmpeg.exe"
 ```
 
