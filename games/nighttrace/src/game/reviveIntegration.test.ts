@@ -66,7 +66,7 @@ describe('free revive runtime integration', () => {
     expect(gameUiSource).toContain('className="pause-overlay revive-overlay"')
     expect(gameUiSource).toContain('className="pause-overlay__content"')
     expect(gameUiSource).toContain('Rise Again — Free')
-    expect(gameUiSource).toContain('35% vitality')
+    expect(gameUiSource).toContain('50% vitality')
     expect(gameUiSource).toContain('One sovereign. One free return.')
   })
 })

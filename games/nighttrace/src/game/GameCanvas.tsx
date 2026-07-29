@@ -185,6 +185,7 @@ import {
 } from './actorReadability'
 import {
   BOSS_MOTION_ATLASES,
+  bossSpriteFacingScale,
   resolveBossClipFrame,
   type ResolvedBossClipFrame,
 } from './bossAnimationClips'
@@ -1642,8 +1643,11 @@ class NighttraceRuntime {
       }
       enemy.sprite.position.set(renderX + pose.offsetX, renderY + pose.offsetY)
       enemy.sprite.rotation = pose.rotation
+      const facingScale = enemy.isBoss
+        ? bossSpriteFacingScale(this.bossLevel.bossId, enemy.facing)
+        : enemy.facing
       enemy.sprite.scale.set(
-        enemy.baseScaleX * enemy.facing * pose.scaleX,
+        enemy.baseScaleX * facingScale * pose.scaleX,
         enemy.baseScaleY * pose.scaleY,
       )
       enemy.sprite.tint = enemy.hitFlash > 0 ? 0xffffff : enemy.isBoss ? this.bossTint() : 0xffffff
@@ -2147,7 +2151,7 @@ class NighttraceRuntime {
     enemy.blinkTargetY = null
     enemy.isBoss = true
     enemy.phase = 1
-    enemy.facing = 1
+    enemy.facing = this.player.x >= x ? 1 : -1
     const introDuration = this.qaMode ? 1.05 : 1.65
     enemy.attackMotionStyle = 'boss-intro'
     enemy.attackMotionRemaining = introDuration
@@ -2171,7 +2175,11 @@ class NighttraceRuntime {
     enemy.sprite.height = authoredBossSize
     enemy.baseScaleX = Math.abs(enemy.sprite.scale.x)
     enemy.baseScaleY = Math.abs(enemy.sprite.scale.y)
-    enemy.sprite.scale.set(enemy.baseScaleX, enemy.baseScaleY)
+    enemy.sprite.scale.set(
+      enemy.baseScaleX *
+        bossSpriteFacingScale(this.bossLevel.bossId, enemy.facing),
+      enemy.baseScaleY,
+    )
     enemy.sprite.rotation = 0
     enemy.sprite.tint = this.bossTint()
     enemy.sprite.filters = null
@@ -2287,7 +2295,11 @@ class NighttraceRuntime {
       const speed = enemy.speed * (enemy.isBoss ? 0.75 + enemy.phase * 0.12 : 1)
       enemy.vx = ((dx / distance) * Math.cos(wobble) - (dy / distance) * Math.sin(wobble)) * speed
       enemy.vy = ((dx / distance) * Math.sin(wobble) + (dy / distance) * Math.cos(wobble)) * speed
-      if (Math.abs(enemy.vx) > 2) enemy.facing = enemy.vx >= 0 ? 1 : -1
+      if (enemy.isBoss) {
+        if (Math.abs(dx) > 1) enemy.facing = dx >= 0 ? 1 : -1
+      } else if (Math.abs(enemy.vx) > 2) {
+        enemy.facing = enemy.vx >= 0 ? 1 : -1
+      }
       enemy.x = clamp(enemy.x + enemy.vx * delta, 38, WORLD_WIDTH - 38)
       enemy.y = clamp(enemy.y + enemy.vy * delta, 34, WORLD_HEIGHT - 34)
 

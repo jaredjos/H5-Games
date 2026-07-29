@@ -6,6 +6,7 @@ import {
   BOSS_POSE_COLUMNS,
   QUADRUPED_BOSS_IDS,
   bossClipProfile,
+  bossSpriteFacingScale,
   bossSpecialReleaseProgress,
   resolveBossClipFrame,
   type BossClipResolverInput,
@@ -97,6 +98,19 @@ describe('boss authored motion atlas metadata', () => {
       (bossId) => bossClipProfile(bossId).quadruped,
     )
     expect(marked).toEqual(QUADRUPED_BOSS_IDS)
+  })
+
+  it('corrects every authored row so its visible direction follows the player', () => {
+    expect(bossClipProfile('railjaw-prime').authoredFacing).toBe(-1)
+    expect(bossClipProfile('furnace-titan').authoredFacing).toBe(-1)
+
+    for (const bossId of BOSS_IDS) {
+      const authoredFacing = bossClipProfile(bossId).authoredFacing
+      for (const desiredFacing of [-1, 1] as const) {
+        const spriteScale = bossSpriteFacingScale(bossId, desiredFacing)
+        expect(spriteScale * authoredFacing, bossId).toBe(desiredFacing)
+      }
+    }
   })
 })
 

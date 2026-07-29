@@ -121,6 +121,25 @@ describe('boss authored animation runtime integration', () => {
     expect(bossMotion).toContain('phase: enemy.phase')
   })
 
+  it('faces every rendered boss toward the live player in every authored state', () => {
+    const enemyRendering = section(
+      '    for (const enemy of this.enemies) {',
+      '    this.projectileTrailGraphics.clear()',
+    )
+    const enemyUpdate = section(
+      '  private updateEnemies(',
+      '  private performEnemySpecial(',
+    )
+
+    expect(enemyRendering).toContain(
+      'bossSpriteFacingScale(this.bossLevel.bossId, enemy.facing)',
+    )
+    expect(enemyUpdate).toContain('if (enemy.isBoss)')
+    expect(enemyUpdate).toContain(
+      'if (Math.abs(dx) > 1) enemy.facing = dx >= 0 ? 1 : -1',
+    )
+  })
+
   it('initializes a spawning boss from the authored intro clip', () => {
     const spawning = section(
       '  private spawnBoss()',
@@ -128,6 +147,12 @@ describe('boss authored animation runtime integration', () => {
     )
 
     expect(spawning).toContain("enemy.attackMotionStyle = 'boss-intro'")
+    expect(spawning).toContain(
+      'enemy.facing = this.player.x >= x ? 1 : -1',
+    )
+    expect(spawning).toContain(
+      'bossSpriteFacingScale(this.bossLevel.bossId, enemy.facing)',
+    )
     expect(spawning).toContain('const initialClipFrame = resolveBossClipFrame({')
     expect(spawning).toContain(
       'this.bossMotionTexture(initialClipFrame) ??',

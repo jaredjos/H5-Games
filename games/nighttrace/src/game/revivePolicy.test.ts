@@ -19,11 +19,12 @@ describe('free revive policy', () => {
     expect(initialFreeRevives('campaign', true)).toBe(0)
   })
 
-  it('returns the player with partial vitality and a short re-entry window', () => {
-    expect(REVIVE_HEALTH_FRACTION).toBe(0.35)
-    expect(revivedHealth(100)).toBe(35)
-    expect(revivedHealth(132)).toBeCloseTo(46.2)
-    expect(revivedHealth(Number.NaN)).toBe(1)
+  it('returns the player with exactly half vitality and a short re-entry window', () => {
+    expect(REVIVE_HEALTH_FRACTION).toBe(0.5)
+    expect(revivedHealth(100)).toBe(50)
+    expect(revivedHealth(132)).toBe(66)
+    expect(revivedHealth(1)).toBe(0.5)
+    expect(revivedHealth(Number.NaN)).toBe(0.5)
     expect(REVIVE_INVULNERABILITY_SECONDS).toBeGreaterThanOrEqual(2)
     expect(REVIVE_INVULNERABILITY_SECONDS).toBeLessThanOrEqual(2.5)
   })

@@ -591,11 +591,11 @@ export function ReviveOverlay({
           <h1 id="revive-title">The Trace Still Burns</h1>
           <OrnamentRule />
           <p id="revive-description" className="revive-panel__copy">
-            Rise with 35% vitality and a brief sanctuary. Time, horde pressure,
+            Rise with 50% vitality and a brief sanctuary. Time, horde pressure,
             loadout, and Sovereign vitality remain exactly where they are.
           </p>
           <div className="revive-panel__terms" aria-label="Revive conditions">
-            <span><strong>35%</strong> vitality</span>
+            <span><strong>50%</strong> vitality</span>
             <span><strong>0%</strong> shield</span>
             <span><strong>2.2s</strong> grace</span>
           </div>

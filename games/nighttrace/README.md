@@ -34,10 +34,12 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.15.0` — XP pickups and normal enemy kills again charge Pulse at their original rates while enclosure and primed bonuses still require a valid enemy capture; every boss now enters to a newly supplied, silence-trimmed and mastered cinematic score; the title screen uses a dedicated 1024×1536 transparent hero render instead of stretching a low-resolution animation-atlas cell
 - `v1.16.0` — every boss field, lane, and projectile-destination warning gains deterministic smoke, grit, and restrained cinders under bounded desktop, mobile, and reduced-flash budgets; diagrammatic line/ring/grid primitives stay absent, combat geometry and damage stay unchanged, and the rectangular hero-sanctum quad is removed while its small filtered ground shadow remains
 - `v1.16.1` — renderer-artifact hotfix: all broad normal-blended and custom-filter actor-ground quads are retired in favor of native contact geometry; all 30 boss and 30 horde pose cells are isolated behind transparent gutters to prevent adjacent release-frame bleed; boss particles become denser and clearer, and elite/ranged horde fields, lanes, and destinations gain restrained smoke, grit, debris, and cinders without changing combat timing or damage
+- `v1.16.2` — revives now restore 50% vitality; every Sovereign tracks the bearer across idle, movement, windup, release, and intro while correcting the left-authored Railjaw/Furnace row; an isolated hostile-boundary material review is published for approval without entering live combat
 
 ## Runtime guide and visual evidence
 
 - [Animated Graveglass + Eclipse material review](https://jaredjos.github.io/H5-Games/nighttrace/review/spell-choreography/) — the authored structural choreography remains in live combat, now joined by the v1.10.0 all-power material-floor pass
+- [Hostile boundary material review](https://jaredjos.github.io/H5-Games/nighttrace/review/hostile-boundary/) — approval-only animated study for boss fields, lanes, destinations, and elite-horde fields; it is not connected to live combat
 - [Combat Systems Codex (PDF)](https://jaredjos.github.io/H5-Games/nighttrace/docs/NIGHTTRACE_Combat_Systems_Codex.pdf) — the v1.6.0 combat, upgrade, pickup, boss, difficulty, music, and mobile reference
 - [Upgrade states: Helio Lance through Rift Seeds](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-01.png)
 - [Upgrade states: Comet Swarm through Eclipse Harrow](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-02.png)
@@ -253,7 +255,7 @@ or expiry, making a valuable drop readable even when the horde fills the arena.
 
 Every mortal Campaign and Boss Trial attempt also carries one free revive,
 shown by the small heart marker on the vitality crest. The first lethal hit
-pauses combat for an explicit choice. Reviving restores 35% vitality, zero
+pauses combat for an explicit choice. Reviving restores 50% vitality, zero
 shield, 2.2 seconds of protection, and a small safety radius; it does not rewind
 the clock, horde pressure, loadout, boss vitality, or boss phase. Combat Lab
 remains invincible and does not advertise a redundant revive.

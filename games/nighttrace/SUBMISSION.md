@@ -2,7 +2,7 @@
 
 ## Shipping target
 
-NIGHTTRACE v1.16.1 is an installable mobile web app suitable for HTTPS static
+NIGHTTRACE v1.16.2 is an installable mobile web app suitable for HTTPS static
 hosting and Add to Home Screen on current Android and iOS browsers. Menus remain
 usable in portrait; combat is landscape-first and pauses behind an accessible
 rotate gate when required. It supports safe-area insets, 44 px minimum touch
@@ -31,7 +31,7 @@ or remote backend. Campaign progress and settings are stored locally under
   844x390, and 1440x900
 - Input: keyboard, pointer/touch drag, tappable Pulse, and pause; no D-pad
 - Recovery: one centered, touch-ready free-revive choice per mortal level;
-  35% vitality, zero shield, 2.2 seconds of grace, and no encounter rewind
+  50% vitality, zero shield, 2.2 seconds of grace, and no encounter rewind
 - Healing: exactly two low-vitality 10% Dawnheart windows per Campaign run;
   20% maximum budget, 22-second expiry, and a 45-second post-revive lockout
 - Installability: web manifest, standard/maskable/Apple icons, production-only

@@ -55,6 +55,12 @@ export interface BossClipProfile {
   readonly atlasRow: BossMotionAtlasRow
   readonly quadruped: boolean
   /**
+   * Horizontal direction the authored side-facing cells point before runtime
+   * mirroring. Most rows point right or are frontal; the Railjaw art row was
+   * authored facing left.
+   */
+  readonly authoredFacing: -1 | 1
+  /**
    * Number of authored A/B contact changes per second. Two changes form one
    * complete locomotion cycle.
    */
@@ -75,6 +81,7 @@ const profile = (
     atlasIndex,
     atlasRow,
     quadruped,
+    authoredFacing: artRow === 2 ? -1 : 1,
     contactRateHz,
   })
 }
@@ -166,6 +173,18 @@ const activeTimerProgress = (
 
 export function bossClipProfile(bossId: BossId): Readonly<BossClipProfile> {
   return BOSS_CLIP_PROFILES[bossId]
+}
+
+/**
+ * Converts a desired world-facing direction into the sprite scale sign for
+ * the boss's authored atlas row. This keeps player tracking independent from
+ * whether that row was painted facing left, right, or frontally.
+ */
+export function bossSpriteFacingScale(
+  bossId: BossId,
+  desiredFacing: -1 | 1,
+): -1 | 1 {
+  return (desiredFacing * bossClipProfile(bossId).authoredFacing) as -1 | 1
 }
 
 export function isBossSpecialMotionStyle(style: AttackMotionStyle) {

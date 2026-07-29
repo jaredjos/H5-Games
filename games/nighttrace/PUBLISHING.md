@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.16.1`
+- Current web release: `v1.16.2`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -143,6 +143,17 @@ The v1.16.1 renderer-artifact hotfix additionally requires:
 - collision, damage, warning duration, targeting, and encounter scheduling
   remain unchanged
 
+The v1.16.2 revive/facing hotfix additionally requires:
+
+- one accepted revive restores exactly 50% of maximum vitality while retaining
+  the existing shield, sanctuary, grace-period, and encounter-state rules
+- every Sovereign derives its horizontal visual facing from the live bearer
+  position during intro, idle, locomotion, windup, and release
+- the left-authored Railjaw/Furnace atlas row is corrected before runtime
+  mirroring; no collision, velocity, damage, or attack timing changes
+- `review/hostile-boundary/` remains an isolated approval study and no live
+  `GameCanvas` code invokes its white-spray perimeter treatment
+
 ## Release archives
 
 The Windows archive contains:
@@ -187,6 +198,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.15.0`: original XP and normal-kill Pulse charge paths return without weakening valid-enclosure rewards; NastelBom's supplied boss score replaces the former boss track through normalized full/compact derivatives; a dedicated 1024×1536 transparent title hero replaces the stretched 627×627 atlas cell.
 - `v1.16.0`: deterministic smoke, grit, and restrained cinders give every boss field, lane, and projectile-destination warning material depth across bounded desktop, mobile, and reduced-flash budgets; no diagrammatic primitives or gameplay geometry change; the rectangular hero-sanctum quad is removed while the small filtered ground shadow remains.
 - `v1.16.1`: removes every remaining broad normal-blended/custom-filter actor-ground surface, isolates all 60 boss/horde pose cells behind transparent gutters, strengthens boss warning smoke/grit/cinders, and adds restrained physical particles to elite/ranged horde warnings without changing combat mechanics.
+- `v1.16.2`: revives restore 50% vitality, every Sovereign faces the live bearer with authored-row correction, and a separate animated hostile-boundary review is published without integrating the proposed perimeter treatment into combat.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.
