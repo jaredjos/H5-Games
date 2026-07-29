@@ -2,7 +2,7 @@
 
 ## Shipping target
 
-NIGHTTRACE v1.15.0 is an installable mobile web app suitable for HTTPS static
+NIGHTTRACE v1.16.0 is an installable mobile web app suitable for HTTPS static
 hosting and Add to Home Screen on current Android and iOS browsers. Menus remain
 usable in portrait; combat is landscape-first and pauses behind an accessible
 rotate gate when required. It supports safe-area insets, 44 px minimum touch
@@ -44,8 +44,13 @@ or remote backend. Campaign progress and settings are stored locally under
   Final states; remote-world Graveglass Spires and Eclipse Harrow Final states
   validated in landscape-phone view
 - Hostile readability: boss and horde attack areas use ground-bound
-  rubble/scorch materials with mobile LODs instead of overlaying actors with
-  diagrammatic rays, rings, ticks, or polygon outlines
+  rubble/scorch materials plus deterministic smoke, grit, and restrained
+  cinders instead of diagrammatic rays, rings, grids, ticks, or polygon
+  outlines; field, lane, and projectile-destination cues use bounded desktop,
+  mobile, and reduced-flash particle budgets
+- Actor grounding: the rectangular hero-sanctum quad and shader are absent;
+  the small filtered hero ground shadow remains, with no gameplay geometry or
+  damage changes
 - Rare support drops: persistent heaven-to-ground beacons and broken landing
   runes remain readable in dense landscape combat
 - Audio: licensed, mastered supplied ambient and sovereign music layers use boss-entry crossfades,

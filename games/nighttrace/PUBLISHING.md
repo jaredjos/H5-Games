@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.15.0`
+- Current web release: `v1.16.0`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -116,6 +116,19 @@ The v1.9.0 grounded-hostile-VFX gate additionally requires:
 - warning duration, collision geometry, damage, targeting, cooldown, and boss
   pattern scheduling remain unchanged
 
+The v1.16.0 all-boss grounded-particle gate additionally requires:
+
+- every boss field, lane, and projectile-destination warning carries
+  deterministic smoke, grit, and restrained cinders
+- desktop, mobile, and reduced-flash particle budgets stay explicitly bounded
+  while preserving warning readability
+- hostile warnings contain no line, ring, grid, radial-tick, polygon, or
+  diagrammatic attack-zone primitives
+- warning geometry, collision, damage, targeting, cooldown, and encounter
+  scheduling remain unchanged
+- the rectangular hero-sanctum quad and shader are absent; the small filtered
+  hero ground shadow remains beneath the actor
+
 ## Release archives
 
 The Windows archive contains:
@@ -158,6 +171,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.13.0`: three normalized supplied scores replace the retired procedural music; the global difficulty multiplier returns to baseline; boss repertoires expand from level 2 and include visible fixed-destination ranged attacks; crimson/violet warning chroma remains embedded in physical ground material; all six horde species use authored five-pose motion sheets, with ranged specialists in later sectors.
 - `v1.14.0`: one free Campaign/Boss Trial revive restores 35% vitality without resetting encounter state; two conditional 10% Dawnheart windows replace the larger adaptive heal budget; active hearts are removed on revive, post-revive healing is locked for 45 seconds, and all enemy, boss, spawn, and hazard pressure remains at the v1.13 baseline.
 - `v1.15.0`: original XP and normal-kill Pulse charge paths return without weakening valid-enclosure rewards; NastelBom's supplied boss score replaces the former boss track through normalized full/compact derivatives; a dedicated 1024×1536 transparent title hero replaces the stretched 627×627 atlas cell.
+- `v1.16.0`: deterministic smoke, grit, and restrained cinders give every boss field, lane, and projectile-destination warning material depth across bounded desktop, mobile, and reduced-flash budgets; no diagrammatic primitives or gameplay geometry change; the rectangular hero-sanctum quad is removed while the small filtered ground shadow remains.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

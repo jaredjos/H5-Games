@@ -37,6 +37,34 @@ describe('grounded VFX runtime integration', () => {
     expect(effectDrawing).not.toContain('drawRadialTicks')
   })
 
+  it('adds shared ground-linked particles to fields, lanes, and projectile destinations', () => {
+    const fieldMaterial = section(
+      '  private drawGroundedFieldMaterial(',
+      '  private drawGroundedLaneMaterial(',
+    )
+    const laneMaterial = section(
+      '  private drawGroundedLaneMaterial(',
+      '  private drawGraveglassMaterialSprite(',
+    )
+    const effectDrawing = section(
+      '  private drawEffects()',
+      '  private drawJoystick()',
+    )
+
+    expect(fieldMaterial).toContain('drawBossFieldParticles')
+    expect(laneMaterial).toContain('drawBossLaneParticles')
+    expect(effectDrawing).toContain('config.destination.x')
+    expect(effectDrawing).toContain('config.destination.y')
+    expect(effectDrawing).toContain('config.boss ? this.bossLevel.bossId')
+
+    for (const material of [fieldMaterial, laneMaterial]) {
+      expect(material).not.toContain('.stroke(')
+      expect(material).not.toContain('drawSegmentedRing')
+      expect(material).not.toContain('drawRadialTicks')
+      expect(material).not.toContain('drawPolyline')
+    }
+  })
+
   it('keeps Graveglass and Eclipse silhouettes while removing duplicate vector choreography', () => {
     const graveglass = section(
       '  private drawGraveglassPresentation(',
@@ -74,5 +102,17 @@ describe('grounded VFX runtime integration', () => {
     expect(runtimeSource).not.toContain('drawBossSignatureMotif')
     expect(runtimeSource).not.toContain('drawBossSpecialChoreography')
     expect(runtimeSource).not.toContain("case 'antler-prowl'")
+  })
+
+  it('removes the rectangular hero sanctum while preserving the grounded shadow', () => {
+    expect(runtimeSource).not.toContain('heroSanctum')
+    expect(runtimeSource).not.toContain('createHeroSanctumField')
+    expect(runtimeSource).toContain(
+      'this.heroGroundShadow = new Sprite(Texture.WHITE)',
+    )
+    expect(runtimeSource).toContain(
+      'this.actorGroundLayer.addChild(this.heroGroundShadow)',
+    )
+    expect(runtimeSource).toContain('updateGroundShadowFilter')
   })
 })
