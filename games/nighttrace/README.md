@@ -34,12 +34,13 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.15.0` — XP pickups and normal enemy kills again charge Pulse at their original rates while enclosure and primed bonuses still require a valid enemy capture; every boss now enters to a newly supplied, silence-trimmed and mastered cinematic score; the title screen uses a dedicated 1024×1536 transparent hero render instead of stretching a low-resolution animation-atlas cell
 - `v1.16.0` — every boss field, lane, and projectile-destination warning gains deterministic smoke, grit, and restrained cinders under bounded desktop, mobile, and reduced-flash budgets; diagrammatic line/ring/grid primitives stay absent, combat geometry and damage stay unchanged, and the rectangular hero-sanctum quad is removed while its small filtered ground shadow remains
 - `v1.16.1` — renderer-artifact hotfix: all broad normal-blended and custom-filter actor-ground quads are retired in favor of native contact geometry; all 30 boss and 30 horde pose cells are isolated behind transparent gutters to prevent adjacent release-frame bleed; boss particles become denser and clearer, and elite/ranged horde fields, lanes, and destinations gain restrained smoke, grit, debris, and cinders without changing combat timing or damage
-- `v1.16.2` — revives now restore 50% vitality; every Sovereign tracks the bearer across idle, movement, windup, release, and intro while correcting the left-authored Railjaw/Furnace row; an isolated hostile-boundary material review is published for approval without entering live combat
+- `v1.16.2` — revives now restore 50% vitality; every Sovereign tracks the bearer across idle, movement, windup, release, and intro while correcting the left-authored Railjaw/Furnace row; the hostile-boundary material reference is published for final approval
+- `v1.16.3` — the approved broken bone-white/silver filament and drifting-mote boundary enters live combat for every boss and elite field, lane, and projectile destination; adaptive fair-share allocation keeps three-, five-, and eight-footprint signatures readable on desktop, mobile, and reduced-flash settings without changing hitboxes or damage
 
 ## Runtime guide and visual evidence
 
 - [Animated Graveglass + Eclipse material review](https://jaredjos.github.io/H5-Games/nighttrace/review/spell-choreography/) — the authored structural choreography remains in live combat, now joined by the v1.10.0 all-power material-floor pass
-- [Hostile boundary material review](https://jaredjos.github.io/H5-Games/nighttrace/review/hostile-boundary/) — approval-only animated study for boss fields, lanes, destinations, and elite-horde fields; it is not connected to live combat
+- [Hostile boundary material reference](https://jaredjos.github.io/H5-Games/nighttrace/review/hostile-boundary/) — animated reference for the broken filaments and drifting motes now used by live boss and elite-horde fields, lanes, and projectile destinations
 - [Combat Systems Codex (PDF)](https://jaredjos.github.io/H5-Games/nighttrace/docs/NIGHTTRACE_Combat_Systems_Codex.pdf) — the v1.6.0 combat, upgrade, pickup, boss, difficulty, music, and mobile reference
 - [Upgrade states: Helio Lance through Rift Seeds](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-01.png)
 - [Upgrade states: Comet Swarm through Eclipse Harrow](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-02.png)
@@ -135,12 +136,21 @@ The hostile presentation layer now follows a three-beat motion contract:
 gather, decisive release, and short aftershock. Hordes use low-opacity,
 LOD-capped footfalls, wing trails, strike fields, and species palettes so they
 remain subordinate to the player arsenal. Sovereigns add signature seals,
-segmented ritual rings, directional streak echoes, phase authority marks, and
-high-contrast impact punctuation. Their crimson, bruised violet, bile, ember,
+ground pressure, displaced debris, phase authority marks, and high-contrast
+impact punctuation. Every boss and elite field, lane, and projectile
+destination also receives irregular bone-white/silver boundary filaments and
+independently drifting motes. A fair-share allocator reserves particles for
+every active footprint before distributing extras, so three-, five-, and
+eight-zone attacks remain readable without becoming continuous rings or
+diagrammatic outlines. Their crimson, bruised violet, bile, ember,
 and shadow colors are intentionally separate from the bearer’s cyan, solar
 gold, and prismatic weapon palette. The motion language was designed with
 HyperFrames guidance, while all interactive rendering remains deterministic
-native PixiJS for seek-safe gameplay and performance.
+native PixiJS for seek-safe gameplay and performance. Dedicated budgets cap the
+boundary treatment at 160 particles on desktop and 112 on mobile, reserving at
+least one filament and one mote for every footprint even at the runtime's
+maximum warning populations. Reduced-flash mode keeps that coverage with lower
+emission and motion.
 
 Each weapon has a full four-stage visual identity. Helio Lance builds from
 a focused solar rail into a crowned spear gate; Crescent Array grows into an

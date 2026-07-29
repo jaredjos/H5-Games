@@ -2,7 +2,7 @@
 
 ## Shipping target
 
-NIGHTTRACE v1.16.2 is an installable mobile web app suitable for HTTPS static
+NIGHTTRACE v1.16.3 is an installable mobile web app suitable for HTTPS static
 hosting and Add to Home Screen on current Android and iOS browsers. Menus remain
 usable in portrait; combat is landscape-first and pauses behind an accessible
 rotate gate when required. It supports safe-area insets, 44 px minimum touch
@@ -45,9 +45,13 @@ or remote backend. Campaign progress and settings are stored locally under
   validated in landscape-phone view
 - Hostile readability: boss and horde attack areas use ground-bound
   rubble/scorch materials plus deterministic smoke, grit, and restrained
-  cinders instead of diagrammatic rays, rings, grids, ticks, or polygon
-  outlines; field, lane, and projectile-destination cues use bounded desktop,
-  mobile, and reduced-flash particle budgets
+  cinders, with broken bone-white/silver boundary filaments and drifting motes
+  instead of diagrammatic rays, rings, grids, ticks, or polygon outlines;
+  every boss and elite field, lane, and projectile destination receives a fair
+  share across three-, five-, and eight-zone patterns within separate
+  160-particle desktop and 112-particle mobile boundary budgets; reduced-flash
+  mode preserves each footprint's filament/mote coverage at lower emission and
+  motion
 - Actor grounding: the hero sanctum, broad normal-blended ground plate, boss
   atmosphere filter, and filtered white-texture shadows are absent; native
   ellipse contact shadows retain depth without exposing rectangular surfaces

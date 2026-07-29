@@ -24,8 +24,8 @@ describe('Nighttrace PWA delivery', () => {
     expect(navigationSource).not.toContain('if (installedIndex) return installedIndex')
   })
 
-  it('uses the v1.16.2 cache namespace and precaches the sharp title hero', () => {
-    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.16.2'")
+  it('uses the v1.16.3 cache namespace and precaches the sharp title hero', () => {
+    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.16.3'")
     expect(serviceWorkerSource).toContain(
       "new URL('assets/nighttrace-title-hero-v2.png', SCOPE_URL).href",
     )
@@ -74,7 +74,7 @@ describe('Nighttrace PWA delivery', () => {
 
     expect(reload).toHaveBeenCalledTimes(1)
     expect(storage.setItem).toHaveBeenCalledWith(
-      'nighttrace:pwa-controller-reload:v1.16.2',
+      'nighttrace:pwa-controller-reload:v1.16.3',
       '1',
     )
   })

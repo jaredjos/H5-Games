@@ -1,6 +1,6 @@
 const UPDATE_EVENT = 'nighttrace:pwa-update'
 const UPDATE_CHECK_INTERVAL = 15 * 60 * 1000
-const CONTROLLER_RELOAD_KEY = 'nighttrace:pwa-controller-reload:v1.16.2'
+const CONTROLLER_RELOAD_KEY = 'nighttrace:pwa-controller-reload:v1.16.3'
 
 type IdleWindow = Window & {
   requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number

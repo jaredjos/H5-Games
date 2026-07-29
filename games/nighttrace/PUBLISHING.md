@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.16.2`
+- Current web release: `v1.16.3`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -151,8 +151,27 @@ The v1.16.2 revive/facing hotfix additionally requires:
   position during intro, idle, locomotion, windup, and release
 - the left-authored Railjaw/Furnace atlas row is corrected before runtime
   mirroring; no collision, velocity, damage, or attack timing changes
-- `review/hostile-boundary/` remains an isolated approval study and no live
-  `GameCanvas` code invokes its white-spray perimeter treatment
+- `review/hostile-boundary/` remains the animated visual reference for the
+  approved white-spray perimeter treatment
+
+The v1.16.3 live hostile-boundary gate additionally requires:
+
+- every boss and elite field, lane, and projectile destination carries short,
+  broken bone-white/silver filaments plus independently drifting motes
+- the boundary treatment remains textured, irregular, and physically broken;
+  it never forms a continuous outline, dotted ring, grid, radial tick system,
+  polygon fan, or line burst
+- three-, five-, and eight-footprint signatures allocate boundary particles
+  fairly, reserving a visible share for every active footprint before assigning
+  extras so later circles cannot be starved by earlier ones
+- the separate boundary budget is capped at 160 particles on desktop and 112
+  on mobile, enough to reserve at least one filament and one mote for every
+  footprint at the runtime's maximum warning populations; reduced-flash mode
+  keeps the same coverage while lowering emission and motion
+- deterministic seeds keep each footprint's filaments and motes stable across
+  identical runs without consuming simulation randomness
+- warning radius, lane width and length, collision, damage, targeting,
+  scheduling, and projectile destinations remain unchanged
 
 ## Release archives
 
@@ -198,7 +217,8 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.15.0`: original XP and normal-kill Pulse charge paths return without weakening valid-enclosure rewards; NastelBom's supplied boss score replaces the former boss track through normalized full/compact derivatives; a dedicated 1024×1536 transparent title hero replaces the stretched 627×627 atlas cell.
 - `v1.16.0`: deterministic smoke, grit, and restrained cinders give every boss field, lane, and projectile-destination warning material depth across bounded desktop, mobile, and reduced-flash budgets; no diagrammatic primitives or gameplay geometry change; the rectangular hero-sanctum quad is removed while the small filtered ground shadow remains.
 - `v1.16.1`: removes every remaining broad normal-blended/custom-filter actor-ground surface, isolates all 60 boss/horde pose cells behind transparent gutters, strengthens boss warning smoke/grit/cinders, and adds restrained physical particles to elite/ranged horde warnings without changing combat mechanics.
-- `v1.16.2`: revives restore 50% vitality, every Sovereign faces the live bearer with authored-row correction, and a separate animated hostile-boundary review is published without integrating the proposed perimeter treatment into combat.
+- `v1.16.2`: revives restore 50% vitality, every Sovereign faces the live bearer with authored-row correction, and the animated hostile-boundary reference is published for final approval.
+- `v1.16.3`: the approved broken bone-white/silver boundary treatment enters live PixiJS combat for every boss and elite field, lane, and projectile destination; deterministic fair-share allocation keeps three-, five-, and eight-footprint signatures readable within dedicated desktop, mobile, and reduced-flash budgets without changing gameplay geometry.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

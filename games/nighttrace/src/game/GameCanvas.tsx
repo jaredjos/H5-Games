@@ -167,6 +167,11 @@ import {
   type BossTelegraphParticle,
 } from './bossTelegraphParticles'
 import {
+  reserveHostileBoundaryParticleQuota,
+  sampleHostileBoundaryParticles,
+  type HostileBoundaryParticle,
+} from './hostileBoundaryParticles'
+import {
   SUPPORT_PICKUP_LIFETIME_SECONDS,
   supportPickupPresentation,
 } from './pickupPresentation'
@@ -545,6 +550,8 @@ class NighttraceRuntime {
   private readonly groundedVfxMaterialSprites: Sprite[] = []
   private groundedVfxMaterialCursor = 0
   private groundedVfxParticleBudget = 0
+  private groundedVfxBoundaryBudget = 0
+  private hostileBoundaryFootprintsRemaining = 0
   private sparkTexture = Texture.WHITE
   private background?: Sprite
   private settings: GameSettings
@@ -4941,6 +4948,33 @@ class NighttraceRuntime {
     return this.visualLod === 'mobile' ? 'mobile' : 'desktop'
   }
 
+  private allocateHostileBoundaryParticleQuotas() {
+    this.groundedVfxBoundaryBudget =
+      this.visualLod === 'mobile' ? 112 : 160
+    this.hostileBoundaryFootprintsRemaining =
+      this.telegraphs.reduce(
+        (count, telegraph) => count + Number(telegraph.active),
+        0,
+      ) +
+      this.hostileProjectiles.reduce(
+        (count, projectile) =>
+          count +
+          Number(hostileProjectilePoseAt(projectile.state).destinationVisible),
+        0,
+      )
+  }
+
+  private reserveHostileBoundaryQuota() {
+    const reservation = reserveHostileBoundaryParticleQuota({
+      remainingBudget: this.groundedVfxBoundaryBudget,
+      remainingFootprints: this.hostileBoundaryFootprintsRemaining,
+    })
+    this.groundedVfxBoundaryBudget = reservation.remainingBudget
+    this.hostileBoundaryFootprintsRemaining =
+      reservation.remainingFootprints
+    return reservation.quota
+  }
+
   private drawBossTelegraphParticle(
     particle: BossTelegraphParticle,
     x: number,
@@ -5049,6 +5083,104 @@ class NighttraceRuntime {
       })
   }
 
+  private drawHostileBoundaryParticle(
+    particle: HostileBoundaryParticle,
+    x: number,
+    y: number,
+    scale: number,
+    rotationOffset = 0,
+  ) {
+    if (particle.alpha <= 0.003) return
+    const bone = 0xe8e4d8
+    const silver = 0xb7c2c3
+    const color =
+      Math.abs(particle.baseU * 17 + particle.baseV * 29) % 1 > 0.38
+        ? bone
+        : silver
+    const size = Math.max(0.72, scale * particle.size)
+    const rotation = rotationOffset + particle.rotation
+
+    if (particle.kind === 'mote') {
+      this.groundedVfxCinderGraphics
+        .ellipse(
+          x,
+          y,
+          size * (2.15 + particle.glowAlpha),
+          size * (1.7 + particle.glowAlpha * 0.4),
+        )
+        .fill({
+          color: silver,
+          alpha: particle.alpha * particle.glowAlpha * 0.3,
+        })
+      this.groundedVfxCinderGraphics
+        .ellipse(x, y, size, size * 0.82)
+        .fill({
+          color,
+          alpha: particle.alpha * 0.92,
+        })
+      return
+    }
+
+    const halfLength = size * particle.stretch
+    const halfWidth = Math.max(0.46, size * 0.46)
+    const tangentX = Math.cos(rotation)
+    const tangentY = Math.sin(rotation)
+    const normalX = -tangentY
+    const normalY = tangentX
+    const bend =
+      Math.sin(particle.baseU * 19 + particle.baseV * 23) *
+      halfWidth *
+      0.88
+    const tipAX = x - tangentX * halfLength + normalX * bend
+    const tipAY = y - tangentY * halfLength + normalY * bend
+    const tipBX = x + tangentX * halfLength - normalX * bend * 0.45
+    const tipBY = y + tangentY * halfLength - normalY * bend * 0.45
+
+    this.groundedVfxCinderGraphics
+      .poly(
+        [
+          tipAX - normalX * halfWidth * 1.8,
+          tipAY - normalY * halfWidth * 1.8,
+          tipBX - normalX * halfWidth * 0.72,
+          tipBY - normalY * halfWidth * 0.72,
+          tipBX + normalX * halfWidth * 0.72,
+          tipBY + normalY * halfWidth * 0.72,
+          tipAX + normalX * halfWidth * 1.8,
+          tipAY + normalY * halfWidth * 1.8,
+        ],
+        true,
+      )
+      .fill({
+        color: silver,
+        alpha: particle.alpha * particle.glowAlpha * 0.2,
+      })
+    this.groundedVfxCinderGraphics
+      .poly(
+        [
+          tipAX,
+          tipAY,
+          x - normalX * halfWidth,
+          y - normalY * halfWidth,
+          tipBX,
+          tipBY,
+          x + normalX * halfWidth,
+          y + normalY * halfWidth,
+        ],
+        true,
+      )
+      .fill({
+        color,
+        alpha: particle.alpha,
+      })
+  }
+
+  private hostileBoundaryStage(stage: GroundedVfxStage): 0 | 1 | 2 | 3 {
+    if (stage === 'combined') return 1
+    if (stage === 'mastered') return 2
+    if (stage === 'final') return 3
+    return 0
+  }
+
   private drawHostileFieldParticles(
     x: number,
     y: number,
@@ -5060,26 +5192,49 @@ class NighttraceRuntime {
     palette: HostileTelegraphMaterialPalette,
     boss: boolean,
   ) {
-    if (this.groundedVfxParticleBudget <= 0) return
-    const particles = sampleBossTelegraphParticles({
-      bossId,
-      palette,
+    const boundaryQuota = this.reserveHostileBoundaryQuota()
+    const boundaryParticles = sampleHostileBoundaryParticles({
       prominence: boss ? 'boss' : 'horde',
       footprint: 'field',
-      stage,
+      stage: this.hostileBoundaryStage(stage),
       lod: this.groundedVfxLod(),
       progress,
       motionTime: this.motionClock,
       seed,
       reducedFlash: this.settings.reducedFlash,
-      maxParticles: this.groundedVfxParticleBudget,
+      maxParticles: boundaryQuota,
     })
-    this.groundedVfxParticleBudget -= particles.length
-    for (const particle of particles) {
-      this.drawBossTelegraphParticle(
+
+    if (this.groundedVfxParticleBudget > 0) {
+      const particles = sampleBossTelegraphParticles({
+        bossId,
+        palette,
+        prominence: boss ? 'boss' : 'horde',
+        footprint: 'field',
+        stage,
+        lod: this.groundedVfxLod(),
+        progress,
+        motionTime: this.motionClock,
+        seed,
+        reducedFlash: this.settings.reducedFlash,
+        maxParticles: this.groundedVfxParticleBudget,
+      })
+      this.groundedVfxParticleBudget -= particles.length
+      for (const particle of particles) {
+        this.drawBossTelegraphParticle(
+          particle,
+          x + particle.u * radius * 0.92,
+          y + particle.v * radius * 0.7 - particle.lift * radius * 0.34,
+          radius,
+        )
+      }
+    }
+
+    for (const particle of boundaryParticles) {
+      this.drawHostileBoundaryParticle(
         particle,
-        x + particle.u * radius * 0.92,
-        y + particle.v * radius * 0.7 - particle.lift * radius * 0.34,
+        x + particle.u * radius,
+        y + particle.v * radius * 0.9,
         radius,
       )
     }
@@ -5096,21 +5251,6 @@ class NighttraceRuntime {
     palette: HostileTelegraphMaterialPalette,
     boss: boolean,
   ) {
-    if (this.groundedVfxParticleBudget <= 0) return
-    const particles = sampleBossTelegraphParticles({
-      bossId,
-      palette,
-      prominence: boss ? 'boss' : 'horde',
-      footprint: 'lane',
-      stage,
-      lod: this.groundedVfxLod(),
-      progress,
-      motionTime: this.motionClock,
-      seed,
-      reducedFlash: this.settings.reducedFlash,
-      maxParticles: this.groundedVfxParticleBudget,
-    })
-    this.groundedVfxParticleBudget -= particles.length
     const dx = end.x - start.x
     const dy = end.y - start.y
     const length = Math.max(1, Math.hypot(dx, dy))
@@ -5119,17 +5259,59 @@ class NighttraceRuntime {
     const normalX = -tangentY
     const normalY = tangentX
     const angle = Math.atan2(dy, dx)
-    for (const particle of particles) {
+
+    const boundaryQuota = this.reserveHostileBoundaryQuota()
+    const boundaryParticles = sampleHostileBoundaryParticles({
+      prominence: boss ? 'boss' : 'horde',
+      footprint: 'lane',
+      stage: this.hostileBoundaryStage(stage),
+      lod: this.groundedVfxLod(),
+      progress,
+      motionTime: this.motionClock,
+      seed,
+      reducedFlash: this.settings.reducedFlash,
+      maxParticles: boundaryQuota,
+    })
+
+    if (this.groundedVfxParticleBudget > 0) {
+      const particles = sampleBossTelegraphParticles({
+        bossId,
+        palette,
+        prominence: boss ? 'boss' : 'horde',
+        footprint: 'lane',
+        stage,
+        lod: this.groundedVfxLod(),
+        progress,
+        motionTime: this.motionClock,
+        seed,
+        reducedFlash: this.settings.reducedFlash,
+        maxParticles: this.groundedVfxParticleBudget,
+      })
+      this.groundedVfxParticleBudget -= particles.length
+      for (const particle of particles) {
+        const along = particle.u * length
+        const across = particle.v * width
+        this.drawBossTelegraphParticle(
+          particle,
+          start.x + tangentX * along + normalX * across,
+          start.y +
+            tangentY * along +
+            normalY * across -
+            particle.lift * width * 0.58,
+          width * 1.38,
+          angle,
+        )
+      }
+    }
+
+    for (const particle of boundaryParticles) {
       const along = particle.u * length
       const across = particle.v * width
-      this.drawBossTelegraphParticle(
+      this.drawHostileBoundaryParticle(
         particle,
         start.x + tangentX * along + normalX * across,
-        start.y +
-          tangentY * along +
-          normalY * across -
-          particle.lift * width * 0.58,
-        width * 1.38,
+        start.y + tangentY * along + normalY * across,
+        width * 1.55,
         angle,
       )
     }
@@ -5148,10 +5330,24 @@ class NighttraceRuntime {
     bossId?: BossId,
     hostilePalette?: HostileTelegraphMaterialPalette,
   ) {
-    const texture = this.hostileGroundFieldTexture
-    if (!texture) return
     const pose = sampleGroundedVfxPose(kind, { progress })
-    if (!pose.visible) return
+    const texture = this.hostileGroundFieldTexture
+    if (!pose.visible || !texture) {
+      if (hostilePalette) {
+        this.drawHostileFieldParticles(
+          x,
+          y,
+          radius,
+          progress,
+          stage,
+          seed,
+          bossId,
+          hostilePalette,
+          boss,
+        )
+      }
+      return
+    }
     const profile = groundedVfxMaterialProfile({
       kind,
       lod: this.groundedVfxLod(),
@@ -5325,10 +5521,24 @@ class NighttraceRuntime {
     bossId?: BossId,
     hostilePalette?: HostileTelegraphMaterialPalette,
   ) {
-    const texture = this.hostileGroundLaneTexture
-    if (!texture) return
     const pose = sampleGroundedVfxPose(kind, { progress })
-    if (!pose.visible) return
+    const texture = this.hostileGroundLaneTexture
+    if (!pose.visible || !texture) {
+      if (hostilePalette) {
+        this.drawHostileLaneParticles(
+          start,
+          end,
+          width,
+          progress,
+          stage,
+          seed,
+          bossId,
+          hostilePalette,
+          boss,
+        )
+      }
+      return
+    }
     const profile = groundedVfxMaterialProfile({
       kind,
       lod: this.groundedVfxLod(),
@@ -6244,6 +6454,7 @@ class NighttraceRuntime {
 
   private drawEffects() {
     this.beginGroundedVfxFrame()
+    this.allocateHostileBoundaryParticleQuotas()
     this.drawWeaponEffects()
     this.loopGraphics.clear()
     for (let index = this.loopEffects.length - 1; index >= 0; index -= 1) {

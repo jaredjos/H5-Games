@@ -83,4 +83,78 @@ describe('hostile combat runtime integration', () => {
     expect(update).toContain('this.damagePlayer(event.damage)')
     expect(update.match(/this\.damagePlayer\(event\.damage\)/g)).toHaveLength(1)
   })
+
+  it('keeps telegraph timing, hit geometry, and damage resolution unchanged', () => {
+    const update = section(
+      '  private updateTelegraphs(',
+      '  private launchHostileProjectile(',
+    )
+
+    expect(update).toMatch(/telegraph\.life\s*-=\s*delta/)
+    expect(update).toContain('if (telegraph.life > 0) continue')
+    expect(update).toMatch(
+      /playerDeltaX\s*\*\*\s*2\s*\+\s*playerDeltaY\s*\*\*\s*2\s*<=\s*\(telegraph\.radius\s*\+\s*18\)\s*\*\*\s*2/,
+    )
+    expect(update).toMatch(/localX\s*>=\s*0/)
+    expect(update).toMatch(/localX\s*<=\s*telegraph\.length/)
+    expect(update).toMatch(
+      /Math\.abs\(localY\)\s*<=\s*telegraph\.width\s*\*\s*0\.5\s*\+\s*18/,
+    )
+    expect(update.match(/this\.damagePlayer\(telegraph\.damage\)/g)).toHaveLength(
+      1,
+    )
+    expect(update).not.toContain('sampleHostileBoundaryParticles')
+    expect(update).not.toContain('allocateHostileBoundaryParticleQuotas')
+  })
+
+  it('keeps hostile-warning drawing cosmetic and read-only', () => {
+    const effects = section(
+      '  private drawEffects()',
+      '  private drawJoystick()',
+    )
+    const hostileDrawingStart = effects.indexOf(
+      'for (const telegraph of this.telegraphs)',
+    )
+    const hostileDrawingEnd = effects.indexOf(
+      'this.finishGroundedVfxFrame()',
+      hostileDrawingStart,
+    )
+    expect(hostileDrawingStart).toBeGreaterThanOrEqual(0)
+    expect(hostileDrawingEnd).toBeGreaterThan(hostileDrawingStart)
+    const hostileDrawing = effects.slice(
+      hostileDrawingStart,
+      hostileDrawingEnd,
+    )
+
+    expect(hostileDrawing).not.toContain('damagePlayer(')
+    expect(hostileDrawing).not.toContain('advanceHostileProjectile(')
+    expect(hostileDrawing).not.toMatch(
+      /telegraph\.(?:life|total|radius|length|width|damage)\s*(?:[+\-*/]?=|\+\+|--)/,
+    )
+    expect(hostileDrawing).not.toMatch(
+      /projectile\.state\s*(?:[+\-*/]?=|\+\+|--)/,
+    )
+  })
+
+  it('preserves the authored boss multi-zone count formulas', () => {
+    const bossAttack = section(
+      '  private bossAttack(enemy: EnemyEntity)',
+      '  private mirroredPlayerPoint(',
+    )
+
+    expect(bossAttack.match(/const circles = 3 \+ enemy\.phase/g)).toHaveLength(
+      1,
+    )
+    expect(
+      bossAttack.match(/const clusterCount = 2 \+ enemy\.phase/g),
+    ).toHaveLength(1)
+    expect(
+      bossAttack.match(/const spiralCount = 4 \+ enemy\.phase/g),
+    ).toHaveLength(1)
+    expect(bossAttack).toMatch(
+      /const spiralCount = 4 \+ enemy\.phase[\s\S]*?for\s*\(let index = 0; index < spiralCount; index \+= 1\)[\s\S]*?if\s*\(enemy\.phase >= 3\)[\s\S]*?this\.launchHostileProjectile\([\s\S]*?\{\s*x: this\.player\.x,\s*y: this\.player\.y\s*\}/,
+    )
+    expect(bossAttack).not.toContain('sampleHostileBoundaryParticles')
+    expect(bossAttack).not.toContain('allocateHostileBoundaryParticleQuotas')
+  })
 })
