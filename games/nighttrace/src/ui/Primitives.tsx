@@ -187,13 +187,15 @@ export function RankPips({
   rank,
   max = 5,
   awakened = false,
+  label = 'Rank',
 }: {
   rank: number
   max?: number
   awakened?: boolean
+  label?: string
 }) {
   return (
-    <span className={`rank-pips${awakened ? ' rank-pips--awakened' : ''}`} aria-label={`Rank ${rank} of ${max}`}>
+    <span className={`rank-pips${awakened ? ' rank-pips--awakened' : ''}`} aria-label={`${label} ${rank} of ${max}`}>
       {Array.from({ length: max }, (_, index) => (
         <Diamond key={index} active={index < rank} />
       ))}

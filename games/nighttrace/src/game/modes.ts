@@ -180,7 +180,7 @@ export const COMBAT_LAB_PRESETS: readonly CombatLabPresetDefinition[] = [
   {
     id: 'solo',
     label: 'Solo',
-    description: 'Rank I weapon without its paired module.',
+    description: 'Spell Rank I without its paired module.',
     weaponRank: 1,
     moduleRank: 0,
     awakened: false,
@@ -188,7 +188,7 @@ export const COMBAT_LAB_PRESETS: readonly CombatLabPresetDefinition[] = [
   {
     id: 'combined',
     label: 'Combined',
-    description: 'Rank I weapon combined with its paired module.',
+    description: 'Spell Rank I combined with its paired module.',
     weaponRank: 1,
     moduleRank: 1,
     awakened: false,
@@ -196,7 +196,7 @@ export const COMBAT_LAB_PRESETS: readonly CombatLabPresetDefinition[] = [
   {
     id: 'mastered',
     label: 'Mastered',
-    description: 'Rank V weapon before its final awakening.',
+    description: 'Spell Rank V before its final awakening.',
     weaponRank: 5,
     moduleRank: 0,
     awakened: false,
@@ -204,7 +204,7 @@ export const COMBAT_LAB_PRESETS: readonly CombatLabPresetDefinition[] = [
   {
     id: 'final',
     label: 'Final',
-    description: 'Awakened Rank V weapon with a Rank III paired module.',
+    description: 'Awakened Spell Rank V with a Module Rank III pairing.',
     weaponRank: 5,
     moduleRank: 3,
     awakened: true,

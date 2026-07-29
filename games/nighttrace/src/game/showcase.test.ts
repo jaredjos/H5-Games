@@ -69,8 +69,20 @@ describe('local weapon showcase', () => {
       expect(showcaseCaptureSeconds(weaponId)).toBeGreaterThan(0.75)
       expect(showcaseCaptureSeconds(weaponId)).toBeLessThanOrEqual(1.5)
     }
+    expect(showcaseLabel({ weaponId: 'helio-lance', state: 'solo' })).toContain(
+      'SPELL RANK I',
+    )
+    expect(showcaseLabel({ weaponId: 'helio-lance', state: 'combined' })).toContain(
+      'COMBINED SPELL RANK I',
+    )
+    expect(showcaseLabel({ weaponId: 'helio-lance', state: 'mastered' })).toContain(
+      'SPELL RANK V',
+    )
     expect(showcaseLabel({ weaponId: 'comet-swarm', state: 'final' })).toContain(
       'PERIHELION HUNT',
+    )
+    expect(showcaseLabel({ weaponId: 'comet-swarm', state: 'final' })).toContain(
+      'AWAKENED SPELL RANK V / MODULE RANK III',
     )
   })
 })

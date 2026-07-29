@@ -131,6 +131,10 @@ import {
   type WeaponVfxState,
 } from './weaponVfx'
 import {
+  spellVisualRecipe,
+  type SpellMaterialFrame,
+} from './spellVisualRecipe'
+import {
   buildReplacementWeaponPattern,
   resolvePatternHits,
   type CapsulePatternStrike,
@@ -238,6 +242,16 @@ const HERO_MATERIAL_FRAME = Object.freeze({
   fracture: 13,
   dust: 15,
 } as const)
+const SPELL_MATERIAL_FRAME_INDEX = Object.freeze({
+  gather: HERO_MATERIAL_FRAME.gather,
+  'drift-a': HERO_MATERIAL_FRAME.driftA,
+  'drift-b': HERO_MATERIAL_FRAME.driftB,
+  impact: HERO_MATERIAL_FRAME.impact,
+  lance: HERO_MATERIAL_FRAME.lance,
+  fragments: HERO_MATERIAL_FRAME.fragments,
+  fracture: HERO_MATERIAL_FRAME.fracture,
+  dust: HERO_MATERIAL_FRAME.dust,
+} as const satisfies Readonly<Record<SpellMaterialFrame, number>>)
 
 export interface GameCanvasHandle {
   beginEncounter(): void
@@ -4896,7 +4910,77 @@ class NighttraceRuntime {
         .fill({
           color: grit % 3 === 0 ? options.tint : 0x687176,
           alpha: envelope * (grit % 3 === 0 ? 0.12 : 0.16),
-        })
+      })
+    }
+  }
+
+  private drawSpellRecipeSatellites(
+    effect: WeaponEffectEntity,
+    options: {
+      x: number
+      y: number
+      radius: number
+      progress: number
+      angle: number
+      tint: number
+      density?: number
+      opacity?: number
+      stretchX?: number
+      stretchY?: number
+    },
+  ) {
+    const recipe = spellVisualRecipe(effect.weaponId, effect.visualState)
+    const requested = Math.ceil(
+      recipe.satelliteCount * (options.density ?? 1),
+    )
+    const count = Math.min(
+      this.visualLod === 'mobile' ? 4 : 7,
+      Math.max(0, requested),
+    )
+    if (count <= 0) return
+
+    for (let satellite = 0; satellite < count; satellite += 1) {
+      const spread =
+        (replacementCosmeticUnit(effect.seed, satellite, 151) - 0.5) *
+        Math.PI *
+        1.7
+      const satelliteAngle =
+        options.angle +
+        spread +
+        (satellite % 2 ? 0.24 : -0.24)
+      const distance =
+        options.radius *
+        (0.34 +
+          replacementCosmeticUnit(effect.seed, satellite, 157) * 0.72)
+      const frameName =
+        recipe.materialFrames[
+          (satellite + recipe.rankEmbellishment) %
+            recipe.materialFrames.length
+        ]
+      this.drawHeroPowerMaterialEvent({
+        x: options.x + Math.cos(satelliteAngle) * distance,
+        y:
+          options.y +
+          Math.sin(satelliteAngle) *
+            distance *
+            (0.58 + recipe.materialLayerCount * 0.025),
+        radius:
+          options.radius *
+          (0.13 +
+            replacementCosmeticUnit(effect.seed, satellite, 163) * 0.08),
+        progress: options.progress,
+        stage: effect.visualState.stage,
+        seed: effect.seed + satellite * 103,
+        tint: options.tint,
+        frame: SPELL_MATERIAL_FRAME_INDEX[frameName],
+        angle:
+          satelliteAngle +
+          (replacementCosmeticUnit(effect.seed, satellite, 167) - 0.5) *
+            0.5,
+        materialOpacity: options.opacity ?? 0.13,
+        stretchX: options.stretchX ?? 1.12,
+        stretchY: options.stretchY ?? 0.76,
+      })
     }
   }
 
@@ -5723,11 +5807,13 @@ class NighttraceRuntime {
     const stageProfile = authoredSpellStageMaterialProfile(
       effect.visualState.stage,
     )
+    const recipe = spellVisualRecipe(effect.weaponId, effect.visualState)
     const variation =
       replacementCosmeticUnit(effect.seed + strike.index * 131, 0, 31) - 0.5
     const targetHeight =
       Math.max(86, strike.radius * 2.42) *
       stageProfile.materialScale *
+      (1 + recipe.rankEmbellishment * 0.035) *
       (1 + variation * 0.1)
     const sprite = this.acquireAuthoredSpellMaterialSprite(texture)
     const textureAspect = texture.width / Math.max(1, texture.height)
@@ -5757,7 +5843,12 @@ class NighttraceRuntime {
     const stageProfile = authoredSpellStageMaterialProfile(
       effect.visualState.stage,
     )
-    const gateCount = stageProfile.gateCountPerStrike
+    const recipe = spellVisualRecipe(effect.weaponId, effect.visualState)
+    const gateCount =
+      stageProfile.gateCountPerStrike +
+      (effect.visualState.stage === 'final'
+        ? 0
+        : Math.floor(recipe.rankEmbellishment / 2))
 
     for (let gate = 0; gate < gateCount; gate += 1) {
       const staggeredTime = localTime - gate * 0.035
@@ -5779,6 +5870,7 @@ class NighttraceRuntime {
       const targetHeight =
         Math.max(76, strike.radius * 2.72) *
         stageProfile.materialScale *
+        (1 + recipe.rankEmbellishment * 0.03) *
         (1 + variation * 0.07)
       const sprite = this.acquireAuthoredSpellMaterialSprite(texture)
       const textureAspect = texture.width / Math.max(1, texture.height)
@@ -5851,6 +5943,24 @@ class NighttraceRuntime {
       0.92,
     )
     this.drawGraveglassMaterialSprite(effect, strike, localTime)
+    const recipe = spellVisualRecipe(effect.weaponId, effect.visualState)
+    if (strike.index === 0 && recipe.rankEmbellishment > 0) {
+      const profile = weaponVfxProfile(effect.weaponId, effect.visualState)
+      this.drawSpellRecipeSatellites(effect, {
+        x: strike.center.x,
+        y: strike.center.y,
+        radius: strike.radius * 2.05,
+        progress,
+        angle: effect.angle,
+        tint: profile.secondaryColor,
+        density:
+          recipe.rankEmbellishment /
+          Math.max(1, recipe.satelliteCount),
+        opacity: 0.09,
+        stretchX: 0.68,
+        stretchY: 1.36,
+      })
+    }
   }
 
   private drawEclipsePresentation(
@@ -5872,6 +5982,28 @@ class NighttraceRuntime {
       0.88,
     )
     this.drawEclipseGateMaterialSprites(effect, strike, localTime)
+    const recipe = spellVisualRecipe(effect.weaponId, effect.visualState)
+    if (strike.index === 0 && recipe.rankEmbellishment > 0) {
+      const profile = weaponVfxProfile(effect.weaponId, effect.visualState)
+      const center = {
+        x: (strike.start.x + strike.end.x) * 0.5,
+        y: (strike.start.y + strike.end.y) * 0.5,
+      }
+      this.drawSpellRecipeSatellites(effect, {
+        x: center.x,
+        y: center.y,
+        radius: strike.radius * 2.28,
+        progress,
+        angle: effect.angle,
+        tint: profile.secondaryColor,
+        density:
+          recipe.rankEmbellishment /
+          Math.max(1, recipe.satelliteCount),
+        opacity: 0.09,
+        stretchX: 1.28,
+        stretchY: 0.62,
+      })
+    }
   }
 
   private drawSupportPickupBeacon(
@@ -6151,6 +6283,7 @@ class NighttraceRuntime {
       const state = effect.visualState
       const stage = this.vfxStageIndex(state.stage)
       const profile = weaponVfxProfile(effect.weaponId, state)
+      const recipe = spellVisualRecipe(effect.weaponId, state)
       const rotation = effect.angle + progress * (0.8 + stage * 0.26) + effect.seed * 0.013
 
       switch (effect.kind) {
@@ -6168,6 +6301,65 @@ class NighttraceRuntime {
             materialOpacity: 0.34,
             stretchX: 1.28 + stage * 0.08,
             stretchY: 0.72,
+          })
+          const crownProngs = Math.min(5, recipe.structureCount)
+          for (let prong = 1; prong < crownProngs; prong += 1) {
+            const side = prong % 2 ? -1 : 1
+            const tier = Math.ceil(prong / 2)
+            const tangentX = -Math.sin(effect.angle)
+            const tangentY = Math.cos(effect.angle)
+            const offset = side * (10 + tier * 8)
+            this.drawHeroPowerMaterialEvent({
+              x:
+                effect.x +
+                tangentX * offset -
+                Math.cos(effect.angle) * tier * 3,
+              y:
+                effect.y +
+                tangentY * offset -
+                Math.sin(effect.angle) * tier * 3,
+              radius: 22 + stage * 5 - tier,
+              progress,
+              stage: state.stage,
+              seed: effect.seed + prong * 109,
+              tint:
+                prong % 3 === 0
+                  ? profile.secondaryColor
+                  : profile.glowColor,
+              frame: HERO_MATERIAL_FRAME.lance,
+              angle: effect.angle + side * (0.08 + tier * 0.035),
+              materialOpacity: stage === 3 ? 0.21 : 0.14,
+              stretchX: 1.18 + stage * 0.05,
+              stretchY: 0.58,
+            })
+          }
+          if (recipe.awakeningSignature === 'crowned-spear') {
+            this.drawHeroPowerMaterialEvent({
+              x: effect.x - Math.cos(effect.angle) * 8,
+              y: effect.y - Math.sin(effect.angle) * 8,
+              radius: 46,
+              progress,
+              stage: state.stage,
+              seed: effect.seed + 503,
+              tint: profile.secondaryColor,
+              frame: HERO_MATERIAL_FRAME.gather,
+              angle: effect.angle + Math.PI * 0.5,
+              materialOpacity: 0.2,
+              stretchX: 1.2,
+              stretchY: 0.92,
+            })
+          }
+          this.drawSpellRecipeSatellites(effect, {
+            x: effect.x,
+            y: effect.y,
+            radius: 50 + recipe.rankEmbellishment * 3,
+            progress,
+            angle: effect.angle,
+            tint: profile.secondaryColor,
+            density: 0.72,
+            opacity: 0.1,
+            stretchX: 1.28,
+            stretchY: 0.56,
           })
           break
         }
@@ -6188,7 +6380,10 @@ class NighttraceRuntime {
         }
         case 'crescent-orbit': {
           const orbitCount = capDecorativeDensity(
-            3 + stage * 2 + (state.awakened ? 1 : 0),
+            Math.min(
+              12,
+              recipe.structureCount + recipe.rankEmbellishment,
+            ),
             state.stage,
           )
           const orbitRadius = radius * (0.68 + attack * 0.32)
@@ -6218,6 +6413,22 @@ class NighttraceRuntime {
               profile.accentColor,
               motionAlpha * 0.92,
             )
+          }
+          if (recipe.awakeningSignature === 'eclipse-wheel') {
+            this.drawHeroPowerMaterialEvent({
+              x: effect.x,
+              y: effect.y,
+              radius: orbitRadius * 0.74,
+              progress,
+              stage: state.stage,
+              seed: effect.seed + 509,
+              tint: profile.secondaryColor,
+              frame: HERO_MATERIAL_FRAME.fracture,
+              angle: -rotation * 0.42,
+              materialOpacity: 0.2,
+              stretchX: 1.08,
+              stretchY: 0.86,
+            })
           }
           break
         }
@@ -6251,13 +6462,32 @@ class NighttraceRuntime {
         }
         case 'arc-chain': {
           const lightning = this.buildLightningPoints(effect.points ?? [], effect.seed, progress)
-          this.drawPolyline(graphics, lightning, profile.glowColor, 17 + stage * 3, motionAlpha * 0.1)
-          this.drawPolyline(graphics, lightning, profile.accentColor, 6 + stage * 0.8, motionAlpha * 0.64)
-          this.drawPolyline(graphics, lightning, profile.coreColor, 1.7 + stage * 0.28, motionAlpha)
+          this.drawPolyline(
+            graphics,
+            lightning,
+            profile.glowColor,
+            17 + stage * 3 + recipe.rankEmbellishment * 0.8,
+            motionAlpha * 0.1,
+          )
+          this.drawPolyline(
+            graphics,
+            lightning,
+            profile.accentColor,
+            6 + stage * 0.8 + recipe.rankEmbellishment * 0.2,
+            motionAlpha * 0.64,
+          )
+          this.drawPolyline(
+            graphics,
+            lightning,
+            profile.coreColor,
+            1.7 + stage * 0.28 + recipe.rankEmbellishment * 0.07,
+            motionAlpha,
+          )
           for (let nodeIndex = 1; nodeIndex < (effect.points?.length ?? 0); nodeIndex += 1) {
             const node = effect.points?.[nodeIndex]
             if (!node) continue
-            const nodeRadius = 10 + stage * 2.7
+            const nodeRadius =
+              10 + stage * 2.7 + recipe.rankEmbellishment * 0.7
             this.drawHeroPowerMaterialEvent({
               x: node.x,
               y: node.y,
@@ -6286,6 +6516,30 @@ class NighttraceRuntime {
               stretchY: 1.18,
             })
           }
+          const choirAnchor =
+            effect.points && effect.points.length > 1
+              ? effect.points[
+                  Math.min(
+                    effect.points.length - 1,
+                    Math.max(1, Math.floor(effect.points.length * 0.5)),
+                  )
+                ]
+              : { x: effect.x, y: effect.y }
+          this.drawSpellRecipeSatellites(effect, {
+            x: choirAnchor.x,
+            y: choirAnchor.y,
+            radius: 42 + recipe.materialLayerCount * 5,
+            progress,
+            angle: effect.angle - Math.PI * 0.5,
+            tint:
+              recipe.awakeningSignature === 'cathedral-storm'
+                ? profile.secondaryColor
+                : profile.accentColor,
+            density: 0.58,
+            opacity: stage === 3 ? 0.16 : 0.1,
+            stretchX: 0.72,
+            stretchY: 1.3,
+          })
           break
         }
         case 'rift-cast':
@@ -6308,16 +6562,34 @@ class NighttraceRuntime {
             angle: -rotation * 0.4,
             materialOpacity: impact ? 0.27 : 0.18,
           })
-          for (let seedIndex = 0; seedIndex < stage; seedIndex += 1) {
+          const seedCount = Math.min(
+            this.visualLod === 'mobile' ? 4 : 5,
+            recipe.structureCount + recipe.rankEmbellishment,
+          )
+          for (let seedIndex = 1; seedIndex < seedCount; seedIndex += 1) {
             const seedAngle =
               -rotation * 0.36 +
               replacementCosmeticUnit(effect.seed, seedIndex, 83) * Math.PI * 2
             const seedDistance =
               coreRadius *
               (1.9 + replacementCosmeticUnit(effect.seed, seedIndex, 89) * 1.8)
+            const seedX = centerX + Math.cos(seedAngle) * seedDistance
+            const seedY =
+              centerY + Math.sin(seedAngle) * seedDistance * 0.66
+            graphics
+              .ellipse(
+                seedX,
+                seedY,
+                coreRadius * (0.28 + stage * 0.025),
+                coreRadius * (0.2 + stage * 0.018),
+              )
+              .fill({
+                color: 0x010608,
+                alpha: motionAlpha * (impact ? 0.92 : 0.78),
+              })
             this.drawHeroPowerMaterialEvent({
-              x: centerX + Math.cos(seedAngle) * seedDistance,
-              y: centerY + Math.sin(seedAngle) * seedDistance * 0.66,
+              x: seedX,
+              y: seedY,
               radius: coreRadius * (0.7 + stage * 0.08),
               progress,
               stage: state.stage,
@@ -6327,6 +6599,33 @@ class NighttraceRuntime {
               frame: HERO_MATERIAL_FRAME.fragments,
               angle: seedAngle,
               materialOpacity: 0.16,
+            })
+          }
+          if (recipe.awakeningSignature === 'eventide-garden') {
+            graphics
+              .ellipse(
+                centerX,
+                centerY,
+                coreRadius * (impact ? 0.82 : 0.72),
+                coreRadius * (impact ? 0.58 : 0.5),
+              )
+              .fill({
+                color: 0x000304,
+                alpha: motionAlpha * 0.96,
+              })
+            this.drawHeroPowerMaterialEvent({
+              x: centerX,
+              y: centerY,
+              radius: coreRadius * (impact ? 5.1 : 4.2),
+              progress,
+              stage: state.stage,
+              seed: effect.seed + 521,
+              tint: profile.secondaryColor,
+              frame: HERO_MATERIAL_FRAME.gather,
+              angle: rotation * 0.24,
+              materialOpacity: 0.23,
+              stretchX: 1.14,
+              stretchY: 0.86,
             })
           }
           break
@@ -6346,6 +6645,56 @@ class NighttraceRuntime {
             stretchX: 1.24,
             stretchY: 0.78,
           })
+          const flightCount = Math.min(
+            this.visualLod === 'mobile' ? 5 : 7,
+            recipe.structureCount + recipe.rankEmbellishment,
+          )
+          const tangentX = -Math.sin(effect.angle)
+          const tangentY = Math.cos(effect.angle)
+          for (let comet = 1; comet < flightCount; comet += 1) {
+            const side = comet % 2 ? -1 : 1
+            const row = Math.ceil(comet / 2)
+            const offset = side * (10 + row * 7)
+            this.drawHeroPowerMaterialEvent({
+              x:
+                effect.x +
+                tangentX * offset -
+                Math.cos(effect.angle) * row * 5,
+              y:
+                effect.y +
+                tangentY * offset -
+                Math.sin(effect.angle) * row * 5,
+              radius: Math.max(18, radius * (0.52 - row * 0.035)),
+              progress,
+              stage: state.stage,
+              seed: effect.seed + comet * 113,
+              tint:
+                comet % 3 === 0
+                  ? profile.secondaryColor
+                  : profile.accentColor,
+              frame: HERO_MATERIAL_FRAME.driftB,
+              angle: effect.angle + side * 0.035,
+              materialOpacity: stage === 3 ? 0.17 : 0.11,
+              stretchX: 1.42,
+              stretchY: 0.52,
+            })
+          }
+          if (recipe.awakeningSignature === 'perihelion-hunt') {
+            this.drawHeroPowerMaterialEvent({
+              x: effect.x - Math.cos(effect.angle) * 16,
+              y: effect.y - Math.sin(effect.angle) * 16,
+              radius: radius * 0.9,
+              progress,
+              stage: state.stage,
+              seed: effect.seed + 523,
+              tint: profile.secondaryColor,
+              frame: HERO_MATERIAL_FRAME.gather,
+              angle: effect.angle,
+              materialOpacity: 0.22,
+              stretchX: 1.24,
+              stretchY: 0.82,
+            })
+          }
           break
         }
         case 'comet-impact': {
@@ -6360,6 +6709,18 @@ class NighttraceRuntime {
             frame: HERO_MATERIAL_FRAME.dust,
             angle: rotation,
             materialOpacity: 0.3,
+          })
+          this.drawSpellRecipeSatellites(effect, {
+            x: effect.x,
+            y: effect.y,
+            radius,
+            progress,
+            angle: rotation,
+            tint: profile.secondaryColor,
+            density: 0.62,
+            opacity: 0.11,
+            stretchX: 1.3,
+            stretchY: 0.58,
           })
           break
         }
@@ -6390,6 +6751,60 @@ class NighttraceRuntime {
             stretchX: 1.24 + stage * 0.08,
             stretchY: 0.78,
           })
+          const shardCount = Math.min(
+            this.visualLod === 'mobile' ? 5 : 7,
+            recipe.structureCount + recipe.rankEmbellishment,
+          )
+          const tangentX = -Math.sin(effect.angle)
+          const tangentY = Math.cos(effect.angle)
+          for (let shard = 1; shard < shardCount; shard += 1) {
+            const side = shard % 2 ? -1 : 1
+            const tier = Math.ceil(shard / 2)
+            const sideOffset = side * (17 + tier * 9)
+            const forwardOffset = 4 + tier * 7
+            this.drawHeroPowerMaterialEvent({
+              x:
+                effect.x +
+                tangentX * sideOffset +
+                Math.cos(effect.angle) * forwardOffset,
+              y:
+                effect.y +
+                tangentY * sideOffset +
+                Math.sin(effect.angle) * forwardOffset,
+              radius: gateRadius * (0.54 - tier * 0.035),
+              progress,
+              stage: state.stage,
+              seed: effect.seed + shard * 127,
+              tint:
+                shard % 3 === 0
+                  ? profile.secondaryColor
+                  : profile.coreColor,
+              frame:
+                shard % 2
+                  ? HERO_MATERIAL_FRAME.fragments
+                  : HERO_MATERIAL_FRAME.driftA,
+              angle: effect.angle + side * (0.22 + tier * 0.05),
+              materialOpacity: stage === 3 ? 0.2 : 0.13,
+              stretchX: 0.72,
+              stretchY: 1.24,
+            })
+          }
+          if (recipe.awakeningSignature === 'infinite-refrain') {
+            this.drawHeroPowerMaterialEvent({
+              x: effect.x,
+              y: effect.y,
+              radius: gateRadius * 1.72,
+              progress,
+              stage: state.stage,
+              seed: effect.seed + 541,
+              tint: profile.secondaryColor,
+              frame: HERO_MATERIAL_FRAME.fracture,
+              angle: effect.angle + Math.PI * 0.5,
+              materialOpacity: 0.22,
+              stretchX: 1.18,
+              stretchY: 0.94,
+            })
+          }
           break
         }
         case 'mirror-impact': {
@@ -7175,6 +7590,10 @@ class NighttraceRuntime {
       'null-bell': [20, 5],
     }[projectile.weaponId]
     const profile = weaponVfxProfile(projectile.weaponId, projectile.visualState)
+    const recipe = spellVisualRecipe(
+      projectile.weaponId,
+      projectile.visualState,
+    )
     const stage = this.vfxStageIndex(projectile.visualState.stage)
     const length = baseTrail[0] * profile.trailLengthScale
     const width = baseTrail[1] * profile.trailWidthScale
@@ -7256,7 +7675,10 @@ class NighttraceRuntime {
     }
 
     if (projectile.weaponId === 'comet-swarm') {
-      const embers = 2 + stage
+      const embers = Math.min(
+        this.visualLod === 'mobile' ? 4 : 7,
+        2 + stage + Math.floor(recipe.rankEmbellishment / 2),
+      )
       for (let index = 1; index <= embers; index += 1) {
         const t = index / (embers + 1)
         const emberX = lerp(x, startX, t)

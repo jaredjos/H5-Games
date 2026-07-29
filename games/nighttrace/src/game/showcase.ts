@@ -80,10 +80,10 @@ export function showcaseLoadout(config: WeaponShowcaseConfig): {
 
 export function showcaseLabel(config: WeaponShowcaseConfig) {
   const definition = WEAPONS[config.weaponId]
-  if (config.state === 'solo') return `${definition.name} · SOLO · RANK I`
+  if (config.state === 'solo') return `${definition.name} · SOLO · SPELL RANK I`
   if (config.state === 'combined') {
-    return `${definition.name} + ${definition.moduleId.replaceAll('-', ' ').toUpperCase()} · COMBINED RANK I`
+    return `${definition.name} + ${definition.moduleId.replaceAll('-', ' ').toUpperCase()} · COMBINED SPELL RANK I`
   }
-  if (config.state === 'mastered') return `${definition.name} · MASTERED · RANK V`
-  return `${definition.awakening.toUpperCase()} · FINAL AWAKENED V / MODULE III`
+  if (config.state === 'mastered') return `${definition.name} · MASTERED · SPELL RANK V`
+  return `${definition.awakening.toUpperCase()} · FINAL AWAKENED SPELL RANK V / MODULE RANK III`
 }

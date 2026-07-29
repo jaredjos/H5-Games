@@ -109,8 +109,12 @@ describe('seeded upgrade drafts', () => {
 
   it('advances an owned weapon and offers its missing synergy module', () => {
     const draft = createUpgradeDraft(baseContext, 41)
+    const spellRankUpgrade = draft.options.find(
+      (option) => option.id === 'weapon:helio-lance:3',
+    )
 
-    expect(draft.options.some((option) => option.id === 'weapon:helio-lance:3')).toBe(true)
+    expect(spellRankUpgrade).toBeDefined()
+    expect(spellRankUpgrade?.category).toBe('Spell calibration')
     expect(draft.options.some((option) => option.id === 'module:prism-lens:1')).toBe(true)
   })
 

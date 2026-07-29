@@ -2,14 +2,14 @@
 
 ## Hook
 
-The player carries the last living star through a world drowned in shadow. Moving paints a short-lived luminous trail. Closing the recent trail forms an attack circuit through the horde; a fully charged Trace Pulse is the wider emergency release. New players can kite while weapons auto-fire, while skilled players draw deliberate shapes through dense formations.
+The player carries the last living star through a world drowned in shadow. Moving paints a short-lived luminous trail. Closing the recent trail forms an attack circuit through the horde; a fully charged Trace Pulse is the wider emergency release. New players can kite while spells auto-cast, while skilled players draw deliberate shapes through dense formations.
 
 ## Run arc
 
 1. Movement and the first meaningful draft occur within seconds.
 2. XP motes create risk-reward collection routes.
-3. Three-choice drafts pause combat and advance a four-weapon/four-module build.
-4. Weapons climb through five ranks and awaken when their aligned module is installed.
+3. Three-choice drafts pause combat and advance a four-spell/four-module build.
+4. Spells climb through five Spell Ranks and awaken when their aligned module is installed.
 5. Escalating horde pressure, timed hazards, tactical pickups, and readable bosses punctuate each run.
 6. Dawn Shards and mastery seals feed a compact, freely refundable Astrarium.
 
@@ -28,18 +28,18 @@ Runs are deliberately compressed: the campaign begins at 4:00 and grows to 7:30.
 
 ## Progression contract
 
-- A run holds at most four weapons, four modules, and three Trace Mods.
-- Bright Draft unlocks one upgrade reroll per run; smart drafting favors owned weapons, aligned modules, ready awakenings, and recovery under pressure.
+- A run holds at most four spells, four modules, and three Trace Mods.
+- Bright Draft unlocks one upgrade reroll per run; smart drafting favors owned spells, aligned modules, ready awakenings, and recovery under pressure.
 - A sector offers clear, Trace-loop, and Aegis-chain mastery seals. Newly earned seals add bonus Dawn Shards.
 - The Astrarium has ten prerequisite-linked nodes with rank caps and a full-cost refund.
-- The versioned browser save records relit sectors, mastery, Dawn Shards, weapon patterns, Astrarium ranks, and settings. It uses local storage only.
+- The versioned browser save records relit sectors, mastery, Dawn Shards, spell patterns, Astrarium ranks, and settings. It uses local storage only.
 
 Boss Trials is an isolated sequential progression track: boss 1 starts open,
 and only defeating the next unbeaten boss opens another. Its curated builds and
-small shard stipends do not mutate campaign sectors, mastery, or weapon unlocks.
+small shard stipends do not mutate campaign sectors, mastery, or spell unlocks.
 
 Combat Lab is intentionally non-progression. It can combine any of the ten
-arenas, ten bosses, eight weapons, eight paired modules, awakenings, and up to
+arenas, ten bosses, eight spells, eight paired modules, awakenings, and up to
 three Trace Mods. The player can run a boss isolate or full sector with
 unlimited vitality; no Lab result writes rewards or progression.
 

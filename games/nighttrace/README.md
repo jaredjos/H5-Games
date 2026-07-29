@@ -2,7 +2,7 @@
 
 **Draw the path. Burn the horde.**
 
-NIGHTTRACE is an original browser horde-survival game built with React, TypeScript, Vite, and PixiJS. Auto-attacking weapons keep the controls approachable; every step paints a luminous trace, and closing a loop turns movement itself into a weapon.
+NIGHTTRACE is an original browser horde-survival game built with React, TypeScript, Vite, and PixiJS. Auto-casting spells keep the controls approachable; every step paints a luminous trace, and closing a loop turns movement itself into a weapon.
 
 **Play the current HTTPS release:** [jaredjos.github.io/H5-Games/nighttrace](https://jaredjos.github.io/H5-Games/nighttrace/)
 
@@ -14,7 +14,7 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.2.0` — landscape-first combat, a simultaneous three-card mobile draft, a 50% default music setting mixed at roughly twice the former loudness, ten sector-specific boss patterns, and timed support pickups
 - `v1.3.0` — re-authored encounter pacing with a readable one-minute warmup, accelerating mid/late hordes, progression-gated specialists, steeper late upgrade costs, and build-aware sovereign durability
 - `v1.3.1` — runtime-captured upgrade documentation plus stronger, species-specific horde locomotion, attack anticipation/release poses, sovereign motion profiles, responsive shadows, footfalls, hover trails, and compact attack accents
-- `v1.4.0` — a complete eight-weapon visual overhaul with stage-aware silhouettes, cast gates, impact punctuation, mastery density, awakened signatures, deterministic 32-state capture evidence, and landscape-phone validation
+- `v1.4.0` — a complete eight-spell visual overhaul with stage-aware silhouettes, cast gates, impact punctuation, mastery density, awakened signatures, deterministic 32-state capture evidence, and landscape-phone validation
 - `v1.5.0` — public Combat Lab and Boss Trials modes, isolated ten-boss progression, configurable no-limit testing, hostile-palette horde/boss motion graphics, mode-aware HUD/results, and expanded desktop/mobile validation
 - `v1.5.1` — the former area-power clarity experiment: non-concentric silhouettes, continuous rapid-fire motion, refreshed runtime proofs, and desktop/mobile validation
 - `v1.5.2` — a complete ten-boss animation pass with sovereign-specific idle and locomotion signatures, normal melee wind-up/release/recovery, dynamic pivots and afterimages, plus distinct level-specific special-action VFX
@@ -27,7 +27,7 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.9.0` — grounded hostile VFX replace diagrammatic boss rays, ring warnings, fissure spokes, and duplicate spell vectors with authored rubble/scorch materials, ash, dust, and restrained embedded embers beneath every actor layer
 
 - `v1.10.0` — every hero power abandons concentric/dotted rings, radial ticks, starbursts, rune wheels, outlined gates, decorative rails, and generic diamond debris in favor of authored fractured stone, localized smoke, ash, grit, physical fragments, and material impact light; combat geometry is unchanged
-- `v1.11.0` — every sovereign gains authored idle, locomotion-contact, attack-windup, and special-release poses (including alternating four-leg contact for quadrupeds); boss and horde warnings become grounded smoke, pressure, rubble, and material disturbance; all eight weapons enter the first draft with three free refreshes and a normalized connected-DPS budget; upgrade and pause overlays are optically centered
+- `v1.11.0` — every sovereign gains authored idle, locomotion-contact, attack-windup, and special-release poses (including alternating four-leg contact for quadrupeds); boss and horde warnings become grounded smoke, pressure, rubble, and material disturbance; all eight spells enter the first draft with three free refreshes and a normalized connected-DPS budget; upgrade and pause overlays are optically centered
 - `v1.12.0` — delivery-correctness release: network-first navigation replaces the stale cache-first shell; existing old tabs refresh once; boss atlas cells snap to whole pixels; all gameplay dialogs use symmetric safe-area centering; the opening draft/refresh cycle exposes every starting power; trace capacity starts 40% longer and Pulse charges only when a valid enclosure traps an enemy
 - `v1.13.0` — hostile-motion release: three supplied scores route across sectors and boss encounters; the temporary global 10% difficulty increase is removed; bosses gain expanding multi-pattern repertoires and ranged projectile impacts; material-only crimson/violet warnings gain contrast; every horde species uses authored idle, A/B contact, windup, and release frames, with late-sector ranged specialists
 - `v1.14.0` — one free revive per mortal level attempt returns the hero at 35% vitality without resetting time, pressure, build, or Sovereign health; campaign healing is tightened to two conditional 10% Dawnheart windows, with expiry, post-revive lockout, and unchanged hostile pressure
@@ -36,15 +36,16 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.16.1` — renderer-artifact hotfix: all broad normal-blended and custom-filter actor-ground quads are retired in favor of native contact geometry; all 30 boss and 30 horde pose cells are isolated behind transparent gutters to prevent adjacent release-frame bleed; boss particles become denser and clearer, and elite/ranged horde fields, lanes, and destinations gain restrained smoke, grit, debris, and cinders without changing combat timing or damage
 - `v1.16.2` — revives now restore 50% vitality; every Sovereign tracks the bearer across idle, movement, windup, release, and intro while correcting the left-authored Railjaw/Furnace row; the hostile-boundary material reference is published for final approval
 - `v1.16.3` — the approved broken bone-white/silver filament and drifting-mote boundary enters live combat for every boss and elite field, lane, and projectile destination; adaptive fair-share allocation keeps three-, five-, and eight-footprint signatures readable on desktop, mobile, and reduced-flash settings without changing hitboxes or damage
+- `v1.17.0` — Spell Rank presentation parity: every adjacent rank now adds live-authored detail, all eight spells own distinct Solo/Combined/Mastered/Awakened silhouettes, Rift Seeds becomes an Eventide Garden, Comet Swarm gains a Perihelion formation, Mirror Bow becomes an Infinite Refrain, and the Spell Arsenal glyphs visibly evolve through all five ranks
 
 ## Runtime guide and visual evidence
 
 - [Animated Graveglass + Eclipse material review](https://jaredjos.github.io/H5-Games/nighttrace/review/spell-choreography/) — the authored structural choreography remains in live combat, now joined by the v1.10.0 all-power material-floor pass
 - [Hostile boundary material reference](https://jaredjos.github.io/H5-Games/nighttrace/review/hostile-boundary/) — animated reference for the broken filaments and drifting motes now used by live boss and elite-horde fields, lanes, and projectile destinations
-- [Combat Systems Codex (PDF)](https://jaredjos.github.io/H5-Games/nighttrace/docs/NIGHTTRACE_Combat_Systems_Codex.pdf) — the v1.6.0 combat, upgrade, pickup, boss, difficulty, music, and mobile reference
-- [Upgrade states: Helio Lance through Rift Seeds](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-01.png)
-- [Upgrade states: Comet Swarm through Eclipse Harrow](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-02.png)
-- [Capture manifest](https://jaredjos.github.io/H5-Games/nighttrace/docs/capture-manifest.json) — deterministic loadouts, local-only routes, viewport, file hashes, and capture method for all 32 real gameplay frames
+- [Legacy v1.6 Combat Systems Codex (PDF)](https://jaredjos.github.io/H5-Games/nighttrace/docs/NIGHTTRACE_Combat_Systems_Codex.pdf) — the archived combat, upgrade, pickup, boss, difficulty, music, and mobile reference
+- [Legacy v1.4/v1.6 upgrade states: Helio Lance through Rift Seeds](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-01.png)
+- [Legacy v1.4/v1.6 upgrade states: Comet Swarm through Eclipse Harrow](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-02.png)
+- [Legacy capture manifest](https://jaredjos.github.io/H5-Games/nighttrace/docs/capture-manifest.json) — deterministic loadouts and capture provenance for the archived plates; the v1.17.0 live renderer is authoritative
 
 ## One-click Windows start
 
@@ -110,7 +111,7 @@ Then open `http://127.0.0.1:5173/`.
 - Pointer/touch drag anywhere in the arena - steer directly
 - Touch controls - tap the on-screen **Pulse** button when charged, and use the pause button for menus
 
-Weapons fire automatically. The movement trace is the second combat layer: close a circuit through a pack, then use the fully charged Pulse when the horde closes in.
+Spells cast automatically. The movement trace is the second combat layer: close a circuit through a pack, then use the fully charged Pulse when the horde closes in.
 
 ## Combat animation and sound
 
@@ -135,7 +136,7 @@ sway, recoil, and afterimages.
 The hostile presentation layer now follows a three-beat motion contract:
 gather, decisive release, and short aftershock. Hordes use low-opacity,
 LOD-capped footfalls, wing trails, strike fields, and species palettes so they
-remain subordinate to the player arsenal. Sovereigns add signature seals,
+remain subordinate to the player spell arsenal. Sovereigns add signature seals,
 ground pressure, displaced debris, phase authority marks, and high-contrast
 impact punctuation. Every boss and elite field, lane, and projectile
 destination also receives irregular bone-white/silver boundary filaments and
@@ -144,7 +145,7 @@ every active footprint before distributing extras, so three-, five-, and
 eight-zone attacks remain readable without becoming continuous rings or
 diagrammatic outlines. Their crimson, bruised violet, bile, ember,
 and shadow colors are intentionally separate from the bearer’s cyan, solar
-gold, and prismatic weapon palette. The motion language was designed with
+gold, and prismatic spell palette. The motion language was designed with
 HyperFrames guidance, while all interactive rendering remains deterministic
 native PixiJS for seek-safe gameplay and performance. Dedicated budgets cap the
 boundary treatment at 160 particles on desktop and 112 on mobile, reserving at
@@ -152,12 +153,15 @@ least one filament and one mote for every footprint even at the runtime's
 maximum warning populations. Reduced-flash mode keeps that coverage with lower
 emission and motion.
 
-Each weapon has a full four-stage visual identity. Helio Lance builds from
-a focused solar rail into a crowned spear gate; Crescent Array grows into an
-eclipsed orbit wheel; Arc Choir forms cathedral-like lightning geometry; Rift
-Seeds compress into dark singularities; Comet Swarm gains ember-rich curved
+Each spell has a full four-stage visual identity plus visible embellishment at
+every adjacent Spell Rank. Helio Lance builds from a focused solar rail into a
+crowned spear gate; Crescent Array grows into an eclipsed orbit wheel; Arc Choir
+forms cathedral-like lightning geometry even around sparse targets; Rift Seeds
+blooms from a single singularity into the multi-seed Eventide Garden; Comet
+Swarm gains a layered Perihelion flight formation and ember-rich curved
 wakes; Graveglass Spires fractures the floor beneath the densest remote cluster;
-Mirror Bow refracts through prismatic lanes; and Eclipse Harrow stages
+Mirror Bow grows from a mirrored pair into the shard-arched Infinite Refrain;
+and Eclipse Harrow stages
 nightglass execution gates across predicted enemy lanes. Graveglass scales
 through 2 / 3 / 4 / 6-spire branches and Harrow through 1 / 2 / 3 / 4-lane
 formations across Solo, Combined, Mastered, and Final. Neither follows the
@@ -177,7 +181,7 @@ No reference-game audio or visual asset is included.
 ### Campaign
 
 The ten-sector campaign retains horde survival, three-card drafts, mastery
-seals, Dawn Shards, and Astrarium progression. All eight weapon patterns are
+seals, Dawn Shards, and Astrarium progression. All eight spell patterns are
 available from the first descent, so campaign clears advance sectors and
 mastery rather than gating build variety.
 
@@ -187,7 +191,7 @@ Boss Trials is a separate, non-test ladder. Gloam Stag is open first; each
 victory unlocks exactly the next sovereign, through all ten bosses. Every trial
 uses a curated level and loadout, one real life bar, boss-only combat, and a
 dedicated crown-clear counter. Trial victories award a modest Dawn Shard
-stipend, but never unlock campaign sectors, weapons, or mastery seals. Cleared
+stipend, but never unlock campaign sectors, spells, or mastery seals. Cleared
 bosses remain available for rematches.
 
 ### Combat Lab
@@ -198,8 +202,8 @@ Combat Lab is the public no-limit test mode. It provides:
 - independent selection of any of the ten arenas and ten bosses
 - boss-only isolation or a complete horde-to-boss sector
 - bearer level and 0.25×–4× boss-vitality controls
-- Solo, Combined, Mastered, and Final presets for every weapon
-- manual rank controls for all eight weapons and eight paired modules
+- Solo, Combined, Mastered, and Final presets for every spell
+- manual Spell Rank controls for all eight spells and Module Rank controls for eight paired modules
 - awakening toggles plus any three Trace Mods
 - fixed selected builds with rewards and all progression writes disabled
 
@@ -220,7 +224,7 @@ pressure blends in during that minute rather than landing all at once.
 After the warmup, horde density, vitality, speed, and contact damage accelerate
 nonlinearly until the sovereign arrives. Late upgrade costs also rise after
 player level eight, so a successful build remains powerful without flattening
-the final minutes. Sovereign vitality is calculated from the current weapons,
+the final minutes. Sovereign vitality is calculated from the current spells,
 modules, awakenings, Trace Mods, and Astrarium ranks using sublinear scaling
 and safety caps. Reference builds target roughly 20 seconds in Sector 1 and 30
 seconds in Sector 10, leaving time for each boss's phase-scaled fans, orbits,
@@ -241,8 +245,8 @@ safe-corridor grids, or final eclipse sequence.
 | 10 | Crown of Dawn | 7:30 | The Sun-Eater | Crown of Dawn relic |
 
 Three-card drafts pause the action. A run can carry up to four of the eight
-universally available weapons, four aligned modules, and three Trace Mods.
-Weapons have five ranks; mastering a weapon while holding its aligned module
+universally available spells, four aligned modules, and three Trace Mods.
+Spells have five Spell Ranks; mastering a spell while holding its aligned module
 exposes its awakening. Every campaign run starts with three free refreshes.
 Bright Draft adds one more, for four total, and the draft system keeps recovery
 or another actionable choice available when a build is saturated.
@@ -278,7 +282,7 @@ return earned and performance-based Dawn Shards.
 
 Dawn Shards fund the ten-node Astrarium, a prerequisite-linked constellation of persistent upgrades. Nodes have explicit rank caps, and **Refund all** returns the full shard investment so a build can be reconfigured freely.
 
-Campaign progress, Boss Trial crowns, mastery, the universal arsenal,
+Campaign progress, Boss Trial crowns, mastery, the universal spell arsenal,
 Astrarium ranks, and settings are stored locally in the browser under the versioned
 `nighttrace.save.v1` save. The schema is now version 3 and migrates older saves
 in place; the storage key remains stable. Combat Lab never writes progression.

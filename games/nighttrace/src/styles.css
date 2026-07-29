@@ -2524,6 +2524,133 @@ kbd {
   color: var(--gold);
 }
 
+.ranked-spell-glyph {
+  --spell-glyph-size: 30px;
+  position: relative;
+  display: inline-grid;
+  width: var(--spell-glyph-size);
+  height: var(--spell-glyph-size);
+  place-items: center;
+  isolation: isolate;
+  color: inherit;
+}
+
+.ranked-spell-glyph svg {
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+  filter:
+    drop-shadow(0 0 2px color-mix(in srgb, currentColor 34%, transparent))
+    drop-shadow(0 2px 3px rgba(0,0,0,.7));
+  transition: filter .18s ease, transform .18s ease;
+}
+
+.ranked-spell-glyph__material,
+.ranked-spell-glyph__crown {
+  position: absolute;
+  z-index: 1;
+  display: block;
+  pointer-events: none;
+}
+
+.ranked-spell-glyph__material {
+  width: 82%;
+  height: 70%;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse at 50% 58%, color-mix(in srgb, currentColor 32%, transparent), transparent 67%),
+    linear-gradient(132deg, transparent 18%, color-mix(in srgb, currentColor 24%, transparent) 49%, transparent 74%);
+  clip-path: polygon(50% 0, 66% 28%, 100% 45%, 70% 62%, 54% 100%, 39% 68%, 0 54%, 31% 35%);
+  filter: blur(.35px);
+  transform: scale(.68) rotate(-5deg);
+}
+
+.ranked-spell-glyph__crown {
+  top: -16%;
+  width: 78%;
+  height: 34%;
+  opacity: 0;
+  background:
+    linear-gradient(
+      112deg,
+      transparent 7%,
+      color-mix(in srgb, currentColor 84%, white 16%) 18%,
+      transparent 31%,
+      color-mix(in srgb, currentColor 92%, white 8%) 48%,
+      transparent 64%,
+      color-mix(in srgb, currentColor 78%, white 22%) 79%,
+      transparent 94%
+    );
+  clip-path: polygon(0 100%, 13% 45%, 32% 88%, 49% 0, 67% 86%, 87% 39%, 100% 100%);
+  filter: drop-shadow(0 0 4px currentColor);
+  transform: translateY(4px) scaleX(.72);
+}
+
+.ranked-spell-glyph--rank-2 .ranked-spell-glyph__material {
+  opacity: .23;
+  transform: scale(.79) rotate(-3deg);
+}
+
+.ranked-spell-glyph--rank-3 .ranked-spell-glyph__material {
+  opacity: .36;
+  transform: scale(.9) rotate(2deg);
+}
+
+.ranked-spell-glyph--rank-3 svg {
+  filter:
+    drop-shadow(0 0 4px color-mix(in srgb, currentColor 50%, transparent))
+    drop-shadow(0 2px 3px rgba(0,0,0,.72));
+}
+
+.ranked-spell-glyph--rank-4 .ranked-spell-glyph__material {
+  opacity: .5;
+  transform: scale(1) rotate(-2deg);
+}
+
+.ranked-spell-glyph--rank-4 .ranked-spell-glyph__crown {
+  opacity: .38;
+  transform: translateY(3px) scaleX(.68);
+}
+
+.ranked-spell-glyph--rank-5 .ranked-spell-glyph__material {
+  opacity: .64;
+  transform: scale(1.08) rotate(2deg);
+}
+
+.ranked-spell-glyph--rank-5 .ranked-spell-glyph__crown {
+  opacity: .72;
+  transform: translateY(0) scaleX(.88);
+}
+
+.ranked-spell-glyph--rank-5 svg {
+  transform: scale(1.07);
+  filter:
+    drop-shadow(0 0 6px color-mix(in srgb, currentColor 62%, transparent))
+    drop-shadow(0 2px 3px rgba(0,0,0,.72));
+}
+
+.ranked-spell-glyph--awakened {
+  color: #fff6cf;
+}
+
+.ranked-spell-glyph--awakened .ranked-spell-glyph__material {
+  width: 112%;
+  height: 94%;
+  opacity: .84;
+  background:
+    radial-gradient(ellipse at 50% 55%, rgba(255,250,220,.52), transparent 49%),
+    linear-gradient(127deg, transparent 8%, currentColor 45%, transparent 66%);
+  filter: blur(.15px) drop-shadow(0 0 8px currentColor);
+  transform: scale(1.05) rotate(-3deg);
+}
+
+.ranked-spell-glyph--awakened .ranked-spell-glyph__crown {
+  width: 94%;
+  opacity: 1;
+  filter: drop-shadow(0 0 7px #fff0a7);
+  transform: translateY(-2px) scaleX(1);
+}
+
 .arsenal-hud {
   position: absolute;
   left: 50%;

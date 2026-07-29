@@ -278,10 +278,10 @@ export function CampaignScreen({
               </button>
             )
           })}
-          <div className="campaign-core-strip" aria-label="Recovered arsenal">
+          <div className="campaign-core-strip" aria-label="Recovered spell arsenal">
             <div className="campaign-core-strip__heading">
               <Diamond active />
-              <span>Recovered Arsenal</span>
+              <span>Recovered Spell Arsenal</span>
             </div>
             <div className="core-loadout">
               {save.unlockedWeapons.slice(-4).map((id) => (
@@ -291,7 +291,7 @@ export function CampaignScreen({
                 </span>
               ))}
               {save.unlockedWeapons.length > 4 ? (
-                <span className="loadout-overflow" aria-label={`${save.unlockedWeapons.length - 4} more weapons recovered`}>
+                <span className="loadout-overflow" aria-label={`${save.unlockedWeapons.length - 4} more spells recovered`}>
                   +{save.unlockedWeapons.length - 4}
                 </span>
               ) : null}
@@ -467,7 +467,7 @@ export function BossTrialsScreen({
             <div className="boss-trial-detail__facts">
               <span><Gauge size={16} /> Bearer level {BOSS_TRIAL_PLAYER_LEVELS[selected.id - 1]}</span>
               <span><Swords size={16} /> Threat {selected.difficulty}</span>
-              <span><Shield size={16} /> Fixed arsenal</span>
+              <span><Shield size={16} /> Fixed spell arsenal</span>
             </div>
 
             <section className="boss-trial-signature">
@@ -485,7 +485,7 @@ export function BossTrialsScreen({
                   <small>Curated loadout</small>
                   <strong>Power chosen for this duel</strong>
                 </div>
-                <span>{loadout.weapons.length} weapons · {loadout.modules.length} modules</span>
+                <span>{loadout.weapons.length} spells · {loadout.modules.length} modules</span>
               </div>
               <div className="boss-trial-loadout__weapons">
                 {loadout.weapons.map((weapon) => {
@@ -495,9 +495,9 @@ export function BossTrialsScreen({
                       <WeaponGlyph id={weapon.id} size={22} />
                       <span>
                         <strong>{weapon.awakened ? definition.awakening : definition.name}</strong>
-                        <small>{weapon.awakened ? 'Awakened' : `Rank ${weapon.rank}`}</small>
+                        <small>{weapon.awakened ? 'Awakened' : `Spell Rank ${weapon.rank}`}</small>
                       </span>
-                      <RankPips rank={weapon.rank} max={5} />
+                      <RankPips rank={weapon.rank} max={5} label="Spell Rank" />
                     </div>
                   )
                 })}
@@ -708,7 +708,7 @@ export function CombatLabScreen({
 
             <PanelFrame title="Calibration presets">
               <div className="combat-lab-preset-source">
-                <label htmlFor="combat-lab-preset-weapon">Pattern</label>
+                <label htmlFor="combat-lab-preset-weapon">Spell</label>
                 <select
                   id="combat-lab-preset-weapon"
                   value={presetWeaponId}
@@ -742,9 +742,9 @@ export function CombatLabScreen({
             <div className="combat-lab-arsenal__heading">
               <div>
                 <small><SlidersHorizontal size={14} /> Manual calibration</small>
-                <h2>Arsenal matrix</h2>
+                <h2>Spell Arsenal matrix</h2>
               </div>
-              <span>Rank 0 removes a pattern</span>
+              <span>Spell Rank 0 unequips a spell</span>
             </div>
             <div className="combat-lab-weapon-list">
               {Object.values(WEAPONS).map((weapon) => {
@@ -761,7 +761,7 @@ export function CombatLabScreen({
                       </span>
                     </div>
                     <label>
-                      <span>Weapon rank <strong>{owned?.rank ?? 0}</strong></span>
+                      <span>Spell Rank <strong>{owned?.rank ?? 0}</strong></span>
                       <input
                         type="range"
                         min={0}
@@ -775,7 +775,7 @@ export function CombatLabScreen({
                       />
                     </label>
                     <label>
-                      <span>Module rank <strong>{pairedModule?.rank ?? 0}</strong></span>
+                      <span>Module Rank <strong>{pairedModule?.rank ?? 0}</strong></span>
                       <input
                         type="range"
                         min={0}
@@ -797,7 +797,7 @@ export function CombatLabScreen({
                         !owned?.awakened,
                       ))}
                       aria-pressed={Boolean(owned?.awakened)}
-                      title={canAwaken ? weapon.awakening : 'Requires Rank V and its paired module'}
+                      title={canAwaken ? weapon.awakening : 'Requires Spell Rank V and its paired module'}
                     >
                       <Sparkles size={15} />
                       {owned?.awakened ? 'Awakened' : 'Awaken'}
@@ -850,7 +850,7 @@ export function CombatLabScreen({
               <span><Target size={16} /> {normalized.encounter === 'boss' ? 'Boss only' : 'Full sector'}</span>
               <span><Gauge size={16} /> Level {normalized.playerLevel}</span>
               <span><Shield size={16} /> {normalized.bossHealthMultiplier.toFixed(2)}× boss HP</span>
-              <span><Swords size={16} /> {normalized.loadout.weapons.length} active patterns</span>
+              <span><Swords size={16} /> {normalized.loadout.weapons.length} active spells</span>
             </div>
             <CrestButton onClick={() => onLaunch(normalized)}>
               Launch Simulation
@@ -930,13 +930,13 @@ export function AstrariumScreen({
                 ].join(' ')}
                 style={{ left: `${node.x}%`, top: `${node.y}%`, '--node-delay': `${index * 60}ms` } as React.CSSProperties}
                 onClick={() => setSelectedId(node.id)}
-                aria-label={`${node.name}, rank ${nodeRank} of ${node.maxRank}`}
+                aria-label={`${node.name}, Astrarium Rank ${nodeRank} of ${node.maxRank}`}
                 aria-pressed={selected.id === node.id}
               >
                 <span className="astrarium-node__orbit" />
                 <AstrariumGlyph icon={node.icon} />
                 <strong>{node.name}</strong>
-                <RankPips rank={nodeRank} max={node.maxRank} />
+                <RankPips rank={nodeRank} max={node.maxRank} label="Astrarium Rank" />
               </button>
             )
           })}
@@ -951,7 +951,7 @@ export function AstrariumScreen({
             </div>
             <small>Constellation node</small>
             <h2>{selected.name}</h2>
-            <RankPips rank={rank} max={selected.maxRank} />
+            <RankPips rank={rank} max={selected.maxRank} label="Astrarium Rank" />
             <p>{selected.description}</p>
             <div className="astrarium-stat">{selected.stat}</div>
             {selected.requires && !requirementMet ? (
@@ -1031,7 +1031,7 @@ export function CodexScreen({
           <div className="codex-tabs" role="tablist" aria-label="Codex sections">
             {([
               ['bestiary', 'Bestiary'],
-              ['arsenal', 'Arsenal'],
+              ['arsenal', 'Spell Arsenal'],
               ['trace', 'Trace Mods'],
             ] as const).map(([id, label]) => (
               <button
@@ -1073,7 +1073,7 @@ export function CodexScreen({
                     onClick={() => setSelectedIndex(index)}
                   >
                     <WeaponGlyph id={entry.id} size={19} />
-                    {entry.discovered ? entry.name : 'Shrouded armament'}
+                    {entry.discovered ? entry.name : 'Shrouded spell'}
                     <ChevronRight size={15} />
                   </button>
                 ))
@@ -1120,9 +1120,9 @@ export function CodexScreen({
             {tab === 'arsenal' && selectedWeapon ? (
               <div key={selectedWeapon.id} className="codex-reveal">
                 <div className="codex-glyph-art"><WeaponGlyph id={selectedWeapon.id} size={76} /></div>
-                <small>Awakenable weapon</small>
-                <h2>{selectedWeapon.discovered ? selectedWeapon.name : 'Shrouded Armament'}</h2>
-                <p>{selectedWeapon.discovered ? selectedWeapon.description : 'Relight the sector holding this weapon memory.'}</p>
+                <small>Awakenable spell</small>
+                <h2>{selectedWeapon.discovered ? selectedWeapon.name : 'Shrouded Spell'}</h2>
+                <p>{selectedWeapon.discovered ? selectedWeapon.description : 'Relight the sector holding this spell memory.'}</p>
                 {selectedWeapon.discovered ? (
                   <>
                     <div className="codex-awakening">
@@ -1439,7 +1439,7 @@ export function ResultsScreen({
         ) : null}
       </section>
       <PanelFrame className="results-breakdown">
-        <h2>Arsenal record</h2>
+        <h2>Spell damage record</h2>
         <div className="damage-list">
           {result.weaponDamage
             .slice()

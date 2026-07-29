@@ -123,6 +123,12 @@ describe('Combat Lab presets and normalization', () => {
       'Mastered',
       'Final',
     ])
+    expect(COMBAT_LAB_PRESETS.map((preset) => preset.description)).toEqual([
+      'Spell Rank I without its paired module.',
+      'Spell Rank I combined with its paired module.',
+      'Spell Rank V before its final awakening.',
+      'Awakened Spell Rank V with a Module Rank III pairing.',
+    ])
 
     for (const weaponId of Object.keys(WEAPONS) as WeaponId[]) {
       const pairedModule = WEAPONS[weaponId].moduleId

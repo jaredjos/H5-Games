@@ -34,6 +34,7 @@ import type {
   TraceModDefinition,
   UpgradeOption,
   WeaponDefinition,
+  WeaponId,
 } from '../shared/types'
 import { CrestButton, OrnamentRule, PanelFrame, RankPips, StarMark, WeaponGlyph } from './Primitives'
 
@@ -128,11 +129,51 @@ const traceStatLines: Record<TraceModId, string> = {
   'red-shift': 'CADENCE SCALES WITH DENSITY',
 }
 
+function RankedSpellGlyph({
+  id,
+  rank,
+  awakened = false,
+  size,
+}: {
+  id: WeaponId
+  rank: number
+  awakened?: boolean
+  size: number
+}) {
+  const resolvedRank = Math.max(1, Math.min(5, Math.round(rank)))
+  return (
+    <span
+      className={[
+        'ranked-spell-glyph',
+        `ranked-spell-glyph--rank-${resolvedRank}`,
+        awakened ? 'ranked-spell-glyph--awakened' : '',
+      ].filter(Boolean).join(' ')}
+      style={{
+        '--spell-glyph-size': `${size}px`,
+      } as React.CSSProperties}
+      aria-hidden="true"
+    >
+      <span className="ranked-spell-glyph__material" />
+      <WeaponGlyph id={id} size={size} />
+      <span className="ranked-spell-glyph__crown" />
+    </span>
+  )
+}
+
 function UpgradeIcon({ option }: { option: UpgradeOption }) {
   if (option.type === 'module' && option.moduleId) {
     return <WeaponGlyph id={option.moduleId} module size={58} />
   }
-  if (option.weaponId) return <WeaponGlyph id={option.weaponId} size={58} />
+  if (option.weaponId) {
+    return (
+      <RankedSpellGlyph
+        id={option.weaponId}
+        rank={option.rank ?? 1}
+        awakened={option.rarity === 'awakening'}
+        size={58}
+      />
+    )
+  }
   if (option.traceModId) {
     const Icon = traceIcons[option.traceModId]
     return <Icon size={58} strokeWidth={1.15} aria-hidden="true" />
@@ -202,12 +243,17 @@ export function UpgradeOverlay({
         </header>
         <div className="upgrade-loadout" aria-label="Current loadout">
           <div>
-            <small>Weapons</small>
+            <small>Spells</small>
             <span className="upgrade-loadout__slots">
               {snapshot.weapons.map((weapon) => (
                 <i key={weapon.id}>
-                  <WeaponGlyph id={weapon.id} size={23} />
-                  <RankPips rank={weapon.rank} awakened={weapon.awakened} />
+                  <RankedSpellGlyph
+                    id={weapon.id}
+                    rank={weapon.rank}
+                    awakened={weapon.awakened}
+                    size={23}
+                  />
+                  <RankPips rank={weapon.rank} awakened={weapon.awakened} label="Spell Rank" />
                 </i>
               ))}
             </span>
@@ -218,7 +264,7 @@ export function UpgradeOverlay({
               {snapshot.modules.map((module) => (
                 <i key={module.id}>
                   <WeaponGlyph id={module.id} module size={23} />
-                  <RankPips rank={module.rank} max={3} />
+                  <RankPips rank={module.rank} max={3} label="Module Rank" />
                 </i>
               ))}
             </span>
@@ -252,7 +298,13 @@ export function UpgradeOverlay({
                 <p>{description}</p>
                 <span className="upgrade-card__stats">{statLine}</span>
                 <span className="upgrade-card__footer">
-                  {option.rank ? <RankPips rank={option.rank} max={option.type === 'module' ? 3 : 5} /> : <span className="upgrade-card__rarity">{option.rarity === 'elite' ? 'Elite Mod' : option.rarity === 'awakening' ? 'Awakening' : 'New Pattern'}</span>}
+                  {option.rank ? (
+                    <RankPips
+                      rank={option.rank}
+                      max={option.type === 'module' ? 3 : 5}
+                      label={option.type === 'module' ? 'Module Rank' : 'Spell Rank'}
+                    />
+                  ) : <span className="upgrade-card__rarity">{option.rarity === 'elite' ? 'Elite Mod' : option.rarity === 'awakening' ? 'Awakening' : 'New Pattern'}</span>}
                   {weapon ? (
                     <span className="upgrade-card__pairing">
                       Awakes with {modules.find((entry) => entry.id === weapon.moduleId)?.name ?? weapon.moduleId}
@@ -270,7 +322,7 @@ export function UpgradeOverlay({
             : `All ${rerollCapacity} refreshes spent`}
         </button>
         <p className="smart-draft-note">
-          All eight weapons are available · Smart draft protects an owned weapon.
+          All eight spells are available · Smart draft protects an owned spell.
         </p>
       </div>
     </section>
@@ -318,7 +370,7 @@ function ArsenalHud({
   weaponDefinitions: WeaponDefinition[]
 }) {
   return (
-    <div className="arsenal-hud" aria-label="Current weapons">
+    <div className="arsenal-hud" aria-label="Current spells">
       {snapshot.weapons.map((weapon, index) => {
         const definition = weaponDefinitions.find((entry) => entry.id === weapon.id)
         const accent = definition
@@ -331,16 +383,21 @@ function ArsenalHud({
             style={{ '--weapon-accent': accent } as React.CSSProperties}
           >
             <span className="arsenal-slot__key">{index + 1}</span>
-            <WeaponGlyph id={weapon.id} size={30} />
+            <RankedSpellGlyph
+              id={weapon.id}
+              rank={weapon.rank}
+              awakened={weapon.awakened}
+              size={30}
+            />
             <small>{definition?.shortName ?? definition?.name ?? weapon.id}</small>
-            <RankPips rank={weapon.rank} awakened={weapon.awakened} />
+            <RankPips rank={weapon.rank} awakened={weapon.awakened} label="Spell Rank" />
           </div>
         )
       })}
       {snapshot.modules.slice(0, 4).map((module) => (
         <div key={module.id} className="arsenal-slot arsenal-slot--module">
           <WeaponGlyph id={module.id} module size={23} />
-          <RankPips rank={module.rank} max={3} />
+          <RankPips rank={module.rank} max={3} label="Module Rank" />
         </div>
       ))}
     </div>
