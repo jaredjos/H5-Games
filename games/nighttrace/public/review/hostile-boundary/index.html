@@ -259,37 +259,16 @@
       }
 
       .actor {
-        --atlas-columns: 5;
-        --atlas-rows: 3;
-        --atlas-x: 0%;
-        --atlas-y: 0%;
         position: absolute;
         z-index: 3;
         width: clamp(108px, 12vw, 178px);
         aspect-ratio: 1;
         pointer-events: none;
-        background-repeat: no-repeat;
-        background-size: calc(var(--atlas-columns) * 100%) calc(var(--atlas-rows) * 100%);
-        background-position: var(--atlas-x) var(--atlas-y);
         transform-origin: 50% 82%;
         filter:
           drop-shadow(0 10px 9px rgba(0, 0, 0, 0.72))
           drop-shadow(0 0 8px rgba(231, 239, 234, 0.08));
         transition: filter 160ms ease;
-      }
-
-      .actor::after {
-        content: "";
-        position: absolute;
-        left: 17%;
-        right: 17%;
-        bottom: 6%;
-        height: 13%;
-        z-index: -1;
-        border-radius: 50%;
-        background: rgba(0, 0, 0, 0.45);
-        filter: blur(6px);
-        transform: perspective(80px) rotateX(62deg);
       }
 
       .actor.is-releasing {
@@ -301,8 +280,6 @@
       .boss-cantor {
         left: 50%;
         top: 44%;
-        background-image: url("../../assets/boss-animations/boss-motion-atlas-a.webp");
-        --atlas-y: 50%;
         transform: translate(-50%, -50%);
       }
 
@@ -310,15 +287,11 @@
         left: 12%;
         top: 43%;
         width: clamp(122px, 13vw, 194px);
-        background-image: url("../../assets/boss-animations/boss-motion-atlas-a.webp");
-        --atlas-y: 100%;
         transform: translate(-16%, -50%) scaleX(-1);
       }
 
       .elite {
         width: clamp(74px, 7.8vw, 112px);
-        background-image: url("../../assets/enemy-animations/enemy-motion-atlas-b.webp");
-        --atlas-y: 100%;
       }
 
       .elite-a {
@@ -345,16 +318,12 @@
         width: clamp(56px, 5.7vw, 86px);
         aspect-ratio: 1;
         pointer-events: none;
-        background-image: url("../../assets/hero-animations/hero-fire-runtime.webp");
-        background-size: 300% 200%;
-        background-position: 0 0;
-        background-repeat: no-repeat;
         filter: drop-shadow(0 6px 7px rgba(0, 0, 0, 0.78));
       }
 
       .field-hero {
         right: 13%;
-        bottom: 12%;
+        bottom: max(12px, 12%);
         transform: scaleX(-1);
       }
 
@@ -366,7 +335,7 @@
 
       .horde-hero {
         left: 48%;
-        bottom: 6%;
+        bottom: max(10px, 7%);
         transform: translateX(-50%);
       }
 
@@ -558,8 +527,28 @@
           </header>
           <div class="arena">
             <canvas class="vfx-canvas" aria-hidden="true"></canvas>
-            <div class="actor boss-cantor" data-row="1" aria-hidden="true"></div>
-            <div class="hero field-hero" aria-hidden="true"></div>
+            <canvas
+              class="actor boss-cantor"
+              width="384"
+              height="384"
+              data-atlas-src="../../assets/boss-animations/boss-motion-atlas-a.webp"
+              data-atlas-columns="5"
+              data-atlas-rows="3"
+              data-atlas-row="1"
+              data-atlas-role="hostile"
+              aria-hidden="true"
+            ></canvas>
+            <canvas
+              class="hero field-hero"
+              width="512"
+              height="512"
+              data-atlas-src="../../assets/hero-animations/hero-fire-runtime.webp"
+              data-atlas-columns="3"
+              data-atlas-rows="2"
+              data-atlas-row="0"
+              data-atlas-role="hero"
+              aria-hidden="true"
+            ></canvas>
           </div>
           <footer class="card-caption">
             <div class="phase-rail" aria-hidden="true"><span></span></div>
@@ -578,8 +567,28 @@
           </header>
           <div class="arena">
             <canvas class="vfx-canvas" aria-hidden="true"></canvas>
-            <div class="actor boss-railjaw" data-row="2" aria-hidden="true"></div>
-            <div class="hero lane-hero" aria-hidden="true"></div>
+            <canvas
+              class="actor boss-railjaw"
+              width="384"
+              height="384"
+              data-atlas-src="../../assets/boss-animations/boss-motion-atlas-a.webp"
+              data-atlas-columns="5"
+              data-atlas-rows="3"
+              data-atlas-row="2"
+              data-atlas-role="hostile"
+              aria-hidden="true"
+            ></canvas>
+            <canvas
+              class="hero lane-hero"
+              width="512"
+              height="512"
+              data-atlas-src="../../assets/hero-animations/hero-fire-runtime.webp"
+              data-atlas-columns="3"
+              data-atlas-rows="2"
+              data-atlas-row="0"
+              data-atlas-role="hero"
+              aria-hidden="true"
+            ></canvas>
           </div>
           <footer class="card-caption">
             <div class="phase-rail" aria-hidden="true"><span></span></div>
@@ -598,10 +607,50 @@
           </header>
           <div class="arena">
             <canvas class="vfx-canvas" aria-hidden="true"></canvas>
-            <div class="actor elite elite-a" data-row="2" aria-hidden="true"></div>
-            <div class="actor elite elite-b" data-row="2" aria-hidden="true"></div>
-            <div class="actor elite elite-c" data-row="2" aria-hidden="true"></div>
-            <div class="hero horde-hero" aria-hidden="true"></div>
+            <canvas
+              class="actor elite elite-a"
+              width="384"
+              height="384"
+              data-atlas-src="../../assets/enemy-animations/enemy-motion-atlas-b.webp"
+              data-atlas-columns="5"
+              data-atlas-rows="3"
+              data-atlas-row="2"
+              data-atlas-role="hostile"
+              aria-hidden="true"
+            ></canvas>
+            <canvas
+              class="actor elite elite-b"
+              width="384"
+              height="384"
+              data-atlas-src="../../assets/enemy-animations/enemy-motion-atlas-b.webp"
+              data-atlas-columns="5"
+              data-atlas-rows="3"
+              data-atlas-row="2"
+              data-atlas-role="hostile"
+              aria-hidden="true"
+            ></canvas>
+            <canvas
+              class="actor elite elite-c"
+              width="384"
+              height="384"
+              data-atlas-src="../../assets/enemy-animations/enemy-motion-atlas-b.webp"
+              data-atlas-columns="5"
+              data-atlas-rows="3"
+              data-atlas-row="2"
+              data-atlas-role="hostile"
+              aria-hidden="true"
+            ></canvas>
+            <canvas
+              class="hero horde-hero"
+              width="512"
+              height="512"
+              data-atlas-src="../../assets/hero-animations/hero-fire-runtime.webp"
+              data-atlas-columns="3"
+              data-atlas-rows="2"
+              data-atlas-row="0"
+              data-atlas-role="hero"
+              aria-hidden="true"
+            ></canvas>
           </div>
           <footer class="card-caption">
             <div class="phase-rail" aria-hidden="true"><span></span></div>
@@ -621,6 +670,10 @@
         const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)")
         const cards = Array.from(document.querySelectorAll(".study-card"))
         const control = document.querySelector(".motion-control")
+        const atlasCanvases = Array.from(
+          document.querySelectorAll("canvas[data-atlas-src]"),
+        )
+        const atlasImages = new Map()
         let paused = reducedMotion.matches
         let pauseStartedAt = 0
         let pausedDuration = 0
@@ -641,6 +694,83 @@
 
         const rgba = (rgb, alpha) =>
           `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${clamp(alpha)})`
+
+        const loadAtlas = (source) => {
+          if (atlasImages.has(source)) return atlasImages.get(source).promise
+          const image = new Image()
+          const record = {
+            image,
+            promise: new Promise((resolve, reject) => {
+              image.addEventListener("load", () => resolve(image), { once: true })
+              image.addEventListener(
+                "error",
+                () => reject(new Error(`Unable to load review atlas: ${source}`)),
+                { once: true },
+              )
+            }),
+          }
+          atlasImages.set(source, record)
+          image.decoding = "async"
+          image.src = new URL(source, document.baseURI).href
+          return record.promise
+        }
+
+        const atlasReady = Promise.all(
+          [...new Set(atlasCanvases.map((canvas) => canvas.dataset.atlasSrc))].map(
+            (source) => loadAtlas(source),
+          ),
+        )
+
+        const drawIsolatedAtlasCell = (canvas, column) => {
+          const source = canvas.dataset.atlasSrc
+          const record = atlasImages.get(source)
+          const image = record?.image
+          if (!image?.complete || image.naturalWidth === 0) return
+
+          const columns = Math.max(1, Number(canvas.dataset.atlasColumns) || 1)
+          const rows = Math.max(1, Number(canvas.dataset.atlasRows) || 1)
+          const row = clamp(
+            Math.floor(Number(canvas.dataset.atlasRow) || 0),
+            0,
+            rows - 1,
+          )
+          const isolatedColumn = clamp(Math.floor(column), 0, columns - 1)
+          const sourceX0 = Math.round(
+            (isolatedColumn * image.naturalWidth) / columns,
+          )
+          const sourceX1 = Math.round(
+            ((isolatedColumn + 1) * image.naturalWidth) / columns,
+          )
+          const sourceY0 = Math.round((row * image.naturalHeight) / rows)
+          const sourceY1 = Math.round(
+            ((row + 1) * image.naturalHeight) / rows,
+          )
+          const targetWidth = sourceX1 - sourceX0
+          const targetHeight = sourceY1 - sourceY0
+          const frameKey = `${isolatedColumn}:${row}:${targetWidth}:${targetHeight}`
+          if (canvas.dataset.renderedAtlasCell === frameKey) return
+
+          if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+            canvas.width = targetWidth
+            canvas.height = targetHeight
+          }
+          const context = canvas.getContext("2d", { alpha: true })
+          context.clearRect(0, 0, targetWidth, targetHeight)
+          context.imageSmoothingEnabled = true
+          context.imageSmoothingQuality = "high"
+          context.drawImage(
+            image,
+            sourceX0,
+            sourceY0,
+            targetWidth,
+            targetHeight,
+            0,
+            0,
+            targetWidth,
+            targetHeight,
+          )
+          canvas.dataset.renderedAtlasCell = frameKey
+        }
 
         const palette = {
           bone: [237, 242, 237],
@@ -713,7 +843,7 @@
 
           for (let index = 0; index < density; index += 1) {
             const visibility = hash(seed + index * 3.17)
-            if (visibility < 0.24) continue
+            if (visibility < 0.28) continue
             const angle =
               hash(seed + index * 6.13) * Math.PI * 2 +
               Math.sin(time * (0.3 + hash(seed + index) * 0.24) + index) * 0.012
@@ -730,21 +860,21 @@
             const tangentY = nx
             const age = (time * (0.17 + hash(seed + index * 7.7) * 0.18) + hash(seed + index * 9.9)) % 1
             const flicker = Math.sin(age * Math.PI)
-            const tangentLength = 2 + hash(seed + index * 11.3) * 11
-            const outward = 0.5 + hash(seed + index * 12.7) * 5.5
+            const tangentLength = 3 + hash(seed + index * 11.3) * 14
+            const outward = 0.5 + hash(seed + index * 12.7) * 6.5
             const direction = hash(seed + index * 13.9) > 0.5 ? 1 : -1
             const startX = edgeX + nx * outward * age - tangentX * tangentLength * 0.5 * direction
             const startY = edgeY + ny * outward * age - tangentY * tangentLength * 0.5 * direction
             const endX = edgeX + nx * (outward + 2 + age * 4) + tangentX * tangentLength * 0.5 * direction
             const endY = edgeY + ny * (outward + 2 + age * 4) + tangentY * tangentLength * 0.5 * direction
-            const alpha = energy * flicker * (0.12 + visibility * 0.34)
+            const alpha = energy * flicker * (0.22 + visibility * 0.45)
             const cool = hash(seed + index * 17.1)
             const color = cool > 0.58 ? palette.silver : colorBias
 
             context.strokeStyle = rgba(color, alpha)
-            context.lineWidth = 0.45 + hash(seed + index * 19.1) * 0.8
-            context.shadowColor = rgba(color, alpha * 0.82)
-            context.shadowBlur = 2 + hash(seed + index * 20.1) * 5
+            context.lineWidth = 0.6 + hash(seed + index * 19.1) * 0.95
+            context.shadowColor = rgba(color, alpha * 0.9)
+            context.shadowBlur = 3 + hash(seed + index * 20.1) * 6
             context.beginPath()
             context.moveTo(startX, startY)
             context.quadraticCurveTo(
@@ -754,6 +884,27 @@
               endY,
             )
             context.stroke()
+
+            if (index % 3 === 0) {
+              const coreLength = 2.5 + hash(seed + index * 23.7) * 5
+              const coreAlpha = energy * flicker * (0.38 + visibility * 0.42)
+              context.strokeStyle = rgba(palette.bone, coreAlpha)
+              context.lineWidth = 0.65 + hash(seed + index * 25.1) * 0.55
+              context.shadowColor = rgba(palette.bone, coreAlpha)
+              context.shadowBlur = 2.5
+              context.beginPath()
+              context.moveTo(
+                edgeX - tangentX * coreLength * 0.52,
+                edgeY - tangentY * coreLength * 0.52,
+              )
+              context.quadraticCurveTo(
+                edgeX + nx * 1.4,
+                edgeY + ny * 1.4,
+                edgeX + tangentX * coreLength * 0.48 + nx * 2.2,
+                edgeY + tangentY * coreLength * 0.48 + ny * 2.2,
+              )
+              context.stroke()
+            }
           }
 
           context.restore()
@@ -821,23 +972,23 @@
           context.save()
           context.globalCompositeOperation = "lighter"
           context.lineCap = "round"
-          const count = 92
+          const count = 116
           for (let index = 0; index < count; index += 1) {
-            if (hash(seed + index * 2.7) < 0.28) continue
+            if (hash(seed + index * 2.7) < 0.3) continue
             const side = index % 2 === 0 ? -1 : 1
             const position = 0.05 + hash(seed + index * 4.13) * 0.88
             const point = lanePoint(x1, y1, x2, y2, halfWidth, position, side, 0.28)
             const age = (time * (0.12 + hash(seed + index * 7.9) * 0.18) + hash(seed + index * 8.3)) % 1
             const flicker = Math.sin(age * Math.PI)
-            const tangentLength = 2 + hash(seed + index * 9.7) * 13
-            const outward = 1 + hash(seed + index * 12.1) * 6
-            const alpha = energy * flicker * (0.13 + hash(seed + index * 14.7) * 0.34)
+            const tangentLength = 3 + hash(seed + index * 9.7) * 15
+            const outward = 1 + hash(seed + index * 12.1) * 7
+            const alpha = energy * flicker * (0.23 + hash(seed + index * 14.7) * 0.42)
             const color = index % 4 === 0 ? palette.bone : palette.silver
 
             context.strokeStyle = rgba(color, alpha)
-            context.lineWidth = 0.45 + hash(seed + index * 16.1) * 0.76
-            context.shadowColor = rgba(color, alpha * 0.8)
-            context.shadowBlur = 2 + hash(seed + index * 18.1) * 4
+            context.lineWidth = 0.58 + hash(seed + index * 16.1) * 0.82
+            context.shadowColor = rgba(color, alpha * 0.9)
+            context.shadowBlur = 3 + hash(seed + index * 18.1) * 5
             context.beginPath()
             context.moveTo(
               point.x - point.tangentX * tangentLength * 0.55,
@@ -854,6 +1005,31 @@
                 point.normalY * outward,
             )
             context.stroke()
+
+            if (index % 4 === 0) {
+              const coreLength = 3 + hash(seed + index * 20.9) * 6
+              const coreAlpha = energy * flicker * (0.42 + hash(seed + index * 21.7) * 0.34)
+              context.strokeStyle = rgba(palette.bone, coreAlpha)
+              context.lineWidth = 0.7
+              context.shadowColor = rgba(palette.bone, coreAlpha)
+              context.shadowBlur = 2.5
+              context.beginPath()
+              context.moveTo(
+                point.x - point.tangentX * coreLength * 0.55,
+                point.y - point.tangentY * coreLength * 0.55,
+              )
+              context.quadraticCurveTo(
+                point.x + point.normalX * 1.2,
+                point.y + point.normalY * 1.2,
+                point.x +
+                  point.tangentX * coreLength * 0.45 +
+                  point.normalX * 2.1,
+                point.y +
+                  point.tangentY * coreLength * 0.45 +
+                  point.normalY * 2.1,
+              )
+              context.stroke()
+            }
           }
           context.restore()
         }
@@ -878,15 +1054,16 @@
         }
 
         const cycleEnergy = (progress) => {
-          const rise = smoothstep(0.08, 0.58, progress)
-          const release = 1 - smoothstep(0.82, 0.98, progress)
-          return rise * release
+          const wrapIn = smoothstep(0, 0.05, progress)
+          const rise = smoothstep(0.02, 0.28, progress)
+          const release = 1 - smoothstep(0.86, 0.99, progress)
+          return wrapIn * (0.34 + rise * 0.66) * release
         }
 
         const updateActors = (card, progress) => {
-          const actors = card.querySelectorAll(".actor")
+          const actors = card.querySelectorAll("canvas[data-atlas-src]")
           const releasing = progress >= 0.64 && progress < 0.86
-          const column =
+          const hostileColumn =
             progress < 0.24
               ? 0
               : progress < 0.64
@@ -894,14 +1071,21 @@
                 : progress < 0.86
                   ? 4
                   : 0
-          const x = `${column * 25}%`
-          actors.forEach((actor, index) => {
-            actor.style.setProperty("--atlas-x", x)
+          const heroColumn =
+            progress < 0.34
+              ? 0
+              : progress < 0.62
+                ? 1
+                : progress < 0.86
+                  ? 2
+                  : 0
+          actors.forEach((actor) => {
+            const column =
+              actor.dataset.atlasRole === "hero"
+                ? heroColumn
+                : hostileColumn
+            drawIsolatedAtlasCell(actor, column)
             actor.classList.toggle("is-releasing", releasing)
-            const pulse = releasing
-              ? 1 + Math.sin(progress * Math.PI * 20 + index) * 0.018
-              : 1
-            actor.style.setProperty("--release-pulse", pulse.toFixed(3))
           })
           const rail = card.querySelector(".phase-rail span")
           rail.style.transform = `scaleX(${progress})`
@@ -914,8 +1098,8 @@
           const radiusX = width * 0.31
           const radiusY = height * 0.31
           drawDustFill(context, x, y, radiusX, radiusY, energy, palette.crimson, 101)
-          drawPerimeterSpray(context, x, y, radiusX, radiusY, energy, time, 110, 104)
-          drawMotes(context, x, y, radiusX, radiusY, energy, time, 131, 28)
+          drawPerimeterSpray(context, x, y, radiusX, radiusY, energy, time, 110, 132)
+          drawMotes(context, x, y, radiusX, radiusY, energy, time, 131, 34)
         }
 
         const renderLane = (context, width, height, progress, time) => {
@@ -949,7 +1133,7 @@
             energy,
             time,
             239,
-            72,
+            92,
             palette.bone,
           )
           drawMotes(
@@ -981,17 +1165,16 @@
             energy,
             time,
             311,
-            70,
+            96,
             palette.silver,
           )
-          drawMotes(context, x, y, radiusX, radiusY, energy, time, 313, 18)
+          drawMotes(context, x, y, radiusX, radiusY, energy, time, 313, 24)
         }
 
         const renderCard = (card, elapsed) => {
           const canvas = card.querySelector(".vfx-canvas")
           const { context, width, height } = fitCanvas(canvas)
-          const offset = Number(card.dataset.study === "lane" ? 0.22 : card.dataset.study === "horde" ? 0.44 : 0)
-          const progress = ((elapsed / CYCLE_MS + offset) % 1 + 1) % 1
+          const progress = ((elapsed / CYCLE_MS) % 1 + 1) % 1
           const time = elapsed / 1000
 
           context.clearRect(0, 0, width, height)
@@ -1050,6 +1233,19 @@
         } else {
           frameHandle = requestAnimationFrame(render)
         }
+        atlasReady
+          .then(() => {
+            atlasCanvases.forEach((canvas) => {
+              delete canvas.dataset.renderedAtlasCell
+            })
+            const elapsed = paused
+              ? CYCLE_MS * 0.62
+              : performance.now() - pausedDuration
+            cards.forEach((card) => renderCard(card, elapsed))
+          })
+          .catch((error) => {
+            console.error(error)
+          })
       })()
     </script>
   </body>

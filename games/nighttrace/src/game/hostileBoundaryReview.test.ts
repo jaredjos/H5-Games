@@ -17,13 +17,41 @@ describe('hostile boundary approval review', () => {
       'url("../../assets/first-beacon-arena.webp")',
     )
     expect(reviewSource).toContain(
-      'url("../../assets/hero-animations/hero-fire-runtime.webp")',
+      'data-atlas-src="../../assets/hero-animations/hero-fire-runtime.webp"',
     )
     expect(reviewSource).toContain(
-      'url("../../assets/boss-animations/boss-motion-atlas-a.webp")',
+      'data-atlas-src="../../assets/boss-animations/boss-motion-atlas-a.webp"',
     )
     expect(reviewSource).toContain(
-      'url("../../assets/enemy-animations/enemy-motion-atlas-b.webp")',
+      'data-atlas-src="../../assets/enemy-animations/enemy-motion-atlas-b.webp"',
+    )
+  })
+
+  it('isolates exact integer source cells instead of CSS-positioning full atlases', () => {
+    expect(reviewSource).toContain('drawIsolatedAtlasCell')
+    expect(reviewSource).toContain(
+      '(isolatedColumn * image.naturalWidth) / columns',
+    )
+    expect(reviewSource).toContain(
+      '((isolatedColumn + 1) * image.naturalWidth) / columns',
+    )
+    expect(reviewSource).toContain('(row * image.naturalHeight) / rows')
+    expect(reviewSource).toContain(
+      '((row + 1) * image.naturalHeight) / rows',
+    )
+    expect(reviewSource).toContain('context.drawImage(')
+    expect(reviewSource).toContain('sourceX0,')
+    expect(reviewSource).toContain('sourceY0,')
+    expect(reviewSource).toContain('atlasReady')
+    expect(reviewSource.match(/data-atlas-role="hostile"/g)).toHaveLength(5)
+    expect(reviewSource.match(/data-atlas-role="hero"/g)).toHaveLength(3)
+    expect(reviewSource).not.toContain('--atlas-x')
+    expect(reviewSource).not.toContain('--atlas-y')
+    expect(reviewSource).not.toContain(
+      'background-size: calc(var(--atlas-columns)',
+    )
+    expect(reviewSource).not.toContain(
+      'background-position: var(--atlas-x)',
     )
   })
 
@@ -31,6 +59,13 @@ describe('hostile boundary approval review', () => {
     expect(reviewSource).toContain('drawPerimeterSpray')
     expect(reviewSource).toContain('drawBrokenLaneSpray')
     expect(reviewSource).toContain('drawMotes')
+    expect(reviewSource).toContain('const coreAlpha')
+    expect(reviewSource).toContain('index % 3 === 0')
+    expect(reviewSource).toContain('index % 4 === 0')
+    expect(reviewSource).toContain('if (visibility < 0.28) continue')
+    expect(reviewSource).toContain(
+      'const wrapIn = smoothstep(0, 0.05, progress)',
+    )
     expect(reviewSource).toContain('requestAnimationFrame(render)')
     expect(reviewSource).not.toContain('setLineDash')
     expect(reviewSource).not.toContain('strokeRect')
@@ -46,5 +81,6 @@ describe('hostile boundary approval review', () => {
     )
     expect(reviewSource).toContain('env(safe-area-inset-left)')
     expect(reviewSource).toContain('env(safe-area-inset-right)')
+    expect(reviewSource).toContain('bottom: max(10px, 7%);')
   })
 })
