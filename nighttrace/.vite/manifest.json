@@ -102,7 +102,7 @@
     "name": "rolldown-runtime"
   },
   "index.html": {
-    "file": "assets/index-Dps-2E0z.js",
+    "file": "assets/index-rS3v7pqC.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -113,7 +113,7 @@
       "src/game/GameCanvas.tsx"
     ],
     "css": [
-      "assets/index-ExiLuR47.css"
+      "assets/index-Y7aFjnsb.css"
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/environment-browser/browserAll.mjs": {
@@ -139,7 +139,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/canvas/CanvasRenderer.mjs": {
-    "file": "assets/CanvasRenderer-zVtWBKOl.js",
+    "file": "assets/CanvasRenderer-BZLpD1l7.js",
     "name": "CanvasRenderer",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/canvas/CanvasRenderer.mjs",
     "isDynamicEntry": true,
@@ -148,7 +148,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gl/WebGLRenderer.mjs": {
-    "file": "assets/WebGLRenderer-EAexrHOU.js",
+    "file": "assets/WebGLRenderer-BPC6WLtN.js",
     "name": "WebGLRenderer",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gl/WebGLRenderer.mjs",
     "isDynamicEntry": true,
@@ -157,7 +157,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gpu/WebGPURenderer.mjs": {
-    "file": "assets/WebGPURenderer-BGYMMX5j.js",
+    "file": "assets/WebGPURenderer-CmX4_kgh.js",
     "name": "WebGPURenderer",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gpu/WebGPURenderer.mjs",
     "isDynamicEntry": true,
@@ -166,7 +166,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/scene/text-bitmap/BitmapFont.mjs": {
-    "file": "assets/BitmapFont-D99K1OUr.js",
+    "file": "assets/BitmapFont-D55cqg7U.js",
     "name": "BitmapFont",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/scene/text-bitmap/BitmapFont.mjs",
     "isDynamicEntry": true,
@@ -175,7 +175,7 @@
     ]
   },
   "src/game/GameCanvas.tsx": {
-    "file": "assets/GameCanvas-BzMGxWrA.js",
+    "file": "assets/GameCanvas-BLKVAVY8.js",
     "name": "GameCanvas",
     "src": "src/game/GameCanvas.tsx",
     "isDynamicEntry": true,
