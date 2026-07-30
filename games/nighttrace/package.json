@@ -1,12 +1,13 @@
 {
   "name": "nighttrace",
   "private": true,
-  "version": "1.17.0",
+  "version": "1.18.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/verify-subpath-build.mjs",
     "audio:render": "node scripts/render-original-music.mjs",
+    "vfx:build": "node scripts/run-premium-spell-vfx.mjs",
     "lint": "eslint .",
     "test": "vitest run",
     "verify:build": "node scripts/verify-subpath-build.mjs",

@@ -305,8 +305,8 @@ export function sampleHostileBoundaryParticles(
       reducedEnergy *
       twinkle *
       (kind === 'filament'
-        ? 0.34 + sizeUnit * 0.34
-        : 0.2 + sizeUnit * 0.28)
+        ? 0.58 + sizeUnit * 0.3
+        : 0.4 + sizeUnit * 0.26)
 
     particles.push(
       Object.freeze({
@@ -317,16 +317,16 @@ export function sampleHostileBoundaryParticles(
         baseV,
         size:
           kind === 'filament'
-            ? 0.004 + sizeUnit * 0.005
-            : 0.006 + sizeUnit * 0.008,
+            ? 0.006 + sizeUnit * 0.0055
+            : 0.007 + sizeUnit * 0.009,
         stretch:
           kind === 'filament'
-            ? 4.2 + cosmeticUnit(seed, index, 101) * 5.6
+            ? 6.4 + cosmeticUnit(seed, index, 101) * 5.8
             : 0.72 + cosmeticUnit(seed, index, 103) * 0.6,
         rotation,
         alpha: clamp01(alpha),
         glowAlpha: clamp01(
-          (kind === 'filament' ? 0.32 : 0.2) *
+          (kind === 'filament' ? 0.42 : 0.28) *
             prominenceGain *
             reducedEnergy,
         ),

@@ -37,15 +37,18 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.16.2` — revives now restore 50% vitality; every Sovereign tracks the bearer across idle, movement, windup, release, and intro while correcting the left-authored Railjaw/Furnace row; the hostile-boundary material reference is published for final approval
 - `v1.16.3` — the approved broken bone-white/silver filament and drifting-mote boundary enters live combat for every boss and elite field, lane, and projectile destination; adaptive fair-share allocation keeps three-, five-, and eight-footprint signatures readable on desktop, mobile, and reduced-flash settings without changing hitboxes or damage
 - `v1.17.0` — Spell Rank presentation parity: every adjacent rank now adds live-authored detail, all eight spells own distinct Solo/Combined/Mastered/Awakened silhouettes, Rift Seeds becomes an Eventide Garden, Comet Swarm gains a Perihelion formation, Mirror Bow becomes an Infinite Refrain, and the Spell Arsenal glyphs visibly evolve through all five ranks
+- `v1.18.0` — authored premium Spell Rank VFX: all eight spells now use their own high-resolution six-state material atlas plus mobile LOD, every Rank I–V and Awakened state changes physical silhouette and footprint in live PixiJS combat, hostile boundaries retain broken bone-white/silver filaments and drifting motes, and actor opacity/gameplay geometry remain protected
 
 ## Runtime guide and visual evidence
 
+- [v1.18 Spell Rank gameplay proof](https://jaredjos.github.io/H5-Games/nighttrace/docs/vfx-v1.18.0/all-spell-ranks-overview.jpg) — 48 actual PixiJS gameplay states covering Rank I–V and Awakened for all eight spells
+- [v1.18 hostile-boundary gameplay proof](https://jaredjos.github.io/H5-Games/nighttrace/docs/vfx-v1.18.0/hostile-boundary-gameplay-proof.png) — live broken bone-white/silver filaments and drifting motes across a multi-footprint boss warning
 - [Animated Graveglass + Eclipse material review](https://jaredjos.github.io/H5-Games/nighttrace/review/spell-choreography/) — the authored structural choreography remains in live combat, now joined by the v1.10.0 all-power material-floor pass
 - [Hostile boundary material reference](https://jaredjos.github.io/H5-Games/nighttrace/review/hostile-boundary/) — animated reference for the broken filaments and drifting motes now used by live boss and elite-horde fields, lanes, and projectile destinations
 - [Legacy v1.6 Combat Systems Codex (PDF)](https://jaredjos.github.io/H5-Games/nighttrace/docs/NIGHTTRACE_Combat_Systems_Codex.pdf) — the archived combat, upgrade, pickup, boss, difficulty, music, and mobile reference
 - [Legacy v1.4/v1.6 upgrade states: Helio Lance through Rift Seeds](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-01.png)
 - [Legacy v1.4/v1.6 upgrade states: Comet Swarm through Eclipse Harrow](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-02.png)
-- [Legacy capture manifest](https://jaredjos.github.io/H5-Games/nighttrace/docs/capture-manifest.json) — deterministic loadouts and capture provenance for the archived plates; the v1.17.0 live renderer is authoritative
+- [Legacy capture manifest](https://jaredjos.github.io/H5-Games/nighttrace/docs/capture-manifest.json) — deterministic loadouts and capture provenance for the archived plates; the v1.18.0 live renderer and spell-specific authored atlases are authoritative
 
 ## One-click Windows start
 
@@ -297,12 +300,19 @@ The Settings screen includes independent master, music, and effects volume contr
 ## Commands
 
 ```powershell
+pnpm vfx:build
 pnpm build
 pnpm verify:build
 pnpm test
 pnpm lint
 pnpm preview
 ```
+
+`pnpm vfx:build` regenerates the committed desktop/mobile premium spell
+material and projectile WebP atlases from the six-state, three-role v3 source
+boards under `art-source/spell-vfx-v3`. It requires Python with Pillow and
+NumPy; normal gameplay builds consume the committed atlases and do not require
+Python.
 
 ### Development-only QA mode
 

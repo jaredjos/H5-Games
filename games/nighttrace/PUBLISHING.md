@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.17.0`
+- Current web release: `v1.18.0`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -185,6 +185,21 @@ The v1.17.0 Spell Rank presentation gate additionally requires:
 - Spell Arsenal glyphs evolve at each rank and use a separate awakened crest
 - presentation recipes contain no damage, cooldown, collision, or hitbox data
 
+The v1.18.0 authored premium Spell Rank gate additionally requires:
+
+- all eight spells resolve through distinct authored six-state material atlases
+  for Spell Rank I-V plus Awakened rather than shared recolored primitives
+- desktop and mobile VFX atlases decode at their declared 1536x768 and 768x384
+  grids, with isolated 256 px and 128 px cells and transparent gutters
+- live casts select the exact spell, Spell Rank, awakening state, and device LOD
+  while rendering one coherent authored macro beat rather than duplicate stamps
+- deterministic gameplay captures prove all 48 live spell states and every
+  adjacent Spell Rank transition with a localized material-change gate
+- full-resolution actors stay on protected layers at full opacity; VFX never
+  alter hero alpha, actor parentage, damage, cooldown, collision, or hitboxes
+- boss and elite warnings retain the approved broken bone-white/silver
+  perimeter filaments and independently drifting motes in live combat
+
 ## Release archives
 
 The Windows archive contains:
@@ -232,6 +247,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.16.2`: revives restore 50% vitality, every Sovereign faces the live bearer with authored-row correction, and the animated hostile-boundary reference is published for final approval.
 - `v1.16.3`: the approved broken bone-white/silver boundary treatment enters live PixiJS combat for every boss and elite field, lane, and projectile destination; deterministic fair-share allocation keeps three-, five-, and eight-footprint signatures readable within dedicated desktop, mobile, and reduced-flash budgets without changing gameplay geometry.
 - `v1.17.0`: every spell and adjacent Spell Rank gains a live-authored presentation identity; weak Rift, Comet, and Mirror finals become Eventide Garden, Perihelion Hunt, and Infinite Refrain; the Spell Arsenal glyphs evolve through all five ranks; gameplay damage, cooldowns, collisions, and hitboxes are unchanged.
+- `v1.18.0`: eight spell-specific high-resolution authored atlases replace the shared recolor path; 48 live Rank I-V/Awakened states receive distinct physical silhouettes with mobile LODs, protected actor opacity, unchanged combat mechanics, and gameplay-captured progression evidence.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

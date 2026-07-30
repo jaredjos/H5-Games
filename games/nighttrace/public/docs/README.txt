@@ -1,9 +1,13 @@
-NIGHTTRACE v1.17.0 bundled runtime documentation
+NIGHTTRACE v1.18.0 bundled runtime documentation
 
 NIGHTTRACE_Combat_Systems_Codex.pdf
   Legacy v1.6 player-facing and implementation-derived reference for spell states,
   paired modules, Trace Mods, timed support relics, all ten boss patterns,
   difficulty logic, original music, mobile readiness, and source anchors.
+
+vfx-v1.18.0/
+  Actual gameplay evidence for all 48 Spell Rank I-V and Awakened states,
+  plus the live hostile-boundary filament and drifting-mote proof frame.
 
 upgrade-states-01.png
   Legacy v1.4 PixiJS gameplay frames for Helio Lance, Crescent Array, Arc Choir,
@@ -18,7 +22,7 @@ capture-manifest.json
   dimensions, file sizes, SHA-256 hashes, and source versions for every frame.
   Graveglass Spires and Eclipse Harrow are v1.6.0 recaptures; the other six
   unchanged spell plates retain their verified v1.4.0 runtime frames.
-  The v1.17.0 live renderer and its shared spell visual recipe are authoritative.
+  The v1.18.0 live renderer and its spell-specific authored VFX atlases are authoritative.
 
 Graveglass Spires and Eclipse Harrow are remote-world powers. They do not follow
 the bearer, use concentric damage bands, or apply repeated damage where their
