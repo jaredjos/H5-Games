@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - games/nighttrace/**
+      - .github/pages/nighttrace-versions/**
       - .github/workflows/deploy-nighttrace.yml
 
 permissions:
@@ -14,12 +15,12 @@ permissions:
 
 concurrency:
   group: deploy-nighttrace
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Check out source
@@ -39,33 +40,74 @@ jobs:
           cache: pnpm
           cache-dependency-path: games/nighttrace/pnpm-lock.yaml
 
-      - name: Install locked dependencies
+      - name: Check out isolated v1.18.0 source
+        shell: bash
+        run: |
+          git fetch origin \
+            nighttrace-v1.18-playable:refs/remotes/origin/nighttrace-v1.18-playable
+          git worktree add --detach /tmp/nighttrace-v118 \
+            origin/nighttrace-v1.18-playable
+
+      - name: Install stable dependencies
         working-directory: games/nighttrace
         run: pnpm install --frozen-lockfile
 
-      - name: Build the production game
+      - name: Test, lint, and build stable v1.16.4
         working-directory: games/nighttrace
-        run: pnpm build
+        run: |
+          pnpm test
+          pnpm lint
+          pnpm build
 
-      - name: Publish Nighttrace to GitHub Pages
+      - name: Install isolated v1.18.0 dependencies
+        working-directory: /tmp/nighttrace-v118/games/nighttrace
+        run: pnpm install --frozen-lockfile
+
+      - name: Test, lint, and build isolated v1.18.0
+        working-directory: /tmp/nighttrace-v118/games/nighttrace
+        run: |
+          pnpm test
+          pnpm lint
+          pnpm build
+
+      - name: Publish both Nighttrace builds and selector
         shell: bash
         run: |
-          GAME_VERSION="$(node -p "require('./games/nighttrace/package.json').version")"
+          STABLE_VERSION="$(node -p "require('./games/nighttrace/package.json').version")"
+          ISOLATED_VERSION="$(node -p "require('/tmp/nighttrace-v118/games/nighttrace/package.json').version")"
+          git fetch origin gh-pages:refs/remotes/origin/gh-pages
           git worktree add --detach /tmp/h5-pages origin/gh-pages
-          rm -rf /tmp/h5-pages/nighttrace
-          mkdir -p /tmp/h5-pages/nighttrace
+
+          rm -rf \
+            /tmp/h5-pages/nighttrace \
+            /tmp/h5-pages/nighttrace-v1.18.0 \
+            /tmp/h5-pages/nighttrace-versions
+          mkdir -p \
+            /tmp/h5-pages/nighttrace \
+            /tmp/h5-pages/nighttrace-v1.18.0 \
+            /tmp/h5-pages/nighttrace-versions
+
           cp -a games/nighttrace/dist/. /tmp/h5-pages/nighttrace/
+          cp -a /tmp/nighttrace-v118/games/nighttrace/dist/. \
+            /tmp/h5-pages/nighttrace-v1.18.0/
+          cp -a .github/pages/nighttrace-versions/. \
+            /tmp/h5-pages/nighttrace-versions/
           touch /tmp/h5-pages/.nojekyll
 
           cd /tmp/h5-pages
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A nighttrace .nojekyll
+          git add -A \
+            nighttrace \
+            nighttrace-v1.18.0 \
+            nighttrace-versions \
+            .nojekyll
 
           if git diff --cached --quiet; then
-            echo "Nighttrace Pages build is already current."
+            echo "Both Nighttrace Pages builds are already current."
             exit 0
           fi
 
-          git commit -m "deploy(nighttrace): publish v${GAME_VERSION}"
+          git commit -m \
+            "deploy(nighttrace): publish v${STABLE_VERSION} and v${ISOLATED_VERSION}"
           git push origin HEAD:gh-pages
