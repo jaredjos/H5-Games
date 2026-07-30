@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.17.0'
+const CACHE_VERSION = 'v1.18.0'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
 const ASSET_CACHE = `${CACHE_PREFIX}assets-${CACHE_VERSION}`
@@ -35,6 +35,24 @@ const SHELL_URLS = [
   new URL('assets/character-vfx/hero-material-vfx-atlas-v1-mobile.webp', SCOPE_URL).href,
   new URL('assets/character-vfx/boss-material-vfx-atlas-v1-desktop.webp', SCOPE_URL).href,
   new URL('assets/character-vfx/boss-material-vfx-atlas-v1-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-arc-v3-desktop.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-arc-v3-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-comet-v3-desktop.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-comet-v3-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-crescent-v3-desktop.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-crescent-v3-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-eclipse-v3-desktop.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-eclipse-v3-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-graveglass-v3-desktop.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-graveglass-v3-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-helio-v3-desktop.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-helio-v3-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-mirror-v3-desktop.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-mirror-v3-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-rift-v3-desktop.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-material-rift-v3-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-projectiles-v3-desktop.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/premium/spell-projectiles-v3-mobile.webp', SCOPE_URL).href,
 ]
 
 function isCacheable(response) {
