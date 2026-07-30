@@ -60,7 +60,7 @@ export const ASTRARIUM_NODES: AstrariumNodeDefinition[] = [
     id: 'force',
     name: 'Helio Focus',
     description: 'Temper every ray through a more exacting lens.',
-    stat: '+2% spell damage per rank',
+    stat: '+2% weapon damage per rank',
     baseCost: 26,
     maxRank: 5,
     x: 64,

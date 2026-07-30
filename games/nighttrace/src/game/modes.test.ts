@@ -19,6 +19,8 @@ import {
   COMBAT_LAB_PRESETS,
   DEFAULT_COMBAT_LAB_CONFIG,
   advanceBossTrialProgress,
+  bossTrialSelectionAfterRun,
+  bossTrialThreatsEnded,
   buildBossTrialRunConfig,
   buildCombatLabRunConfig,
   getBossTrialLoadout,
@@ -122,12 +124,6 @@ describe('Combat Lab presets and normalization', () => {
       'Combined',
       'Mastered',
       'Final',
-    ])
-    expect(COMBAT_LAB_PRESETS.map((preset) => preset.description)).toEqual([
-      'Spell Rank I without its paired module.',
-      'Spell Rank I combined with its paired module.',
-      'Spell Rank V before its final awakening.',
-      'Awakened Spell Rank V with a Module Rank III pairing.',
     ])
 
     for (const weaponId of Object.keys(WEAPONS) as WeaponId[]) {
@@ -307,6 +303,19 @@ describe('curated Boss Trial progression', () => {
     expect(advanceBossTrialProgress(1, 2, false)).toBe(1)
     expect(advanceBossTrialProgress(9, 10, true)).toBe(10)
     expect(advanceBossTrialProgress(10, 10, true)).toBe(10)
+  })
+
+  it('focuses the newly unlocked sovereign only after a strict first clear', () => {
+    expect(bossTrialSelectionAfterRun(0, 1, 1, true)).toBe(2)
+    expect(bossTrialSelectionAfterRun(4, 5, 5, true)).toBe(6)
+    expect(bossTrialSelectionAfterRun(9, 10, 10, true)).toBe(10)
+    expect(bossTrialSelectionAfterRun(4, 4, 5, false)).toBe(5)
+    expect(bossTrialSelectionAfterRun(6, 6, 3, true)).toBe(3)
+  })
+
+  it('reports the sovereign as the one ended threat on a trial victory', () => {
+    expect(bossTrialThreatsEnded(true)).toBe(1)
+    expect(bossTrialThreatsEnded(false)).toBe(0)
   })
 })
 

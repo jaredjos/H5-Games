@@ -22,6 +22,7 @@ import {
 } from './game/save'
 import {
   DEFAULT_COMBAT_LAB_CONFIG,
+  bossTrialSelectionAfterRun,
   buildBossTrialRunConfig,
   buildCombatLabRunConfig,
   isBossTrialUnlocked,
@@ -326,7 +327,16 @@ export default function App() {
     setResult({ ...runResult, dawnShards: awardedShards })
     setResultRewards({ mastery: newlyEarnedMastery })
     if (runResult.runMode === 'campaign') setSelectedLevelId(runResult.levelId)
-    if (runResult.runMode === 'boss-trial') setSelectedTrialLevelId(runResult.levelId)
+    if (runResult.runMode === 'boss-trial') {
+      setSelectedTrialLevelId(
+        bossTrialSelectionAfterRun(
+          save.bossTrialClears,
+          progressedSave.bossTrialClears,
+          runResult.levelId,
+          runResult.victory,
+        ),
+      )
+    }
     setSnapshot(undefined)
     setScreen('results')
   }, [persist, runKey, save])
@@ -372,6 +382,7 @@ export default function App() {
       if (screen !== 'game') return
       if (
         (event.code === 'Escape' || event.code === 'KeyP') &&
+        !snapshot?.awaitingStart &&
         !snapshot?.revivePending &&
         !snapshot?.upgradeOptions?.length
       ) {
@@ -381,6 +392,7 @@ export default function App() {
       }
       if (
         event.code === 'Space' &&
+        !snapshot?.awaitingStart &&
         !snapshot?.paused &&
         !snapshot?.revivePending &&
         !snapshot?.upgradeOptions?.length
@@ -405,6 +417,7 @@ export default function App() {
     screen,
     selectUpgrade,
     snapshot?.paused,
+    snapshot?.awaitingStart,
     snapshot?.revivePending,
     snapshot?.upgradeOptions,
     toggleMute,

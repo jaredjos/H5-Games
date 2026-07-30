@@ -6,8 +6,8 @@
     "1.4.0",
     "1.6.0"
   ],
-  "capture_version_note": "Graveglass Spires and Eclipse Harrow were recaptured from v1.6.0 after replacing the former area-power designs. The other six unchanged spell proofs retain their original v1.4.0 production frames.",
-  "manifest_generated_at_utc": "2026-07-29T15:55:44.473648+00:00",
+  "capture_version_note": "Graveglass Spires and Eclipse Harrow were recaptured from v1.6.0 after replacing the former area-power designs. The other six unchanged weapon proofs retain their original v1.4.0 production frames.",
+  "manifest_generated_at_utc": "2026-07-25T17:35:36.583535+00:00",
   "renderer": "production Pixi gameplay renderer",
   "viewport": {
     "nominal_width": 1440,
@@ -15,7 +15,7 @@
     "dpr_cap": 2,
     "note": "See each capture for exact pixel dimensions."
   },
-  "selection_method": "Local-only showcase route; one actual spell loadout; spell-specific deterministic target fixtures; production effect frozen at its authored readability beat. qa=1 accelerates fixed simulation ticks without changing the captured gameplay state.",
+  "selection_method": "Local-only showcase route; one actual weapon loadout; weapon-specific deterministic target fixtures; production effect frozen at its authored readability beat. qa=1 accelerates fixed simulation ticks without changing the captured gameplay state.",
   "v160_capture_report": "outputs/nighttrace/qa/graveglass-harrow-v160/capture-report.json",
   "state_definitions": {
     "solo": {

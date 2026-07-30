@@ -68,7 +68,7 @@ function smoothstep(value: number) {
 
 /**
  * Keeps the first minute readable, then lets the horde outgrow the player's
- * compounding spell ranks. The second phase is normalized against the boss
+ * compounding weapon ranks. The second phase is normalized against the boss
  * arrival rather than total duration, so every sector reaches the same authored
  * late-run pressure before its sovereign enters.
  */

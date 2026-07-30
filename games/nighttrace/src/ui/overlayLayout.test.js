@@ -4,6 +4,7 @@ import appSource from '../App.tsx?raw'
 import gameUiSource from './GameUI.tsx?raw'
 
 const styles = readFileSync(new URL('../styles.css', import.meta.url), 'utf8')
+  .replace(/\r\n/g, '\n')
 
 const rule = (selector, source = styles) => {
   const start = source.indexOf(selector)

@@ -99,6 +99,10 @@ import {
   segmentIntersection,
 } from './math'
 import {
+  angleFromOriginToTarget,
+  heroWeaponOrigin,
+} from './heroAttackOrigin'
+import {
   currentLocalWeaponShowcase,
   showcaseCaptureSeconds,
   showcaseLabel,
@@ -130,19 +134,6 @@ import {
   type WeaponVfxStage,
   type WeaponVfxState,
 } from './weaponVfx'
-import {
-  spellVisualRecipe,
-} from './spellVisualRecipe'
-import {
-  PREMIUM_SPELL_MATERIAL_LAYOUTS,
-  PREMIUM_SPELL_PROJECTILE_LAYOUTS,
-  premiumSpellAtlasSelection,
-  premiumSpellChoreography,
-  premiumSpellMaterialAssetPath,
-  premiumSpellProjectileAssetPath,
-  premiumSpellState,
-  type PremiumSpellAssetLod,
-} from './premiumSpellVfx'
 import {
   buildReplacementWeaponPattern,
   resolvePatternHits,
@@ -197,6 +188,7 @@ import {
 } from './visualQuality'
 import {
   attenuateOverdrawAlpha,
+  capDecorativeDensity,
   sceneVfxEnergyScale,
   type OverdrawKind,
 } from './actorReadability'
@@ -250,6 +242,7 @@ const HERO_MATERIAL_FRAME = Object.freeze({
   fracture: 13,
   dust: 15,
 } as const)
+
 export interface GameCanvasHandle {
   beginEncounter(): void
   revive(): void
@@ -556,10 +549,6 @@ class NighttraceRuntime {
   private hostileGroundFieldTexture?: Texture
   private hostileGroundLaneTexture?: Texture
   private heroPowerMaterialFrames: Texture[] = []
-  private readonly premiumSpellMaterialFrames = new Map<WeaponId, Texture[]>()
-  private premiumSpellProjectileFrames: Texture[] = []
-  private activeSpellMaterialWeaponId?: WeaponId
-  private activeSpellMaterialState?: WeaponVfxState
   private readonly authoredSpellMaterialSprites: Sprite[] = []
   private authoredSpellMaterialCursor = 0
   private readonly groundedVfxMaterialSprites: Sprite[] = []
@@ -567,8 +556,6 @@ class NighttraceRuntime {
   private groundedVfxParticleBudget = 0
   private groundedVfxBoundaryBudget = 0
   private hostileBoundaryFootprintsRemaining = 0
-  private hostileBoundaryFilamentsDrawn = 0
-  private hostileBoundaryMotesDrawn = 0
   private sparkTexture = Texture.WHITE
   private background?: Sprite
   private settings: GameSettings
@@ -796,25 +783,6 @@ class NighttraceRuntime {
         ? 'assets/character-vfx/hero-material-vfx-atlas-v1-mobile.webp'
         : 'assets/character-vfx/hero-material-vfx-atlas-v1-desktop.webp',
     )
-    const premiumSpellAssetLod: PremiumSpellAssetLod =
-      this.visualLod === 'mobile' ? 'mobile' : 'desktop'
-    const premiumSpellMaterialLoad = Promise.all(
-      ALL_WEAPON_IDS.map((weaponId) =>
-        Assets.load<Texture>(
-          appAssetUrl(
-            premiumSpellMaterialAssetPath(
-              weaponId,
-              premiumSpellAssetLod,
-            ),
-          ),
-        ),
-      ),
-    )
-    const premiumSpellProjectileLoad = Assets.load<Texture>(
-      appAssetUrl(
-        premiumSpellProjectileAssetPath(premiumSpellAssetLod),
-      ),
-    )
     const assetLoad = Promise.all([
       Assets.load<Texture>(backgroundForLevel(this.level.id)),
       Assets.load<Texture>(appAssetUrl('assets/hero-animations/hero-walk-runtime.webp')),
@@ -874,14 +842,7 @@ class NighttraceRuntime {
           hostileGroundLaneTexture,
           heroPowerMaterialSheet,
         ],
-        premiumSpellMaterialSheets,
-        premiumSpellProjectileSheet,
-      ] = await Promise.all([
-        applicationInit,
-        assetLoad,
-        premiumSpellMaterialLoad,
-        premiumSpellProjectileLoad,
-      ])
+      ] = await Promise.all([applicationInit, assetLoad])
 
       if (this.destroyed) {
         this.destroyApplication()
@@ -979,23 +940,6 @@ class NighttraceRuntime {
         4,
         4,
       )
-      for (let index = 0; index < ALL_WEAPON_IDS.length; index += 1) {
-        const weaponId = ALL_WEAPON_IDS[index]
-        const materialSheet = premiumSpellMaterialSheets[index]
-        this.premiumSpellMaterialFrames.set(
-          weaponId,
-          this.sliceTexture(
-            materialSheet,
-            PREMIUM_SPELL_MATERIAL_LAYOUTS[premiumSpellAssetLod].columns,
-            PREMIUM_SPELL_MATERIAL_LAYOUTS[premiumSpellAssetLod].rows,
-          ),
-        )
-      }
-      this.premiumSpellProjectileFrames = this.sliceTexture(
-        premiumSpellProjectileSheet,
-        PREMIUM_SPELL_PROJECTILE_LAYOUTS[premiumSpellAssetLod].columns,
-        PREMIUM_SPELL_PROJECTILE_LAYOUTS[premiumSpellAssetLod].rows,
-      )
       this.createVfxTextures()
       const initialHeroTexture =
         this.heroChargeFrames[0] ?? this.heroWalkFrames[0] ?? Texture.WHITE
@@ -1012,8 +956,6 @@ class NighttraceRuntime {
       this.host.dataset.materialVfxReady = 'retired'
       this.host.dataset.actorReadability = 'protected'
       this.host.dataset.authoredSpellMaterials = AUTHORED_SPELL_ASSET_REVISION
-      this.host.dataset.premiumSpellVfx = 'v3'
-      this.host.dataset.premiumSpellAtlasId = 'premium-spell-vfx-v3'
 
       this.input = new GameInput(this.host, {
         onInteract: () => void this.audio.unlock(),
@@ -1046,10 +988,14 @@ class NighttraceRuntime {
     this.audio.updateSettings(settings)
   }
 
-  async beginEncounter() {
+  beginEncounter() {
     if (!this.initialized || this.completed) return
-    await this.audio.unlock()
     if (!this.awaitingStart) return
+    // Start the audio handshake inside the gesture, but never make encounter
+    // state depend on media playback resolving on a particular browser.
+    void this.audio.unlock().catch(() => {
+      // Combat remains playable when a browser declines or lacks audio output.
+    })
     this.awaitingStart = false
     this.spawnBoss()
     this.emitSnapshot(true)
@@ -1094,33 +1040,73 @@ class NighttraceRuntime {
 
   private clearReviveSanctuary() {
     const sanctuaryRadius = REVIVE_SANCTUARY_RADIUS
-    const sanctuaryRadiusSquared = sanctuaryRadius ** 2
 
     for (const enemy of this.enemies) {
-      if (!enemy.active || enemy.isBoss) continue
+      if (!enemy.active) continue
+      const actorSanctuaryRadius =
+        sanctuaryRadius + (enemy.isBoss ? enemy.radius : 0)
       const dx = enemy.x - this.player.x
       const dy = enemy.y - this.player.y
       const distanceSquaredFromPlayer = dx * dx + dy * dy
-      if (distanceSquaredFromPlayer > sanctuaryRadiusSquared) continue
+      if (distanceSquaredFromPlayer > actorSanctuaryRadius ** 2) continue
       const distance = Math.sqrt(distanceSquaredFromPlayer)
-      const angle =
+      const preferredAngle =
         distance > 0.01
           ? Math.atan2(dy, dx)
           : this.random.range(0, Math.PI * 2)
-      enemy.x = clamp(
-        this.player.x + Math.cos(angle) * sanctuaryRadius,
-        38,
-        WORLD_WIDTH - 38,
-      )
-      enemy.y = clamp(
-        this.player.y + Math.sin(angle) * sanctuaryRadius,
-        34,
-        WORLD_HEIGHT - 34,
-      )
+
+      // A simple clamp can leave an actor inside the sanctuary when the hero
+      // revives near a wall. Evaluate the preferred direction plus an inward
+      // fan and keep the candidate with the greatest real separation.
+      const candidateAngles = [
+        preferredAngle,
+        preferredAngle + Math.PI,
+        0,
+        Math.PI * 0.5,
+        Math.PI,
+        -Math.PI * 0.5,
+        Math.PI * 0.25,
+        Math.PI * 0.75,
+        Math.PI * 1.25,
+        Math.PI * 1.75,
+      ]
+      let safeX = enemy.x
+      let safeY = enemy.y
+      let safeDistanceSquared = -1
+      for (const angle of candidateAngles) {
+        const candidateX = clamp(
+          this.player.x + Math.cos(angle) * actorSanctuaryRadius,
+          38,
+          WORLD_WIDTH - 38,
+        )
+        const candidateY = clamp(
+          this.player.y + Math.sin(angle) * actorSanctuaryRadius,
+          34,
+          WORLD_HEIGHT - 34,
+        )
+        const candidateDistanceSquared =
+          (candidateX - this.player.x) ** 2 +
+          (candidateY - this.player.y) ** 2
+        if (candidateDistanceSquared <= safeDistanceSquared) continue
+        safeX = candidateX
+        safeY = candidateY
+        safeDistanceSquared = candidateDistanceSquared
+      }
+
+      enemy.x = safeX
+      enemy.y = safeY
       enemy.previousX = enemy.x
       enemy.previousY = enemy.y
       enemy.pendingContactDamage = 0
-      enemy.contactCooldown = Math.max(enemy.contactCooldown, 1.1)
+      enemy.blinkTargetX = null
+      enemy.blinkTargetY = null
+      enemy.contactCooldown = Math.max(enemy.contactCooldown, enemy.isBoss ? 1.6 : 1.1)
+      if (enemy.isBoss) {
+        enemy.attackTimer = Math.max(enemy.attackTimer, 1.4)
+        enemy.attackMotionRemaining = 0
+        enemy.attackMotionDuration = 0
+        enemy.attackMotionStyle = 'none'
+      }
     }
 
     for (const telegraph of this.telegraphs) {
@@ -1245,6 +1231,7 @@ class NighttraceRuntime {
     if (
       !this.initialized ||
       this.completed ||
+      this.awaitingStart ||
       this.revivePending ||
       this.upgradeOptions?.length
     ) return
@@ -2655,13 +2642,15 @@ class NighttraceRuntime {
     const visualState = resolveWeaponVfxState(rank, moduleRank, Boolean(owned.awakened))
     const visualSeed = this.attackVolley * 97 + rank * 13 + moduleRank * 29 + (owned.awakened ? 53 : 0)
     const damage = weaponCastDamageBudget(owned, moduleRank)
-    const angle = Math.atan2(target.y - this.player.y, target.x - this.player.x)
-    this.heroFacing = { x: Math.cos(angle), y: Math.sin(angle) }
+    const facingAngle = Math.atan2(target.y - this.player.y, target.x - this.player.x)
+    this.heroFacing = { x: Math.cos(facingAngle), y: Math.sin(facingAngle) }
+    const weaponOrigin = this.currentHeroWeaponOrigin()
+    const angle = angleFromOriginToTarget(weaponOrigin, target)
     const usesDawncaster = DAWNCASTER_WEAPON_IDS.has(owned.id)
     this.triggerHeroAttack(
       usesDawncaster ? 'hero-shot' : 'hero-cast',
       owned.id === 'null-bell' ? 0.48 : usesDawncaster ? 0.3 : 0.4,
-      angle,
+      facingAngle,
     )
     this.attackVolley += 1
 
@@ -2833,7 +2822,8 @@ class NighttraceRuntime {
           damage * 0.35,
         )
         if (owned.awakened) {
-          this.spawnBurst(this.player.x, this.player.y, 0xe9f8ff, 10, 130)
+          const origin = this.currentHeroWeaponOrigin()
+          this.spawnBurst(origin.x, origin.y, 0xe9f8ff, 10, 130)
         }
         break
       }
@@ -2899,6 +2889,14 @@ class NighttraceRuntime {
     this.audio.playWeaponCue(owned.id)
   }
 
+  private currentHeroWeaponOrigin() {
+    const facingX =
+      Math.abs(this.heroFacing.x) > 0.01
+        ? this.heroFacing.x
+        : this.heroVisualFacing
+    return heroWeaponOrigin(this.player, facingX)
+  }
+
   private pushWeaponEffect(effect: WeaponEffectEntity) {
     if (this.weaponEffects.length >= 72) {
       let shortestIndex = 0
@@ -2945,12 +2943,13 @@ class NighttraceRuntime {
     }[weaponId] ?? 0.5
     const hitPulseTotal =
       weaponId === 'ash-halo' ? 0.38 : weaponId === 'null-bell' ? 0.46 : undefined
+    const castOrigin = this.currentHeroWeaponOrigin()
     this.pushWeaponEffect({
       kind: effectKind,
       weaponId,
       visualState,
-      x: pattern?.aimPoint.x ?? this.player.x,
-      y: pattern?.aimPoint.y ?? this.player.y,
+      x: pattern?.aimPoint.x ?? castOrigin.x,
+      y: pattern?.aimPoint.y ?? castOrigin.y,
       angle: pattern?.aimAngle ?? angle,
       radius: Math.max(24, radius * 0.22),
       maxRadius: Math.max(54, radius),
@@ -2967,8 +2966,8 @@ class NighttraceRuntime {
     const burstCount = Math.min(14, Math.max(4, Math.ceil(profile.particleCount * 0.45)))
     if (weaponId !== 'ash-halo' && weaponId !== 'null-bell') {
       this.spawnBurst(
-        this.player.x + Math.cos(angle) * 28,
-        this.player.y + Math.sin(angle) * 28,
+        castOrigin.x,
+        castOrigin.y,
         profile.accentColor,
         burstCount,
         72 + visualState.detail * 18,
@@ -3077,8 +3076,8 @@ class NighttraceRuntime {
       this.projectiles.push(projectile)
     }
 
-    const x = this.player.x + Math.cos(angle) * 28
-    const y = this.player.y + Math.sin(angle) * 28
+    const origin = this.currentHeroWeaponOrigin()
+    const { x, y } = origin
     projectile.active = true
     projectile.x = x
     projectile.y = y
@@ -3098,34 +3097,16 @@ class NighttraceRuntime {
     projectile.visualState = visualState
     projectile.visualSeed = visualSeed
     projectile.hitIds.length = 0
-    const premiumProjectileTexture =
-      this.premiumSpellProjectileTexture(weaponId, visualState)
-    projectile.sprite.texture =
-      premiumProjectileTexture ??
-      this.projectileTextures.get(weaponId) ??
-      Texture.WHITE
+    projectile.sprite.texture = this.projectileTextures.get(weaponId) ?? Texture.WHITE
     projectile.sprite.tint = 0xffffff
-    const [projectileWidth, projectileHeight] = this.projectileDimensions(
-      weaponId,
-      visualState,
-      Boolean(premiumProjectileTexture),
-    )
+    const [projectileWidth, projectileHeight] = this.projectileDimensions(weaponId)
     const visualProfile = weaponVfxProfile(weaponId, visualState)
-    projectile.sprite.width =
-      projectileWidth *
-      (premiumProjectileTexture ? 1 : visualProfile.projectileScale)
-    projectile.sprite.height =
-      projectileHeight *
-      (premiumProjectileTexture ? 1 : visualProfile.projectileScale)
-    projectile.sprite.alpha = premiumProjectileTexture ? 1 : 0.95
-    projectile.sprite.blendMode = premiumProjectileTexture ? 'screen' : 'add'
+    projectile.sprite.width = projectileWidth * visualProfile.projectileScale
+    projectile.sprite.height = projectileHeight * visualProfile.projectileScale
+    projectile.sprite.alpha = 0.95
+    projectile.sprite.blendMode = 'add'
     projectile.sprite.visible = true
     projectile.sprite.position.set(x, y)
-    if (premiumProjectileTexture) {
-      this.host.dataset.premiumSpellProjectile = weaponId
-      this.host.dataset.premiumSpellRank = String(visualState.rank)
-      this.host.dataset.premiumSpellAwakened = String(visualState.awakened)
-    }
   }
 
   private updateProjectiles(delta: number) {
@@ -4169,7 +4150,8 @@ class NighttraceRuntime {
     visualSeed: number,
   ) {
     const hit: number[] = []
-    const points: Vec2[] = [{ x: this.player.x, y: this.player.y }]
+    const origin = this.currentHeroWeaponOrigin()
+    const points: Vec2[] = [{ ...origin }]
     const falloffTotal = weightedFalloffTotal(jumps)
     let current: EnemyEntity | undefined = first
     for (let jump = 0; jump < jumps && current; jump += 1) {
@@ -4191,8 +4173,8 @@ class NighttraceRuntime {
         kind: 'arc-chain',
         weaponId,
         visualState,
-        x: this.player.x,
-        y: this.player.y,
+        x: origin.x,
+        y: origin.y,
         angle: 0,
         radius: 34,
         maxRadius: 84 + visualState.detail * 8,
@@ -4896,38 +4878,6 @@ class NighttraceRuntime {
     return sprite
   }
 
-  private premiumSpellAssetLod(): PremiumSpellAssetLod {
-    return this.visualLod === 'mobile' ? 'mobile' : 'desktop'
-  }
-
-  private premiumSpellMaterialFrameIndex(
-    weaponId: WeaponId,
-    state: WeaponVfxState,
-    requestedFrame: number,
-  ) {
-    const selection = premiumSpellAtlasSelection(
-      weaponId,
-      premiumSpellState(state.rank, state.awakened),
-      this.premiumSpellAssetLod(),
-    )
-    if (
-      requestedFrame === HERO_MATERIAL_FRAME.impact ||
-      requestedFrame === HERO_MATERIAL_FRAME.fracture ||
-      requestedFrame === HERO_MATERIAL_FRAME.dust
-    ) {
-      return selection.material.impact
-    }
-    if (
-      requestedFrame === HERO_MATERIAL_FRAME.driftA ||
-      requestedFrame === HERO_MATERIAL_FRAME.driftB ||
-      requestedFrame === HERO_MATERIAL_FRAME.lance ||
-      requestedFrame === HERO_MATERIAL_FRAME.fragments
-    ) {
-      return selection.material.secondary
-    }
-    return selection.material.primary
-  }
-
   private drawHeroPowerMaterialEvent(options: {
     x: number
     y: number
@@ -4944,60 +4894,19 @@ class NighttraceRuntime {
   }) {
     const progress = clamp(options.progress, 0, 1)
     const rise = clamp(progress / 0.18, 0, 1)
-    const visualState = this.activeSpellMaterialState
-    const activeWeaponId = this.activeSpellMaterialWeaponId
-    const premiumState =
-      visualState && activeWeaponId
-        ? premiumSpellState(visualState.rank, visualState.awakened)
-        : undefined
-    const choreography =
-      activeWeaponId && premiumState
-        ? premiumSpellChoreography(activeWeaponId, premiumState)
-        : undefined
-    const decayStart = choreography
-      ? clamp(0.58 + (choreography.holdScale - 1) * 0.22, 0.58, 0.76)
-      : 0.6
-    const decay = 1 - clamp(
-      (progress - decayStart) / Math.max(0.01, 1 - decayStart),
-      0,
-      1,
-    )
+    const decay = 1 - clamp((progress - 0.6) / 0.4, 0, 1)
     const envelope = rise * decay
     if (envelope <= 0.001) return
 
     const stage = this.vfxStageIndex(options.stage)
     const stageScale = [0.82, 0.92, 1.02, 1.14][stage]
-    const reducedFlashScale = this.settings.reducedFlash ? 0.72 : 1
-    const premiumFrames = this.activeSpellMaterialWeaponId
-      ? this.premiumSpellMaterialFrames.get(
-          this.activeSpellMaterialWeaponId,
-        )
-      : undefined
-    const premiumFrameIndex =
-      premiumFrames &&
-      this.activeSpellMaterialWeaponId &&
-      visualState
-        ? this.premiumSpellMaterialFrameIndex(
-            this.activeSpellMaterialWeaponId,
-            visualState,
-            options.frame,
-          )
-        : options.frame
+    const rotation =
+      (options.angle ?? 0) +
+      (replacementCosmeticUnit(options.seed, 1, 67) - 0.5) * 0.34
+    const reducedFlashScale = this.settings.reducedFlash ? 0.62 : 1
 
-    const frame =
-      premiumFrames?.[premiumFrameIndex] ??
-      this.heroPowerMaterialFrames[options.frame]
+    const frame = this.heroPowerMaterialFrames[options.frame]
     if (frame) {
-      const rotation =
-        (options.angle ?? 0) +
-        (premiumFrames
-          ? 0
-          : (replacementCosmeticUnit(options.seed, 1, 67) - 0.5) *
-            0.34)
-      const authoredScale = choreography?.scale ?? stageScale
-      const lifecycleScale = premiumFrames
-        ? lerp(0.94, 1, rise) * lerp(1, 0.97, 1 - decay)
-        : 1
       const material = this.acquireAuthoredSpellMaterialSprite(frame)
       material.anchor.set(0.5)
       material.position.set(
@@ -5006,41 +4915,24 @@ class NighttraceRuntime {
       )
       material.width =
         options.radius *
-        (premiumFrames ? 2.08 : 2.24) *
-        authoredScale *
-        lifecycleScale *
+        2.24 *
+        stageScale *
         (options.stretchX ?? 1)
       material.height =
         options.radius *
-        (premiumFrames ? 2.08 : 2.24) *
-        authoredScale *
-        lifecycleScale *
+        2.24 *
+        stageScale *
         (options.stretchY ?? 1)
       material.rotation = rotation
-      // The palette atlas already contains the accepted concept colors and
-      // photographic micro-detail. A runtime tint collapses those materials
-      // back into a flat game-primitive, so premium frames stay neutral.
-      material.tint = premiumFrames ? 0xffffff : options.tint
-      material.alpha = Math.min(
-        1,
-        (premiumFrames
-          ? Math.max(options.materialOpacity ?? 0.72, 0.58)
-          : options.materialOpacity ?? 0.24) *
-          envelope *
-          reducedFlashScale,
-      )
-      material.blendMode = premiumFrames ? 'screen' : 'add'
+      material.tint = options.tint
+      material.alpha =
+        (options.materialOpacity ?? 0.24) *
+        envelope *
+        reducedFlashScale
+      material.blendMode = 'add'
       material.zIndex = Math.round(options.y * 10) - 2
     }
 
-    // The v3 material cell is a complete authored formation. It already owns
-    // its smoke, sparks, shards, and micro-debris, so procedural grit would
-    // stamp a second visual vocabulary over the premium image.
-    if (premiumFrames) return
-
-    const rotation =
-      (options.angle ?? 0) +
-      (replacementCosmeticUnit(options.seed, 1, 67) - 0.5) * 0.34
     const gritCount = Math.min(
       this.visualLod === 'mobile' ? 3 + stage : 5 + stage * 2,
       10,
@@ -5066,89 +4958,8 @@ class NighttraceRuntime {
         .fill({
           color: grit % 3 === 0 ? options.tint : 0x687176,
           alpha: envelope * (grit % 3 === 0 ? 0.12 : 0.16),
-      })
+        })
     }
-  }
-
-  private premiumSpellMacroFrame(
-    progress: number,
-    beat: 'cast' | 'impact' | 'full',
-  ) {
-    if (beat === 'impact') return HERO_MATERIAL_FRAME.impact
-    if (progress < 0.24) return HERO_MATERIAL_FRAME.gather
-    if (beat === 'cast' || progress < 0.66) {
-      return HERO_MATERIAL_FRAME.driftA
-    }
-    return HERO_MATERIAL_FRAME.impact
-  }
-
-  /**
-   * Draw one complete authored formation for the current spell effect.
-   * A v3 atlas cell is already a macro composition, not a particle tile;
-   * rendering it once prevents the repeated-clone clutter of the v2 path.
-   */
-  private drawPremiumSpellMacro(
-    effect: WeaponEffectEntity,
-    options: {
-      x: number
-      y: number
-      radius: number
-      progress: number
-      angle: number
-      tint: number
-      beat: 'cast' | 'impact' | 'full'
-      opacity?: number
-      stretchX?: number
-      stretchY?: number
-    },
-  ) {
-    // Material-driven spells do not always create a projectile. Expose their
-    // authored state independently so deterministic gameplay captures can
-    // prove Arc, Graveglass, and Eclipse with the same rigor.
-    this.host.dataset.premiumSpellMaterialWeapon = effect.weaponId
-    this.host.dataset.premiumSpellMaterialRank = String(
-      effect.visualState.rank,
-    )
-    this.host.dataset.premiumSpellMaterialAwakened = String(
-      effect.visualState.awakened,
-    )
-    const recipe = spellVisualRecipe(effect.weaponId, effect.visualState)
-    const state = premiumSpellState(
-      effect.visualState.rank,
-      effect.visualState.awakened,
-    )
-    const choreography = premiumSpellChoreography(effect.weaponId, state)
-    const authoredStructureScale =
-      1 +
-      Math.min(
-        0.08,
-        Math.max(
-          0,
-          recipe.structureCount + recipe.rankEmbellishment - 1,
-        ) * 0.006,
-      )
-    const signatureScale = recipe.awakeningSignature ? 1.045 : 1
-    this.drawHeroPowerMaterialEvent({
-      x: options.x,
-      y: options.y,
-      radius:
-        options.radius *
-        authoredStructureScale *
-        signatureScale *
-        (0.98 + choreography.spread * 0.02),
-      progress: options.progress,
-      stage: effect.visualState.stage,
-      seed: effect.seed,
-      tint: options.tint,
-      frame: this.premiumSpellMacroFrame(
-        options.progress,
-        options.beat,
-      ),
-      angle: options.angle,
-      materialOpacity: options.opacity ?? 0.72,
-      stretchX: options.stretchX,
-      stretchY: options.stretchY,
-    })
   }
 
   private beginGroundedVfxFrame() {
@@ -5200,8 +5011,6 @@ class NighttraceRuntime {
   }
 
   private allocateHostileBoundaryParticleQuotas() {
-    this.hostileBoundaryFilamentsDrawn = 0
-    this.hostileBoundaryMotesDrawn = 0
     this.groundedVfxBoundaryBudget =
       this.visualLod === 'mobile' ? 112 : 160
     this.hostileBoundaryFootprintsRemaining =
@@ -5344,21 +5153,13 @@ class NighttraceRuntime {
     rotationOffset = 0,
   ) {
     if (particle.alpha <= 0.003) return
-    if (particle.kind === 'filament') {
-      this.hostileBoundaryFilamentsDrawn += 1
-    } else {
-      this.hostileBoundaryMotesDrawn += 1
-    }
-    const bone = 0xf1ede2
-    const silver = 0xcad3d4
+    const bone = 0xe8e4d8
+    const silver = 0xb7c2c3
     const color =
       Math.abs(particle.baseU * 17 + particle.baseV * 29) % 1 > 0.38
         ? bone
         : silver
-    const size = Math.max(
-      particle.kind === 'filament' ? 0.9 : 1.05,
-      scale * particle.size,
-    )
+    const size = Math.max(0.72, scale * particle.size)
     const rotation = rotationOffset + particle.rotation
 
     if (particle.kind === 'mote') {
@@ -5371,7 +5172,7 @@ class NighttraceRuntime {
         )
         .fill({
           color: silver,
-          alpha: particle.alpha * particle.glowAlpha * 0.4,
+          alpha: particle.alpha * particle.glowAlpha * 0.3,
         })
       this.groundedVfxCinderGraphics
         .ellipse(x, y, size, size * 0.82)
@@ -5383,7 +5184,7 @@ class NighttraceRuntime {
     }
 
     const halfLength = size * particle.stretch
-    const halfWidth = Math.max(0.62, size * 0.46)
+    const halfWidth = Math.max(0.46, size * 0.46)
     const tangentX = Math.cos(rotation)
     const tangentY = Math.sin(rotation)
     const normalX = -tangentY
@@ -5413,7 +5214,7 @@ class NighttraceRuntime {
       )
       .fill({
         color: silver,
-        alpha: particle.alpha * particle.glowAlpha * 0.3,
+        alpha: particle.alpha * particle.glowAlpha * 0.2,
       })
     this.groundedVfxCinderGraphics
       .poly(
@@ -5973,7 +5774,6 @@ class NighttraceRuntime {
     strike: CirclePatternStrike,
     localTime: number,
   ) {
-    if (strike.index !== 0) return
     const texture = this.graveglassSpireTexture
     if (!texture) return
     const pose = sampleAuthoredSpellMaterialPose(
@@ -5985,13 +5785,11 @@ class NighttraceRuntime {
     const stageProfile = authoredSpellStageMaterialProfile(
       effect.visualState.stage,
     )
-    const recipe = spellVisualRecipe(effect.weaponId, effect.visualState)
     const variation =
       replacementCosmeticUnit(effect.seed + strike.index * 131, 0, 31) - 0.5
     const targetHeight =
       Math.max(86, strike.radius * 2.42) *
       stageProfile.materialScale *
-      (1 + recipe.rankEmbellishment * 0.035) *
       (1 + variation * 0.1)
     const sprite = this.acquireAuthoredSpellMaterialSprite(texture)
     const textureAspect = texture.width / Math.max(1, texture.height)
@@ -6016,13 +5814,12 @@ class NighttraceRuntime {
     strike: CapsulePatternStrike,
     localTime: number,
   ) {
-    if (strike.index !== 0 || effect.visualState.stage === 'final') return
     const texture = this.eclipseGateTexture
     if (!texture) return
     const stageProfile = authoredSpellStageMaterialProfile(
       effect.visualState.stage,
     )
-    const gateCount = 1
+    const gateCount = stageProfile.gateCountPerStrike
 
     for (let gate = 0; gate < gateCount; gate += 1) {
       const staggeredTime = localTime - gate * 0.035
@@ -6115,31 +5912,7 @@ class NighttraceRuntime {
       false,
       0.92,
     )
-    const recipe = spellVisualRecipe(effect.weaponId, effect.visualState)
-    const profile = weaponVfxProfile(
-      effect.weaponId,
-      effect.visualState,
-    )
     this.drawGraveglassMaterialSprite(effect, strike, localTime)
-    if (strike.index === 0) {
-      const embellishmentRatio =
-        recipe.rankEmbellishment /
-          Math.max(1, recipe.satelliteCount)
-      this.drawPremiumSpellMacro(effect, {
-        x: strike.center.x,
-        y: strike.center.y,
-        radius:
-          strike.radius *
-          (1.9 + embellishmentRatio * 0.12),
-        progress,
-        angle: effect.angle,
-        tint: profile.accentColor,
-        beat: 'full',
-        opacity: 0.88,
-        stretchX: 1.06,
-        stretchY: 1.06,
-      })
-    }
   }
 
   private drawEclipsePresentation(
@@ -6160,35 +5933,7 @@ class NighttraceRuntime {
       false,
       0.88,
     )
-    const recipe = spellVisualRecipe(effect.weaponId, effect.visualState)
-    const profile = weaponVfxProfile(
-      effect.weaponId,
-      effect.visualState,
-    )
-    const center = {
-      x: (strike.start.x + strike.end.x) * 0.5,
-      y: (strike.start.y + strike.end.y) * 0.5,
-    }
     this.drawEclipseGateMaterialSprites(effect, strike, localTime)
-    if (strike.index === 0) {
-      const embellishmentRatio =
-        recipe.rankEmbellishment /
-          Math.max(1, recipe.satelliteCount)
-      this.drawPremiumSpellMacro(effect, {
-        x: center.x,
-        y: center.y,
-        radius:
-          strike.radius *
-          (3.05 + embellishmentRatio * 0.16),
-        progress,
-        angle: effect.angle,
-        tint: profile.accentColor,
-        beat: 'full',
-        opacity: 0.88,
-        stretchX: 1.45,
-        stretchY: 0.82,
-      })
-    }
   }
 
   private drawSupportPickupBeacon(
@@ -6468,105 +6213,141 @@ class NighttraceRuntime {
       const state = effect.visualState
       const stage = this.vfxStageIndex(state.stage)
       const profile = weaponVfxProfile(effect.weaponId, state)
-      const recipe = spellVisualRecipe(effect.weaponId, state)
       const rotation = effect.angle + progress * (0.8 + stage * 0.26) + effect.seed * 0.013
-      this.activeSpellMaterialWeaponId = effect.weaponId
-      this.activeSpellMaterialState = state
 
       switch (effect.kind) {
         case 'helio-gate': {
-          this.drawPremiumSpellMacro(effect, {
+          this.drawHeroPowerMaterialEvent({
             x: effect.x,
             y: effect.y,
-            radius:
-              64 +
-              recipe.rankEmbellishment * 4 +
-              stage * 6 +
-              attack * 5,
+            radius: 30 + stage * 8 + attack * 5,
             progress,
+            stage: state.stage,
+            seed: effect.seed,
             tint: profile.coreColor,
-            angle: effect.angle,
-            beat: 'cast',
-            opacity: 0.74,
-            stretchX: 1.08,
-            stretchY: 0.94,
+            frame: HERO_MATERIAL_FRAME.lance,
+            angle: effect.angle + Math.PI * 0.23,
+            materialOpacity: 0.34,
+            stretchX: 1.28 + stage * 0.08,
+            stretchY: 0.72,
           })
           break
         }
         case 'helio-impact': {
-          this.drawPremiumSpellMacro(effect, {
+          this.drawHeroPowerMaterialEvent({
             x: effect.x,
             y: effect.y,
             radius,
             progress,
+            stage: state.stage,
+            seed: effect.seed,
             tint: profile.accentColor,
+            frame: HERO_MATERIAL_FRAME.impact,
             angle: rotation,
-            beat: 'impact',
-            opacity: 0.78,
+            materialOpacity: 0.3,
           })
           break
         }
         case 'crescent-orbit': {
+          const orbitCount = capDecorativeDensity(
+            3 + stage * 2 + (state.awakened ? 1 : 0),
+            state.stage,
+          )
           const orbitRadius = radius * (0.68 + attack * 0.32)
-          this.drawPremiumSpellMacro(effect, {
+          this.drawHeroPowerMaterialEvent({
             x: effect.x,
             y: effect.y,
             radius: orbitRadius,
             progress,
+            stage: state.stage,
+            seed: effect.seed,
             tint: profile.secondaryColor,
+            frame: HERO_MATERIAL_FRAME.driftA,
             angle: rotation,
-            beat: 'cast',
-            opacity: 0.73,
+            materialOpacity: stage === 3 ? 0.2 : 0.12,
+            stretchX: 1.16,
+            stretchY: 0.84,
           })
+          for (let blade = 0; blade < orbitCount; blade += 1) {
+            const bladeAngle = rotation + (Math.PI * 2 * blade) / orbitCount
+            const layerRadius = stage === 3 && blade % 2 ? orbitRadius * 0.62 : orbitRadius
+            this.drawCrescentGlyph(
+              graphics,
+              effect.x + Math.cos(bladeAngle) * layerRadius,
+              effect.y + Math.sin(bladeAngle) * layerRadius,
+              bladeAngle,
+              8 + stage * 1.4,
+              profile.accentColor,
+              motionAlpha * 0.92,
+            )
+          }
           break
         }
         case 'crescent-impact': {
-          this.drawPremiumSpellMacro(effect, {
+          const shards = 4 + stage * 2
+          this.drawHeroPowerMaterialEvent({
             x: effect.x,
             y: effect.y,
             radius,
             progress,
+            stage: state.stage,
+            seed: effect.seed,
             tint: profile.coreColor,
+            frame: HERO_MATERIAL_FRAME.fragments,
             angle: rotation,
-            beat: 'impact',
-            opacity: 0.78,
+            materialOpacity: 0.24,
           })
+          for (let shard = 0; shard < shards; shard += 1) {
+            const shardAngle = rotation + (Math.PI * 2 * shard) / shards
+            this.drawCrescentGlyph(
+              graphics,
+              effect.x + Math.cos(shardAngle) * radius * 0.72,
+              effect.y + Math.sin(shardAngle) * radius * 0.72,
+              shardAngle,
+              4.5 + stage,
+              profile.coreColor,
+              motionAlpha * 0.7,
+            )
+          }
           break
         }
         case 'arc-chain': {
           const lightning = this.buildLightningPoints(effect.points ?? [], effect.seed, progress)
-          this.drawPolyline(
-            graphics,
-            lightning,
-            profile.coreColor,
-            0.92 + stage * 0.11,
-            motionAlpha * 0.88,
-          )
-          const choirAnchor =
-            effect.points && effect.points.length > 1
-              ? effect.points[
-                  Math.min(
-                    effect.points.length - 1,
-                    Math.max(1, Math.floor(effect.points.length * 0.5)),
-                  )
-                ]
-              : { x: effect.x, y: effect.y }
-          this.drawPremiumSpellMacro(effect, {
-            x: choirAnchor.x,
-            y: choirAnchor.y,
-            radius:
-              70 +
-              recipe.materialLayerCount * 4 +
-              recipe.rankEmbellishment * 2,
-            progress,
-            angle: effect.angle - Math.PI * 0.5,
-            tint:
-              recipe.awakeningSignature === 'cathedral-storm'
-                ? profile.secondaryColor
-                : profile.accentColor,
-            beat: 'full',
-            opacity: 0.76,
-          })
+          this.drawPolyline(graphics, lightning, profile.glowColor, 17 + stage * 3, motionAlpha * 0.1)
+          this.drawPolyline(graphics, lightning, profile.accentColor, 6 + stage * 0.8, motionAlpha * 0.64)
+          this.drawPolyline(graphics, lightning, profile.coreColor, 1.7 + stage * 0.28, motionAlpha)
+          for (let nodeIndex = 1; nodeIndex < (effect.points?.length ?? 0); nodeIndex += 1) {
+            const node = effect.points?.[nodeIndex]
+            if (!node) continue
+            const nodeRadius = 10 + stage * 2.7
+            this.drawHeroPowerMaterialEvent({
+              x: node.x,
+              y: node.y,
+              radius: nodeRadius * 1.7,
+              progress,
+              stage: state.stage,
+              seed: effect.seed + nodeIndex * 97,
+              tint: profile.accentColor,
+              frame: HERO_MATERIAL_FRAME.impact,
+              angle: rotation + nodeIndex,
+              materialOpacity: 0.2,
+            })
+          }
+          if (stage === 3) {
+            this.drawHeroPowerMaterialEvent({
+              x: effect.x,
+              y: effect.y,
+              radius: radius * 0.82,
+              progress,
+              stage: state.stage,
+              seed: effect.seed + 401,
+              tint: profile.secondaryColor,
+              frame: HERO_MATERIAL_FRAME.gather,
+              angle: effect.angle,
+              materialOpacity: 0.18,
+              stretchY: 1.18,
+            })
+          }
           break
         }
         case 'rift-cast':
@@ -6574,71 +6355,73 @@ class NighttraceRuntime {
           const impact = effect.kind === 'rift-impact'
           const centerX = impact ? effect.x : effect.x + Math.cos(effect.angle) * (34 + stage * 5)
           const centerY = impact ? effect.y : effect.y + Math.sin(effect.angle) * (34 + stage * 5)
-          const coreRadius = impact
-            ? radius *
-              (0.23 +
-                stage * 0.024 +
-                recipe.rankEmbellishment * 0.008)
-            : 12 +
-              stage * 3 +
-              recipe.rankEmbellishment * 0.7
-          graphics
-            .ellipse(
-              centerX,
-              centerY,
-              coreRadius * (impact ? 0.72 : 0.62),
-              coreRadius * (impact ? 0.58 : 0.5),
-            )
-            .fill({
-              color: 0x000304,
-              alpha: motionAlpha * (impact ? 0.94 : 0.82),
-            })
-          const eventideScale =
-            recipe.awakeningSignature === 'eventide-garden' ? 1.1 : 1
-          this.drawPremiumSpellMacro(effect, {
+          const coreRadius = impact ? radius * (0.19 + stage * 0.018) : 10 + stage * 2.5
+          this.drawHeroPowerMaterialEvent({
             x: centerX,
             y: centerY,
-            radius:
-              coreRadius *
-              (impact
-                ? 4.8 + recipe.rankEmbellishment * 0.12
-                : 3.9 + recipe.rankEmbellishment * 0.1) *
-              eventideScale,
+            radius: coreRadius * (impact ? 4.2 : 3.3),
             progress,
+            stage: state.stage,
+            seed: effect.seed,
             tint: profile.accentColor,
+            frame: impact
+              ? HERO_MATERIAL_FRAME.fracture
+              : HERO_MATERIAL_FRAME.driftB,
             angle: -rotation * 0.4,
-            beat: impact ? 'impact' : 'cast',
-            opacity: impact ? 0.8 : 0.74,
+            materialOpacity: impact ? 0.27 : 0.18,
           })
+          for (let seedIndex = 0; seedIndex < stage; seedIndex += 1) {
+            const seedAngle =
+              -rotation * 0.36 +
+              replacementCosmeticUnit(effect.seed, seedIndex, 83) * Math.PI * 2
+            const seedDistance =
+              coreRadius *
+              (1.9 + replacementCosmeticUnit(effect.seed, seedIndex, 89) * 1.8)
+            this.drawHeroPowerMaterialEvent({
+              x: centerX + Math.cos(seedAngle) * seedDistance,
+              y: centerY + Math.sin(seedAngle) * seedDistance * 0.66,
+              radius: coreRadius * (0.7 + stage * 0.08),
+              progress,
+              stage: state.stage,
+              seed: effect.seed + seedIndex * 101,
+              tint:
+                seedIndex % 2 ? profile.secondaryColor : profile.coreColor,
+              frame: HERO_MATERIAL_FRAME.fragments,
+              angle: seedAngle,
+              materialOpacity: 0.16,
+            })
+          }
           break
         }
         case 'comet-launch': {
-          const perihelionScale =
-            recipe.awakeningSignature === 'perihelion-hunt' ? 1.1 : 1
-          this.drawPremiumSpellMacro(effect, {
-            x: effect.x,
-            y: effect.y,
-            radius: radius * perihelionScale * 1.28,
-            progress,
-            tint: profile.secondaryColor,
-            angle: effect.angle,
-            beat: 'cast',
-            opacity: 0.82,
-            stretchX: 1.12,
-            stretchY: 0.92,
-          })
-          break
-        }
-        case 'comet-impact': {
-          this.drawPremiumSpellMacro(effect, {
+          this.drawHeroPowerMaterialEvent({
             x: effect.x,
             y: effect.y,
             radius,
             progress,
+            stage: state.stage,
+            seed: effect.seed,
+            tint: profile.secondaryColor,
+            frame: HERO_MATERIAL_FRAME.driftB,
+            angle: effect.angle,
+            materialOpacity: 0.22,
+            stretchX: 1.24,
+            stretchY: 0.78,
+          })
+          break
+        }
+        case 'comet-impact': {
+          this.drawHeroPowerMaterialEvent({
+            x: effect.x,
+            y: effect.y,
+            radius,
+            progress,
+            stage: state.stage,
+            seed: effect.seed,
             tint: profile.accentColor,
+            frame: HERO_MATERIAL_FRAME.dust,
             angle: rotation,
-            beat: 'impact',
-            opacity: 0.8,
+            materialOpacity: 0.3,
           })
           break
         }
@@ -6654,31 +6437,35 @@ class NighttraceRuntime {
           break
         }
         case 'mirror-gate': {
-          const gateRadius = 38 + stage * 9
-          const refrainScale =
-            recipe.awakeningSignature === 'infinite-refrain' ? 1.1 : 1
-          this.drawPremiumSpellMacro(effect, {
+          const gateRadius = 30 + stage * 10
+          this.drawHeroPowerMaterialEvent({
             x: effect.x,
             y: effect.y,
-            radius: gateRadius * 1.55 * refrainScale,
+            radius: gateRadius * 1.35,
             progress,
+            stage: state.stage,
+            seed: effect.seed,
             tint: profile.accentColor,
+            frame: HERO_MATERIAL_FRAME.fragments,
             angle: effect.angle,
-            beat: 'cast',
-            opacity: 0.82,
+            materialOpacity: 0.27,
+            stretchX: 1.24 + stage * 0.08,
+            stretchY: 0.78,
           })
           break
         }
         case 'mirror-impact': {
-          this.drawPremiumSpellMacro(effect, {
+          this.drawHeroPowerMaterialEvent({
             x: effect.x,
             y: effect.y,
             radius,
             progress,
+            stage: state.stage,
+            seed: effect.seed,
             tint: profile.coreColor,
+            frame: HERO_MATERIAL_FRAME.fracture,
             angle: rotation,
-            beat: 'impact',
-            opacity: 0.79,
+            materialOpacity: 0.25,
           })
           break
         }
@@ -6701,11 +6488,7 @@ class NighttraceRuntime {
           break
         }
       }
-      this.activeSpellMaterialWeaponId = undefined
-      this.activeSpellMaterialState = undefined
     }
-    this.activeSpellMaterialWeaponId = undefined
-    this.activeSpellMaterialState = undefined
     this.finishAuthoredSpellMaterialFrame()
   }
 
@@ -6865,17 +6648,6 @@ class NighttraceRuntime {
       )
     }
     this.finishGroundedVfxFrame()
-    this.host.dataset.hostileBoundaryFilaments = String(
-      this.hostileBoundaryFilamentsDrawn,
-    )
-    this.host.dataset.hostileBoundaryMotes = String(
-      this.hostileBoundaryMotesDrawn,
-    )
-    this.host.dataset.hostileBoundaryProof =
-      this.hostileBoundaryFilamentsDrawn > 0 &&
-      this.hostileBoundaryMotesDrawn > 0
-        ? 'visible'
-        : 'idle'
 
     for (let index = this.rings.length - 1; index >= 0; index -= 1) {
       const ring = this.rings[index]
@@ -7434,67 +7206,20 @@ class NighttraceRuntime {
     }
   }
 
-  private premiumSpellProjectileTexture(
-    weaponId: WeaponId,
-    state: WeaponVfxState,
-  ) {
-    if (this.premiumSpellProjectileFrames.length === 0) return undefined
-    const selection = premiumSpellAtlasSelection(
-      weaponId,
-      premiumSpellState(state.rank, state.awakened),
-      this.premiumSpellAssetLod(),
-    )
-    return this.premiumSpellProjectileFrames[
-      selection.projectile.frameIndex
-    ]
-  }
-
-  private projectileDimensions(
-    weaponId: WeaponId,
-    state: WeaponVfxState,
-    premium: boolean,
-  ): [number, number] {
-    if (!premium) {
-      return {
-        'helio-lance': [54, 18],
-        'crescent-array': [38, 30],
-        'arc-choir': [38, 20],
-        'rift-seeds': [31, 31],
-        'comet-swarm': [38, 22],
-        'ash-halo': [34, 20],
-        'mirror-bow': [54, 21],
-        'null-bell': [30, 32],
-      }[weaponId] as [number, number]
-    }
-
-    const [baseWidth, baseHeight] = {
-      'helio-lance': [122, 61],
-      'crescent-array': [86, 48],
-      'arc-choir': [88, 46],
-      'rift-seeds': [96, 80],
-      'comet-swarm': [112, 58],
-      'ash-halo': [76, 56],
-      'mirror-bow': [128, 62],
-      'null-bell': [78, 58],
+  private projectileDimensions(weaponId: WeaponId): [number, number] {
+    return {
+      'helio-lance': [54, 18],
+      'crescent-array': [38, 30],
+      'arc-choir': [38, 20],
+      'rift-seeds': [31, 31],
+      'comet-swarm': [38, 22],
+      'ash-halo': [34, 20],
+      'mirror-bow': [54, 21],
+      'null-bell': [30, 32],
     }[weaponId] as [number, number]
-    const milestoneScale =
-      1 + Math.max(0, state.rank - 1) * 0.11 + (state.awakened ? 0.2 : 0)
-    return [
-      baseWidth * milestoneScale,
-      baseHeight * milestoneScale,
-    ]
   }
 
   private drawProjectileTrail(projectile: ProjectileEntity, x: number, y: number) {
-    // Premium atlas cells include authored smoke, sparks, shards, and a
-    // directionally composed trail. Drawing straight Pixi line primitives on
-    // top was the main source of the flat/cartoon read in earlier releases.
-    if (this.premiumSpellProjectileTexture(
-      projectile.weaponId,
-      projectile.visualState,
-    )) {
-      return
-    }
     const speed = Math.hypot(projectile.vx, projectile.vy)
     if (speed < 1) return
     const dx = projectile.vx / speed
@@ -7512,10 +7237,6 @@ class NighttraceRuntime {
       'null-bell': [20, 5],
     }[projectile.weaponId]
     const profile = weaponVfxProfile(projectile.weaponId, projectile.visualState)
-    const recipe = spellVisualRecipe(
-      projectile.weaponId,
-      projectile.visualState,
-    )
     const stage = this.vfxStageIndex(projectile.visualState.stage)
     const length = baseTrail[0] * profile.trailLengthScale
     const width = baseTrail[1] * profile.trailWidthScale
@@ -7597,10 +7318,7 @@ class NighttraceRuntime {
     }
 
     if (projectile.weaponId === 'comet-swarm') {
-      const embers = Math.min(
-        this.visualLod === 'mobile' ? 4 : 7,
-        2 + stage + Math.floor(recipe.rankEmbellishment / 2),
-      )
+      const embers = 2 + stage
       for (let index = 1; index <= embers; index += 1) {
         const t = index / (embers + 1)
         const emberX = lerp(x, startX, t)

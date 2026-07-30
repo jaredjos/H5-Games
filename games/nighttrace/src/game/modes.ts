@@ -180,7 +180,7 @@ export const COMBAT_LAB_PRESETS: readonly CombatLabPresetDefinition[] = [
   {
     id: 'solo',
     label: 'Solo',
-    description: 'Spell Rank I without its paired module.',
+    description: 'Rank I weapon without its paired module.',
     weaponRank: 1,
     moduleRank: 0,
     awakened: false,
@@ -188,7 +188,7 @@ export const COMBAT_LAB_PRESETS: readonly CombatLabPresetDefinition[] = [
   {
     id: 'combined',
     label: 'Combined',
-    description: 'Spell Rank I combined with its paired module.',
+    description: 'Rank I weapon combined with its paired module.',
     weaponRank: 1,
     moduleRank: 1,
     awakened: false,
@@ -196,7 +196,7 @@ export const COMBAT_LAB_PRESETS: readonly CombatLabPresetDefinition[] = [
   {
     id: 'mastered',
     label: 'Mastered',
-    description: 'Spell Rank V before its final awakening.',
+    description: 'Rank V weapon before its final awakening.',
     weaponRank: 5,
     moduleRank: 0,
     awakened: false,
@@ -204,7 +204,7 @@ export const COMBAT_LAB_PRESETS: readonly CombatLabPresetDefinition[] = [
   {
     id: 'final',
     label: 'Final',
-    description: 'Awakened Spell Rank V with a Module Rank III pairing.',
+    description: 'Awakened Rank V weapon with a Rank III paired module.',
     weaponRank: 5,
     moduleRank: 3,
     awakened: true,
@@ -486,6 +486,33 @@ export function advanceBossTrialProgress(
   if (!victory || current >= LEVELS.length) return current
   const expectedLevelId = current + 1
   return defeatedLevelId === expectedLevelId ? expectedLevelId : current
+}
+
+/**
+ * After a first clear, focus the newly opened sovereign. Defeats and rematches
+ * stay on the trial the player just chose.
+ */
+export function bossTrialSelectionAfterRun(
+  clearsBefore: unknown,
+  clearsAfter: unknown,
+  trialLevelId: unknown,
+  victory: boolean,
+) {
+  const current = normalizeBossTrialClears(clearsBefore)
+  const progressed = normalizeBossTrialClears(clearsAfter)
+  const level = resolveBossLevel(trialLevelId)
+  const firstClear =
+    victory &&
+    level.id === current + 1 &&
+    progressed === level.id
+
+  return firstClear
+    ? Math.min(LEVELS.length, level.id + 1)
+    : level.id
+}
+
+export function bossTrialThreatsEnded(victory: boolean) {
+  return victory ? 1 : 0
 }
 
 export function buildCombatLabRunConfig(value: unknown): RunConfig {

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import appSource from '../App.tsx?raw'
+import appSourceRaw from '../App.tsx?raw'
 import gameUiSource from '../ui/GameUI.tsx?raw'
-import runtimeSource from './GameCanvas.tsx?raw'
+import runtimeSourceRaw from './GameCanvas.tsx?raw'
+
+const appSource = appSourceRaw.replace(/\r\n/g, '\n')
+const runtimeSource = runtimeSourceRaw.replace(/\r\n/g, '\n')
 
 const section = (startMarker: string, endMarker: string) => {
   const start = runtimeSource.indexOf(startMarker)
@@ -58,6 +61,21 @@ describe('free revive runtime integration', () => {
     expect(damageEnemy).toContain('if (this.revivePending')
     expect(sanctuary).toContain("pickup.kind !== 'dawnheart'")
     expect(paused).toContain('this.revivePending')
+  })
+
+  it('moves an overlapping sovereign out of the revive sanctuary without resetting it', () => {
+    const sanctuary = section(
+      '  private clearReviveSanctuary()',
+      '  selectUpgrade(optionId: string)',
+    )
+
+    expect(sanctuary).toContain('if (!enemy.active) continue')
+    expect(sanctuary).not.toContain('!enemy.active || enemy.isBoss')
+    expect(sanctuary).toContain('candidateDistanceSquared')
+    expect(sanctuary).toContain('enemy.isBoss ? 1.6 : 1.1')
+    expect(sanctuary).toContain('enemy.attackTimer = Math.max(enemy.attackTimer, 1.4)')
+    expect(sanctuary).not.toContain('enemy.hp =')
+    expect(sanctuary).not.toContain('enemy.phase =')
   })
 
   it('exposes a centered, explicit player choice above all other gameplay dialogs', () => {

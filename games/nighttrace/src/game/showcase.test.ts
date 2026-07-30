@@ -38,21 +38,6 @@ describe('local weapon showcase', () => {
     ).toBeUndefined()
   })
 
-  it('parses deterministic Spell Rank and Awakened capture states', () => {
-    expect(
-      parseLocalWeaponShowcase(
-        'localhost',
-        '?showcase=weapon&weapon=helio-lance&state=rank-iii',
-      ),
-    ).toEqual({ weaponId: 'helio-lance', state: 'rank-iii' })
-    expect(
-      parseLocalWeaponShowcase(
-        '127.0.0.1',
-        '?showcase=weapon&weapon=helio-lance&state=awakened',
-      ),
-    ).toEqual({ weaponId: 'helio-lance', state: 'awakened' })
-  })
-
   it('builds all four documented runtime states for every weapon', () => {
     for (const weaponId of ALL_WEAPON_VFX_IDS) {
       const solo = showcaseLoadout({ weaponId, state: 'solo' })
@@ -84,53 +69,8 @@ describe('local weapon showcase', () => {
       expect(showcaseCaptureSeconds(weaponId)).toBeGreaterThan(0.75)
       expect(showcaseCaptureSeconds(weaponId)).toBeLessThanOrEqual(1.5)
     }
-    expect(showcaseLabel({ weaponId: 'helio-lance', state: 'solo' })).toContain(
-      'SPELL RANK I',
-    )
-    expect(showcaseLabel({ weaponId: 'helio-lance', state: 'combined' })).toContain(
-      'COMBINED SPELL RANK I',
-    )
-    expect(showcaseLabel({ weaponId: 'helio-lance', state: 'mastered' })).toContain(
-      'SPELL RANK V',
-    )
     expect(showcaseLabel({ weaponId: 'comet-swarm', state: 'final' })).toContain(
       'PERIHELION HUNT',
     )
-    expect(showcaseLabel({ weaponId: 'comet-swarm', state: 'final' })).toContain(
-      'AWAKENED SPELL RANK V / MODULE RANK III',
-    )
-  })
-
-  it('builds isolated Spell Ranks I-V plus the minimum Awakened gate', () => {
-    const rankStates = [
-      'rank-i',
-      'rank-ii',
-      'rank-iii',
-      'rank-iv',
-      'rank-v',
-    ] as const
-
-    for (const weaponId of ALL_WEAPON_VFX_IDS) {
-      rankStates.forEach((state, index) => {
-        const loadout = showcaseLoadout({ weaponId, state })
-        expect(loadout.weapons).toEqual([
-          { id: weaponId, rank: index + 1 },
-        ])
-        expect(loadout.modules).toEqual([])
-        expect(showcaseLabel({ weaponId, state })).toContain(
-          `SPELL RANK ${['I', 'II', 'III', 'IV', 'V'][index]}`,
-        )
-      })
-
-      const awakened = showcaseLoadout({ weaponId, state: 'awakened' })
-      expect(awakened.weapons).toEqual([
-        { id: weaponId, rank: 5, awakened: true },
-      ])
-      expect(awakened.modules).toHaveLength(1)
-      expect(awakened.modules[0].rank).toBe(1)
-      expect(showcaseLabel({ weaponId, state: 'awakened' })).toContain(
-        'AWAKENED SPELL RANK V',
-      )
-    }
   })
 })

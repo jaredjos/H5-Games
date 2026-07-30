@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import runtimeSource from './GameCanvas.tsx?raw'
+import runtimeSourceRaw from './GameCanvas.tsx?raw'
+
+const runtimeSource = runtimeSourceRaw.replace(/\r\n/g, '\n')
 import {
   HERO_POWER_FORBIDDEN_HELPERS,
   inspectHeroPowerVisualScope,

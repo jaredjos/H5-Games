@@ -1,17 +1,7 @@
 import type { OwnedModule, OwnedWeapon, WeaponId } from '../shared/types'
 import { WEAPONS } from './content'
 
-export type WeaponShowcaseState =
-  | 'solo'
-  | 'combined'
-  | 'mastered'
-  | 'final'
-  | 'rank-i'
-  | 'rank-ii'
-  | 'rank-iii'
-  | 'rank-iv'
-  | 'rank-v'
-  | 'awakened'
+export type WeaponShowcaseState = 'solo' | 'combined' | 'mastered' | 'final'
 
 export interface WeaponShowcaseConfig {
   weaponId: WeaponId
@@ -24,36 +14,17 @@ const SHOWCASE_STATES = new Set<WeaponShowcaseState>([
   'combined',
   'mastered',
   'final',
-  'rank-i',
-  'rank-ii',
-  'rank-iii',
-  'rank-iv',
-  'rank-v',
-  'awakened',
 ])
 
-const RANK_SHOWCASE_STATES = Object.freeze({
-  'rank-i': 1,
-  'rank-ii': 2,
-  'rank-iii': 3,
-  'rank-iv': 4,
-  'rank-v': 5,
-} as const satisfies Readonly<
-  Record<
-    Extract<WeaponShowcaseState, `rank-${string}`>,
-    1 | 2 | 3 | 4 | 5
-  >
->)
-
 const SHOWCASE_CAPTURE_SECONDS: Readonly<Record<WeaponId, number>> = Object.freeze({
-  'helio-lance': 0.96,
+  'helio-lance': 1.02,
   'crescent-array': 1.02,
   'arc-choir': 0.96,
-  'rift-seeds': 1.04,
-  'comet-swarm': 0.94,
-  'ash-halo': 1.06,
-  'mirror-bow': 0.99,
-  'null-bell': 1.05,
+  'rift-seeds': 1.5,
+  'comet-swarm': 1.12,
+  'ash-halo': 0.9,
+  'mirror-bow': 1.08,
+  'null-bell': 1.43,
 })
 
 export function showcaseCaptureSeconds(weaponId: WeaponId) {
@@ -90,29 +61,6 @@ export function showcaseLoadout(config: WeaponShowcaseConfig): {
   weapons: OwnedWeapon[]
   modules: OwnedModule[]
 } {
-  if (config.state in RANK_SHOWCASE_STATES) {
-    const rank =
-      RANK_SHOWCASE_STATES[
-        config.state as keyof typeof RANK_SHOWCASE_STATES
-      ]
-    return {
-      weapons: [{ id: config.weaponId, rank }],
-      modules: [],
-    }
-  }
-  if (config.state === 'awakened') {
-    return {
-      weapons: [{
-        id: config.weaponId,
-        rank: 5,
-        awakened: true,
-      }],
-      modules: [{
-        id: WEAPONS[config.weaponId].moduleId,
-        rank: 1,
-      }],
-    }
-  }
   const hasModule = config.state === 'combined' || config.state === 'final'
   const mastered = config.state === 'mastered' || config.state === 'final'
   return {
@@ -132,20 +80,10 @@ export function showcaseLoadout(config: WeaponShowcaseConfig): {
 
 export function showcaseLabel(config: WeaponShowcaseConfig) {
   const definition = WEAPONS[config.weaponId]
-  if (config.state in RANK_SHOWCASE_STATES) {
-    const rank =
-      RANK_SHOWCASE_STATES[
-        config.state as keyof typeof RANK_SHOWCASE_STATES
-      ]
-    return `${definition.name} · SPELL RANK ${['I', 'II', 'III', 'IV', 'V'][rank - 1]}`
-  }
-  if (config.state === 'awakened') {
-    return `${definition.awakening.toUpperCase()} · AWAKENED SPELL RANK V`
-  }
-  if (config.state === 'solo') return `${definition.name} · SOLO · SPELL RANK I`
+  if (config.state === 'solo') return `${definition.name} · SOLO · RANK I`
   if (config.state === 'combined') {
-    return `${definition.name} + ${definition.moduleId.replaceAll('-', ' ').toUpperCase()} · COMBINED SPELL RANK I`
+    return `${definition.name} + ${definition.moduleId.replaceAll('-', ' ').toUpperCase()} · COMBINED RANK I`
   }
-  if (config.state === 'mastered') return `${definition.name} · MASTERED · SPELL RANK V`
-  return `${definition.awakening.toUpperCase()} · FINAL AWAKENED SPELL RANK V / MODULE RANK III`
+  if (config.state === 'mastered') return `${definition.name} · MASTERED · RANK V`
+  return `${definition.awakening.toUpperCase()} · FINAL AWAKENED V / MODULE III`
 }

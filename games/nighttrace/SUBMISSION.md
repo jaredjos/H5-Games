@@ -2,7 +2,7 @@
 
 ## Shipping target
 
-NIGHTTRACE v1.18.0 is an installable mobile web app suitable for HTTPS static
+NIGHTTRACE v1.16.4 is an installable mobile web app suitable for HTTPS static
 hosting and Add to Home Screen on current Android and iOS browsers. Menus remain
 usable in portrait; combat is landscape-first and pauses behind an accessible
 rotate gate when required. It supports safe-area insets, 44 px minimum touch
@@ -36,15 +36,13 @@ or remote backend. Campaign progress and settings are stored locally under
   20% maximum budget, 22-second expiry, and a 45-second post-revive lockout
 - Installability: web manifest, standard/maskable/Apple icons, production-only
   scoped service worker
-- Offline: shell, generated chunks, all hero/enemy/boss/pickup and premium v3
-  six-state desktop/mobile spell-VFX atlases, and all arena backgrounds
-  install-precache atomically
+- Offline: shell, generated chunks, all hero/enemy/boss/pickup atlases, and all
+  arena backgrounds install-precache atomically
 - Hosting: root and nested-path build contract
 - Production hygiene: no source maps and no root-absolute app references
-- Spell VFX: all eight spells own a distinct premium six-state material atlas;
-  every adjacent Spell Rank I-V changes physical silhouette and footprint,
-  every awakening adds a named structural signature, and mobile LODs preserve
-  the same authored identity without changing combat geometry
+- Weapon VFX: all eight powers validated across Solo, Combined, Mastered, and
+  Final states; remote-world Graveglass Spires and Eclipse Harrow Final states
+  validated in landscape-phone view
 - Hostile readability: boss and horde attack areas use ground-bound
   rubble/scorch materials plus deterministic smoke, grit, and restrained
   cinders, with broken bone-white/silver boundary filaments and drifting motes
