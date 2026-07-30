@@ -71,6 +71,13 @@ describe('versioned saves', () => {
     save.bossTrialClears = 4
     save.upgrades.force = 4
     save.settings.musicVolume = 0.35
+    save.settings.voiceVolume = 0.72
+    save.settings.subtitles = false
+    save.settings.cinematics = 'always'
+    save.story.seenCinematics = [
+      'intro-a-world-without-dawn',
+      'interlude-01-the-road-remembers',
+    ]
 
     const stored = saveSave(save, storage)
     const loaded = loadSave(storage)
@@ -80,6 +87,10 @@ describe('versioned saves', () => {
     expect(loaded.dawnShards).toBe(321)
     expect(loaded.bossTrialClears).toBe(4)
     expect(loaded.upgrades.force).toBe(4)
+    expect(loaded.settings.voiceVolume).toBe(0.72)
+    expect(loaded.settings.subtitles).toBe(false)
+    expect(loaded.settings.cinematics).toBe('always')
+    expect(loaded.story.seenCinematics).toEqual(save.story.seenCinematics)
   })
 
   it('falls back safely when serialized storage is corrupt', () => {
@@ -99,7 +110,7 @@ describe('versioned saves', () => {
       audio: { masterVolume: 4, musicVolume: -2, sfxVolume: 0.4 },
     })
 
-    expect(migrated.version).toBe(3)
+    expect(migrated.version).toBe(4)
     expect(migrated.unlockedLevel).toBe(2)
     expect(migrated.bossTrialClears).toBe(0)
     expect(migrated.completedLevels).toEqual([1])
@@ -110,6 +121,8 @@ describe('versioned saves', () => {
     expect(migrated.settings.masterVolume).toBe(1)
     expect(migrated.settings.musicVolume).toBe(0)
     expect(migrated.settings.sfxVolume).toBe(0.4)
+    expect(migrated.settings.voiceVolume).toBe(0.9)
+    expect(migrated.settings.subtitles).toBe(true)
   })
 
   it('starts music at 50% and migrates only the former v1 default', () => {
@@ -118,6 +131,7 @@ describe('versioned saves', () => {
     expect(migrateSave({ version: 1, settings: { musicVolume: 0.35 } }).settings.musicVolume).toBe(0.35)
     expect(migrateSave({ version: 2, settings: { musicVolume: 0.62 } }).settings.musicVolume).toBe(0.62)
     expect(migrateSave({ version: 3, settings: { musicVolume: 0.62 } }).settings.musicVolume).toBe(0.62)
+    expect(migrateSave({ version: 4, settings: { musicVolume: 0.62 } }).settings.musicVolume).toBe(0.62)
     expect(migrateSave({ settings: {} }).settings.musicVolume).toBe(0.5)
   })
 
@@ -126,7 +140,49 @@ describe('versioned saves', () => {
     expect(migrateSave({ version: 1, bossTrialClears: -7 }).bossTrialClears).toBe(0)
     expect(migrateSave({ version: 2, bossTrialClears: 99 }).bossTrialClears).toBe(10)
     expect(migrateSave({ version: 3, bossTrialClears: 7 }).bossTrialClears).toBe(7)
+    expect(migrateSave({ version: 4, bossTrialClears: 8 }).bossTrialClears).toBe(8)
     expect(migrateSave({ version: 2 }).bossTrialClears).toBe(0)
+  })
+
+  it('migrates completed campaigns into a non-blocking Dawn Archive history', () => {
+    const migrated = migrateSave({
+      version: 3,
+      completedLevels: [1, 2, 3],
+    })
+
+    expect(migrated.story.seenCinematics).toEqual([
+      'intro-a-world-without-dawn',
+      'interlude-01-the-road-remembers',
+      'interlude-02-six-voices',
+      'interlude-03-what-night-couldnt-kill',
+    ])
+  })
+
+  it('normalizes v4 story and cinematic preferences', () => {
+    const migrated = migrateSave({
+      version: 4,
+      story: {
+        seenCinematics: [
+          'intro-a-world-without-dawn',
+          'interlude-01-the-road-remembers',
+          'unknown',
+          'intro-a-world-without-dawn',
+        ],
+      },
+      settings: {
+        voiceVolume: 4,
+        subtitles: false,
+        cinematics: 'always',
+      },
+    })
+
+    expect(migrated.story.seenCinematics).toEqual([
+      'intro-a-world-without-dawn',
+      'interlude-01-the-road-remembers',
+    ])
+    expect(migrated.settings.voiceVolume).toBe(1)
+    expect(migrated.settings.subtitles).toBe(false)
+    expect(migrated.settings.cinematics).toBe('always')
   })
 
   it('clamps Astrarium ranks and discards unknown upgrade ids', () => {

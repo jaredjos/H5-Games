@@ -37,6 +37,7 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.16.2` — revives now restore 50% vitality; every Sovereign tracks the bearer across idle, movement, windup, release, and intro while correcting the left-authored Railjaw/Furnace row; the hostile-boundary material reference is published for final approval
 - `v1.16.3` — the approved broken bone-white/silver filament and drifting-mote boundary enters live combat for every boss and elite field, lane, and projectile destination; adaptive fair-share allocation keeps three-, five-, and eight-footprint signatures readable on desktop, mobile, and reduced-flash settings without changing hitboxes or damage
 - `v1.16.4` — Boss Trials receive a reliability pass for the encounter gate, first-clear focus, victory stats, and safe 50% revive spacing; all direct hero projectiles and spell emissions now begin at the authored Dawncaster position instead of the hero's foot root, while remote Graveglass and Eclipse geometry remains unchanged
+- `v1.19.0` — **The Last Light** campaign story arrives: a voiced prologue, nine first-clear interludes, and a level-ten climax place the Bearer at the center of a world-scale Trace; cinematic key art, 2.5D motion direction, captions, skip/pause controls, narration and cinematic settings, mobile-landscape presentation, and the replayable Dawn Archive are added without changing repeat clears, Boss Trials, Combat Lab, or combat balance
 
 ## Runtime guide and visual evidence
 

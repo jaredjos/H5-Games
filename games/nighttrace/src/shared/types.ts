@@ -6,6 +6,7 @@ export type ScreenId =
   | 'astrarium'
   | 'codex'
   | 'settings'
+  | 'cinematic'
   | 'game'
   | 'results'
 
@@ -205,7 +206,7 @@ export interface RunResult {
 }
 
 export interface SaveData {
-  version: 3
+  version: 4
   unlockedLevel: number
   bossTrialClears: number
   completedLevels: number[]
@@ -213,16 +214,24 @@ export interface SaveData {
   dawnShards: number
   upgrades: Record<string, number>
   unlockedWeapons: WeaponId[]
+  story: StoryProgress
   settings: GameSettings
+}
+
+export interface StoryProgress {
+  seenCinematics: string[]
 }
 
 export interface GameSettings {
   masterVolume: number
   musicVolume: number
   sfxVolume: number
+  voiceVolume: number
   reducedFlash: boolean
   reducedShake: boolean
   highContrastPickups: boolean
   showDamageNumbers: boolean
   autoPulse: boolean
+  subtitles: boolean
+  cinematics: 'first-clear' | 'always' | 'off'
 }

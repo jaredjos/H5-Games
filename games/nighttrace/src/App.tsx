@@ -61,14 +61,26 @@ import {
   SettingsScreen,
   TitleScreen,
 } from './ui/Screens'
+import { CinematicScreen } from './ui/CinematicScreen'
 import { ASTRARIUM_NODES, type AstrariumNodeDefinition } from './ui/data'
+import {
+  CAMPAIGN_CINEMATICS,
+  INTRO_CINEMATIC_ID,
+  getCinematic,
+  type CinematicId,
+} from './story/cinematics'
+import {
+  campaignCinematicAfterRun,
+  shouldPlayCampaignIntro,
+} from './story/cinematicFlow'
 
 const WEAPON_LIST = Object.values(WEAPONS) as WeaponDefinition[]
 const MODULE_LIST = Object.values(MODULES) as ModuleDefinition[]
 const TRACE_MOD_LIST = Object.values(TRACE_MODS) as TraceModDefinition[]
 const GameCanvas = lazy(() => import('./game/GameCanvas'))
 
-type ShellScreen = Exclude<ScreenId, 'title' | 'game' | 'results'>
+type ShellScreen = Exclude<ScreenId, 'title' | 'cinematic' | 'game' | 'results'>
+type CinematicReturnScreen = 'campaign' | 'results' | 'codex'
 
 function isShellScreen(screen: ScreenId): screen is ShellScreen {
   return (
@@ -158,13 +170,23 @@ export default function App() {
   const [runKey, setRunKey] = useState(0)
   const [rerollsRemaining, setRerollsRemaining] = useState(0)
   const [toast, setToast] = useState<string>()
+  const [activeCinematicId, setActiveCinematicId] = useState<CinematicId>()
+  const [activeCinematicSessionId, setActiveCinematicSessionId] = useState(0)
+  const [cinematicReturnScreen, setCinematicReturnScreen] =
+    useState<CinematicReturnScreen>('campaign')
   const gameRef = useRef<GameCanvasHandle>(null)
   const completionTokenRef = useRef('')
+  const cinematicSessionRef = useRef(0)
+  const completedCinematicSessionRef = useRef<number | null>(null)
   const lastAudibleVolume = useRef(save.settings.masterVolume || 0.8)
   const isTouchDevicePortrait = useNarrowPortrait()
 
   const currentLevel = useMemo(() => getLevel(activeRun.arenaLevelId), [activeRun.arenaLevelId])
   const currentBossLevel = useMemo(() => getLevel(activeRun.bossLevelId), [activeRun.bossLevelId])
+  const activeCinematic = useMemo(
+    () => activeCinematicId ? getCinematic(activeCinematicId) : undefined,
+    [activeCinematicId],
+  )
   const reducedMotion = save.settings.reducedShake
   const muted = save.settings.masterVolume === 0
   const rerollCapacity =
@@ -251,6 +273,67 @@ export default function App() {
     }
   }, [])
 
+  const showCinematic = useCallback((
+    cinematicId: CinematicId,
+    returnScreen: CinematicReturnScreen,
+  ) => {
+    if (!getCinematic(cinematicId)) return
+    void requestLandscapeMode()
+    const sessionId = cinematicSessionRef.current + 1
+    cinematicSessionRef.current = sessionId
+    completedCinematicSessionRef.current = null
+    setActiveCinematicSessionId(sessionId)
+    setActiveCinematicId(cinematicId)
+    setCinematicReturnScreen(returnScreen)
+    setScreen('cinematic')
+  }, [requestLandscapeMode])
+
+  const finishCinematic = useCallback(() => {
+    const cinematicId = activeCinematicId
+    if (!cinematicId) return
+
+    const sessionId = activeCinematicSessionId
+    if (sessionId !== cinematicSessionRef.current) return
+    if (completedCinematicSessionRef.current === sessionId) return
+    completedCinematicSessionRef.current = sessionId
+
+    if (!save.story.seenCinematics.includes(cinematicId)) {
+      persist({
+        ...save,
+        story: {
+          ...save.story,
+          seenCinematics: [...save.story.seenCinematics, cinematicId],
+        },
+      })
+    }
+
+    setActiveCinematicId(undefined)
+    setScreen(cinematicReturnScreen)
+  }, [
+    activeCinematicId,
+    activeCinematicSessionId,
+    cinematicReturnScreen,
+    persist,
+    save,
+  ])
+
+  const beginCampaign = useCallback(() => {
+    const shouldPlayIntro = shouldPlayCampaignIntro({
+      mode: save.settings.cinematics,
+      seenCinematics: save.story.seenCinematics,
+    })
+
+    if (shouldPlayIntro) {
+      showCinematic(INTRO_CINEMATIC_ID, 'campaign')
+      return
+    }
+    setScreen('campaign')
+  }, [
+    save.settings.cinematics,
+    save.story.seenCinematics,
+    showCinematic,
+  ])
+
   const launchRun = useCallback((runConfig: RunConfig) => {
     void requestLandscapeMode()
     setActiveRun(runConfig)
@@ -307,6 +390,10 @@ export default function App() {
     const completionToken = String(runKey)
     if (completionTokenRef.current === completionToken) return
     completionTokenRef.current = completionToken
+    const isFirstCampaignClear =
+      runResult.runMode === 'campaign' &&
+      runResult.victory &&
+      !save.completedLevels.includes(runResult.levelId)
     const progressedSave =
       runResult.runMode === 'campaign'
         ? applyPersistentReward(save, runResult)
@@ -338,8 +425,21 @@ export default function App() {
       )
     }
     setSnapshot(undefined)
-    setScreen('results')
-  }, [persist, runKey, save])
+    const firstClearCinematic = campaignCinematicAfterRun({
+      runMode: runResult.runMode,
+      victory: runResult.victory,
+      levelId: runResult.levelId,
+      isFirstClear: isFirstCampaignClear,
+      mode: save.settings.cinematics,
+      seenCinematics: save.story.seenCinematics,
+    })
+
+    if (firstClearCinematic) {
+      showCinematic(firstClearCinematic.id, 'results')
+    } else {
+      setScreen('results')
+    }
+  }, [persist, runKey, save, showCinematic])
 
   const selectUpgrade = useCallback((optionId: string) => {
     gameRef.current?.selectUpgrade(optionId)
@@ -467,6 +567,7 @@ export default function App() {
     setActiveRun(buildCampaignRunConfig(1))
     setSnapshot(undefined)
     setResult(undefined)
+    setActiveCinematicId(undefined)
     setScreen('title')
     announce('The archive has been cleared')
   }, [announce, save.settings])
@@ -505,7 +606,7 @@ export default function App() {
         hasProgress={save.completedLevels.length > 0 || save.dawnShards > 0}
         reducedMotion={reducedMotion}
         muted={muted}
-        onBegin={() => setScreen('campaign')}
+        onBegin={beginCampaign}
         onBossTrials={() => setScreen('boss-trials')}
         onCombatLab={() => setScreen('combat-lab')}
         onCodex={() => setScreen('codex')}
@@ -563,6 +664,10 @@ export default function App() {
         weapons={WEAPON_LIST}
         modules={MODULE_LIST}
         traceMods={TRACE_MOD_LIST}
+        cinematics={CAMPAIGN_CINEMATICS}
+        seenCinematics={save.story.seenCinematics}
+        onReplayCinematic={(cinematic) =>
+          showCinematic(cinematic.id, 'codex')}
         onNavigate={navigate}
       />
     )
@@ -573,6 +678,20 @@ export default function App() {
         onNavigate={navigate}
         onSettingsChange={updateSettings}
         onReset={resetProgress}
+      />
+    )
+  } else if (screen === 'cinematic' && activeCinematic && !isTouchDevicePortrait) {
+    content = (
+      <CinematicScreen
+        cinematic={activeCinematic}
+        settings={save.settings}
+        onComplete={finishCinematic}
+        onSkip={finishCinematic}
+        onReplayExit={
+          cinematicReturnScreen === 'codex'
+            ? finishCinematic
+            : undefined
+        }
       />
     )
   } else if (screen === 'game') {
@@ -710,10 +829,11 @@ export default function App() {
         save.settings.reducedFlash ? 'reduce-flash' : '',
         isShellScreen(screen) ? 'is-shell' : '',
         screen === 'game' ? 'is-game' : '',
+        screen === 'cinematic' ? 'is-cinematic' : '',
       ].join(' ')}
     >
       {content}
-      {screen === 'game' && isTouchDevicePortrait ? (
+      {(screen === 'game' || screen === 'cinematic') && isTouchDevicePortrait ? (
         <section
           className="landscape-gate"
           role="dialog"
@@ -726,10 +846,12 @@ export default function App() {
             <span />
           </div>
           <RotateCw size={28} aria-hidden="true" />
-          <small>Battlefield orientation</small>
+          <small>{screen === 'cinematic' ? 'Story orientation' : 'Battlefield orientation'}</small>
           <h1 id="landscape-gate-title">Rotate into the trace</h1>
           <p id="landscape-gate-copy">
-            Turn your phone sideways. Combat is paused and will resume exactly where you left it.
+            {screen === 'cinematic'
+              ? 'Turn your phone sideways to watch the story in its intended frame.'
+              : 'Turn your phone sideways. Combat is paused and will resume exactly where you left it.'}
           </p>
           <button onClick={() => void requestLandscapeMode()}>
             Enter landscape

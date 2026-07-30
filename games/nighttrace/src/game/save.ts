@@ -1,7 +1,12 @@
 import type { RunResult, SaveData, TraceModId, WeaponId } from '../shared/types'
+import {
+  CAMPAIGN_CINEMATICS,
+  cinematicIdsForCompletedLevels,
+  type CinematicId,
+} from '../story/cinematics'
 import { ALL_WEAPON_IDS, LEVELS, WEAPONS, getLevel } from './content'
 
-export const SAVE_VERSION = 3
+export const SAVE_VERSION = 4
 export const SAVE_KEY = 'nighttrace.save.v1'
 
 export type MasteryId = 'clear' | 'trace' | 'aegis'
@@ -33,11 +38,14 @@ const DEFAULT_SETTINGS: SaveData['settings'] = {
   masterVolume: 0.85,
   musicVolume: 0.5,
   sfxVolume: 0.82,
+  voiceVolume: 0.9,
   reducedFlash: false,
   reducedShake: false,
   highContrastPickups: false,
   showDamageNumbers: true,
   autoPulse: false,
+  subtitles: true,
+  cinematics: 'first-clear',
 }
 
 export const DEFAULT_SAVE: SaveData = {
@@ -60,6 +68,9 @@ export const DEFAULT_SAVE: SaveData = {
     'dawn-within': 0,
   },
   unlockedWeapons: [...ALL_WEAPON_IDS],
+  story: {
+    seenCinematics: [],
+  },
   settings: DEFAULT_SETTINGS,
 }
 
@@ -88,6 +99,9 @@ function cloneSave(save: SaveData): SaveData {
     ),
     upgrades: { ...save.upgrades },
     unlockedWeapons: [...save.unlockedWeapons],
+    story: {
+      seenCinematics: [...save.story.seenCinematics],
+    },
     settings: { ...save.settings },
   }
 }
@@ -114,6 +128,15 @@ function clamp(value: number, min: number, max: number): number {
 
 function booleanValue(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
+}
+
+function cinematicMode(
+  value: unknown,
+  fallback: SaveData['settings']['cinematics'],
+): SaveData['settings']['cinematics'] {
+  return value === 'first-clear' || value === 'always' || value === 'off'
+    ? value
+    : fallback
 }
 
 function numberArray(value: unknown): number[] {
@@ -147,12 +170,44 @@ function normalizeSettings(
       1,
     ),
     sfxVolume: clamp(finiteNumber(source.sfxVolume, DEFAULT_SETTINGS.sfxVolume), 0, 1),
+    voiceVolume: clamp(finiteNumber(source.voiceVolume, DEFAULT_SETTINGS.voiceVolume), 0, 1),
     reducedFlash: booleanValue(source.reducedFlash, DEFAULT_SETTINGS.reducedFlash),
     reducedShake: booleanValue(source.reducedShake, DEFAULT_SETTINGS.reducedShake),
     highContrastPickups: booleanValue(source.highContrastPickups, DEFAULT_SETTINGS.highContrastPickups),
     showDamageNumbers: booleanValue(source.showDamageNumbers, DEFAULT_SETTINGS.showDamageNumbers),
     autoPulse: booleanValue(source.autoPulse, DEFAULT_SETTINGS.autoPulse),
+    subtitles: booleanValue(source.subtitles, DEFAULT_SETTINGS.subtitles),
+    cinematics: cinematicMode(source.cinematics, DEFAULT_SETTINGS.cinematics),
   }
+}
+
+const VALID_CINEMATIC_IDS = new Set<CinematicId>(
+  CAMPAIGN_CINEMATICS.map((cinematic) => cinematic.id),
+)
+
+function normalizeStory(
+  value: unknown,
+  completedLevels: number[],
+  sourceVersion: number,
+): SaveData['story'] {
+  if (sourceVersion < SAVE_VERSION) {
+    return {
+      seenCinematics: cinematicIdsForCompletedLevels(completedLevels),
+    }
+  }
+
+  const source = isRecord(value) ? value : {}
+  const seenCinematics = Array.isArray(source.seenCinematics)
+    ? [
+        ...new Set(
+          source.seenCinematics.filter(
+            (item): item is CinematicId =>
+              typeof item === 'string' && VALID_CINEMATIC_IDS.has(item as CinematicId),
+          ),
+        ),
+      ]
+    : []
+  return { seenCinematics }
 }
 
 function normalizeUpgrades(value: unknown): Record<string, number> {
@@ -222,6 +277,7 @@ export function migrateSave(value: unknown): SaveData {
     dawnShards: nonNegativeInteger(source.dawnShards ?? source.shards ?? source.currency),
     upgrades: normalizeUpgrades(source.upgrades ?? source.astrarium),
     unlockedWeapons: [...unlockedWeapons],
+    story: normalizeStory(source.story, completedLevels, sourceVersion),
     settings: normalizeSettings(settingsSource, sourceVersion === 1),
   }
 }

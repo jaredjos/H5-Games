@@ -24,10 +24,16 @@ describe('Nighttrace PWA delivery', () => {
     expect(navigationSource).not.toContain('if (installedIndex) return installedIndex')
   })
 
-  it('uses the v1.16.4 cache namespace and precaches the sharp title hero', () => {
-    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.16.4'")
+  it('uses the v1.19.0 cache namespace and precaches title and cinematic art', () => {
+    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.19.0'")
     expect(serviceWorkerSource).toContain(
       "new URL('assets/nighttrace-title-hero-v2.png', SCOPE_URL).href",
+    )
+    expect(serviceWorkerSource).toContain(
+      "new URL('assets/cinematics/intro-a-world-without-dawn.webp', SCOPE_URL).href",
+    )
+    expect(serviceWorkerSource).toContain(
+      "new URL('assets/cinematics/finale-the-first-light.webp', SCOPE_URL).href",
     )
   })
 
@@ -74,7 +80,7 @@ describe('Nighttrace PWA delivery', () => {
 
     expect(reload).toHaveBeenCalledTimes(1)
     expect(storage.setItem).toHaveBeenCalledWith(
-      'nighttrace:pwa-controller-reload:v1.16.4',
+      'nighttrace:pwa-controller-reload:v1.19.0',
       '1',
     )
   })

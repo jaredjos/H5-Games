@@ -17,7 +17,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { appAssetUrl } from '../assetUrl'
 import type { ModuleId, ScreenId, WeaponId } from '../shared/types'
 
-type ShellScreenId = Exclude<ScreenId, 'title' | 'game' | 'results'>
+type ShellScreenId = Exclude<ScreenId, 'title' | 'cinematic' | 'game' | 'results'>
 
 export function StarMark({ small = false }: { small?: boolean }) {
   return (

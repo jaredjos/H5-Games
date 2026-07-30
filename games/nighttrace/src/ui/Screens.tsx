@@ -70,6 +70,7 @@ import {
   ENEMY_CODEX,
   type AstrariumNodeDefinition,
 } from './data'
+import type { CampaignCinematic } from '../story/cinematics'
 import {
   AppHeader,
   AstrariumGlyph,
@@ -83,7 +84,7 @@ import {
   WeaponGlyph,
 } from './Primitives'
 
-type ShellScreenId = Exclude<ScreenId, 'title' | 'game' | 'results'>
+type ShellScreenId = Exclude<ScreenId, 'title' | 'game' | 'cinematic' | 'results'>
 
 interface ScreenHeaderProps {
   active: ShellScreenId
@@ -983,19 +984,25 @@ export function AstrariumScreen({
   )
 }
 
-type CodexTab = 'bestiary' | 'arsenal' | 'trace'
+type CodexTab = 'bestiary' | 'arsenal' | 'trace' | 'archive'
 
 export function CodexScreen({
   save,
   weapons,
   modules,
   traceMods,
+  cinematics,
+  seenCinematics,
+  onReplayCinematic,
   onNavigate,
 }: {
   save: SaveData
   weapons: WeaponDefinition[]
   modules: ModuleDefinition[]
   traceMods: TraceModDefinition[]
+  cinematics: readonly CampaignCinematic[]
+  seenCinematics: readonly string[]
+  onReplayCinematic: (cinematic: CampaignCinematic) => void
   onNavigate: ScreenHeaderProps['onNavigate']
 }) {
   const [tab, setTab] = useState<CodexTab>('bestiary')
@@ -1018,6 +1025,9 @@ export function CodexScreen({
   const selectedWeapon = arsenalEntries[Math.min(selectedIndex, arsenalEntries.length - 1)]
   const selectedTrace = traceMods[Math.min(selectedIndex, traceMods.length - 1)]
   const selectedTraceDiscovered = selectedIndex < Math.max(2, save.unlockedLevel)
+  const selectedCinematic = cinematics[Math.min(selectedIndex, cinematics.length - 1)]
+  const seenCinematicIds = useMemo(() => new Set(seenCinematics), [seenCinematics])
+  const selectedCinematicSeen = selectedCinematic ? seenCinematicIds.has(selectedCinematic.id) : false
 
   return (
     <main className="shell-screen codex-screen">
@@ -1034,6 +1044,7 @@ export function CodexScreen({
               ['bestiary', 'Bestiary'],
               ['arsenal', 'Arsenal'],
               ['trace', 'Trace Mods'],
+              ['archive', 'Dawn Archive'],
             ] as const).map(([id, label]) => (
               <button
                 key={id}
@@ -1091,6 +1102,26 @@ export function CodexScreen({
                       <Waves size={19} />
                       {discovered ? entry.name : 'Unresolved pattern'}
                       <ChevronRight size={15} />
+                    </button>
+                  )
+                })
+              : null}
+            {tab === 'archive'
+              ? cinematics.map((cinematic, index) => {
+                  const seen = seenCinematicIds.has(cinematic.id)
+                  return (
+                    <button
+                      key={cinematic.id}
+                      className={`${selectedIndex === index ? 'is-selected' : ''}${seen ? '' : ' is-locked'} codex-memory-row`}
+                      onClick={() => setSelectedIndex(index)}
+                      aria-label={`${cinematic.chapter}: ${seen ? cinematic.title : 'Unrecovered memory'}`}
+                    >
+                      <span className="codex-list__index">{String(index + 1).padStart(2, '0')}</span>
+                      <span className="codex-memory-row__copy">
+                        <small>{cinematic.chapter}</small>
+                        <strong>{seen ? cinematic.title : 'Unrecovered Memory'}</strong>
+                      </span>
+                      {seen ? <ChevronRight size={15} /> : <LockKeyhole size={14} />}
                     </button>
                   )
                 })
@@ -1154,6 +1185,55 @@ export function CodexScreen({
                 </div>
               </div>
             ) : null}
+            {tab === 'archive' && selectedCinematic ? (
+              <div
+                key={selectedCinematic.id}
+                className={`codex-reveal codex-memory-reveal${selectedCinematicSeen ? ' is-recovered' : ' is-locked'}`}
+                style={{ '--memory-accent': selectedCinematic.accent } as React.CSSProperties}
+              >
+                <div className="codex-memory-art" aria-hidden="true">
+                  {selectedCinematicSeen ? (
+                    <img src={appAssetUrl(selectedCinematic.arenaAsset)} alt="" />
+                  ) : (
+                    <div className="codex-memory-lock">
+                      <LockKeyhole size={34} strokeWidth={1.15} />
+                    </div>
+                  )}
+                  <span className="codex-memory-art__veil" />
+                  <span className="codex-memory-art__glint" />
+                </div>
+                <small>{selectedCinematicSeen ? selectedCinematic.eyebrow : selectedCinematic.chapter}</small>
+                <h2>{selectedCinematicSeen ? selectedCinematic.title : 'Memory Unrecovered'}</h2>
+                <p className="codex-epithet">
+                  {selectedCinematicSeen
+                    ? selectedCinematic.chapter
+                    : selectedCinematic.kind === 'intro'
+                      ? 'Begin the Wake to recover this memory.'
+                      : 'Relight its bound sector to restore this memory.'}
+                </p>
+                <OrnamentRule />
+                <p>
+                  {selectedCinematicSeen
+                    ? selectedCinematic.summary
+                    : 'Only a cold seam remains in the Archive. Its voice has not yet returned.'}
+                </p>
+                {selectedCinematicSeen ? (
+                  <CrestButton
+                    tone="gold"
+                    compact
+                    onClick={() => onReplayCinematic(selectedCinematic)}
+                  >
+                    <RotateCcw size={15} />
+                    Replay Memory
+                  </CrestButton>
+                ) : (
+                  <div className="codex-memory-seal">
+                    <LockKeyhole size={14} />
+                    Sealed
+                  </div>
+                )}
+              </div>
+            ) : null}
           </PanelFrame>
         </div>
       </section>
@@ -1212,6 +1292,41 @@ function SettingToggle({
   )
 }
 
+function SettingChoice<T extends string>({
+  label,
+  description,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  description: string
+  value: T
+  options: readonly { value: T; label: string }[]
+  onChange: (value: T) => void
+}) {
+  return (
+    <fieldset className="setting-choice">
+      <legend>{label}</legend>
+      <p>{description}</p>
+      <div role="radiogroup" aria-label={label}>
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={value === option.value}
+            className={value === option.value ? 'is-active' : ''}
+            onClick={() => onChange(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  )
+}
+
 export function SettingsScreen({
   save,
   onNavigate,
@@ -1245,15 +1360,28 @@ export function SettingsScreen({
             <SettingSlider label="Master" value={settings.masterVolume} icon={<Headphones size={18} />} onChange={(value) => update('masterVolume', value)} />
             <SettingSlider label="Music" value={settings.musicVolume} icon={<Sparkles size={18} />} onChange={(value) => update('musicVolume', value)} />
             <SettingSlider label="Effects" value={settings.sfxVolume} icon={<Zap size={18} />} onChange={(value) => update('sfxVolume', value)} />
+            <SettingSlider label="Voice" value={settings.voiceVolume} icon={<Volume2 size={18} />} onChange={(value) => update('voiceVolume', value)} />
           </PanelFrame>
           <PanelFrame title="Visual clarity">
             <SettingToggle label="Reduced flash" description="Softens awakening and impact flashes." checked={settings.reducedFlash} onChange={(value) => update('reducedFlash', value)} />
             <SettingToggle label="Reduced motion & shake" description="Removes nonessential UI motion and camera shake." checked={settings.reducedShake} onChange={(value) => update('reducedShake', value)} />
             <SettingToggle label="High-contrast motes" description="Adds bright outlines to XP and pickups." checked={settings.highContrastPickups} onChange={(value) => update('highContrastPickups', value)} />
             <SettingToggle label="Damage numbers" description="Show damage values over struck enemies." checked={settings.showDamageNumbers} onChange={(value) => update('showDamageNumbers', value)} />
+            <SettingToggle label="Subtitles" description="Keep spoken story lines visible during cinematics." checked={settings.subtitles} onChange={(value) => update('subtitles', value)} />
           </PanelFrame>
           <PanelFrame title="Assistance">
             <SettingToggle label="Auto Pulse" description="Detonates a ready Trace automatically." checked={settings.autoPulse} onChange={(value) => update('autoPulse', value)} />
+            <SettingChoice
+              label="Cinematic playback"
+              description="Choose when recovered memories interrupt the campaign."
+              value={settings.cinematics}
+              options={[
+                { value: 'first-clear', label: 'First clear' },
+                { value: 'always', label: 'Always' },
+                { value: 'off', label: 'Off' },
+              ]}
+              onChange={(value) => update('cinematics', value)}
+            />
             <div className="control-reference">
               <div><kbd>WASD</kbd><span>Move</span></div>
               <div><kbd>SPACE</kbd><span>Pulse</span></div>
