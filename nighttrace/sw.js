@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.16.4'
+const CACHE_VERSION = 'v1.19.0'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
 const ASSET_CACHE = `${CACHE_PREFIX}assets-${CACHE_VERSION}`
@@ -15,6 +15,8 @@ const SHELL_URLS = [
   new URL('icons/nighttrace-512.png', SCOPE_URL).href,
   new URL('icons/nighttrace-maskable-512.png', SCOPE_URL).href,
   new URL('assets/campaign-disk-background.webp', SCOPE_URL).href,
+  new URL('assets/cinematics/intro-a-world-without-dawn.webp', SCOPE_URL).href,
+  new URL('assets/cinematics/finale-the-first-light.webp', SCOPE_URL).href,
   new URL('assets/cinder-foundry-arena.webp', SCOPE_URL).href,
   new URL('assets/first-beacon-arena.webp', SCOPE_URL).href,
   new URL('assets/glassreed-mire-arena.webp', SCOPE_URL).href,
