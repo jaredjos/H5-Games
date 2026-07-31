@@ -73,9 +73,15 @@ describe('NIGHTTRACE campaign cinematics', () => {
           expect(line.audioStartMs).toBeUndefined()
           expect(line.audioEndMs).toBeUndefined()
         } else {
-          expect(line.audioSrc).toMatch(
-            /^https:\/\/resource2\.heygen\.ai\/.+\.wav$/,
-          )
+          if (line.speaker === 'Last Star') {
+            expect(line.audioSrc).toMatch(
+              /^assets\/cinematics\/audio\/last-star\/.+\.wav$/,
+            )
+          } else {
+            expect(line.audioSrc).toMatch(
+              /^https:\/\/resource2\.heygen\.ai\/.+\.wav$/,
+            )
+          }
           expect(line.audioFallbackSrc).toBeUndefined()
           expect(line.audioStartMs).toBeGreaterThanOrEqual(0)
           expect(line.audioEndMs).toBeGreaterThan(line.audioStartMs ?? 0)
@@ -90,7 +96,7 @@ describe('NIGHTTRACE campaign cinematics', () => {
       }
     }
 
-    expect(audioPaths.size).toBe(3)
+    expect(audioPaths.size).toBe(9)
     expect(audioSegments.size).toBe(voicedLineIds.size)
     expect(voicedLineIds.size).toBe(13)
     expect(lineIds.size).toBe(35)
@@ -117,7 +123,7 @@ describe('NIGHTTRACE campaign cinematics', () => {
     expect(cartographer?.audioSrc).toBeUndefined()
   })
 
-  it('never points a cinematic line at an absent local narration asset', () => {
+  it('maps every Last Star line to a unique same-origin narration asset', () => {
     const localAudioSources = CAMPAIGN_CINEMATICS.flatMap((scene) =>
       scene.lines.flatMap((line) =>
         line.audioSrc && !/^https?:\/\//i.test(line.audioSrc)
@@ -126,7 +132,11 @@ describe('NIGHTTRACE campaign cinematics', () => {
       ),
     )
 
-    expect(localAudioSources).toEqual([])
+    expect(localAudioSources).toHaveLength(7)
+    expect(new Set(localAudioSources).size).toBe(7)
+    expect(localAudioSources.every((source) =>
+      /^assets\/cinematics\/audio\/last-star\/.+\.wav$/.test(source),
+    )).toBe(true)
   })
 
   it('uses contiguous beats with no gaps, overlaps, or out-of-bounds frames', () => {

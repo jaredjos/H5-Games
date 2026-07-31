@@ -52,34 +52,7 @@ jobs:
         working-directory: games/nighttrace
         run: pnpm install --frozen-lockfile
 
-      - name: Package authored cinematic narration
-        working-directory: games/nighttrace
-        shell: bash
-        run: |
-          if ! command -v ffmpeg >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y ffmpeg
-          fi
-
-          mkdir -p public/assets/cinematics/audio /tmp/nighttrace-voice
-          curl --fail --silent --show-error --location --retry 4 \
-            "https://resource2.heygen.ai/text_to_speech/eff3caa328f246b192c5cc03e7f2d48a/0fe77e0eee104bc78469a57bbe1a6550/id=d39ed1ef-e7fe-4b5d-b3e0-11d8c3bb0d19.wav" \
-            --output /tmp/nighttrace-voice/last-star.wav
-          curl --fail --silent --show-error --location --retry 4 \
-            "https://resource2.heygen.ai/text_to_speech/eff3caa328f246b192c5cc03e7f2d48a/0a0b38624ac64ec6afcd5842a977ca10/id=9aa06026-f195-4240-ac7f-662c321d8792.wav" \
-            --output /tmp/nighttrace-voice/bearer.wav
-          curl --fail --silent --show-error --location --retry 4 \
-            "https://resource2.heygen.ai/text_to_speech/eff3caa328f246b192c5cc03e7f2d48a/054af44a167344d0af2722fdfef08d17/id=96c84639-68a6-4181-a103-ec628a0e985c.wav" \
-            --output /tmp/nighttrace-voice/sun-eater.wav
-
-          for actor in last-star bearer sun-eater; do
-            ffmpeg -hide_banner -loglevel error -y \
-              -i "/tmp/nighttrace-voice/${actor}.wav" \
-              -map_metadata -1 -ac 1 -ar 44100 -codec:a libmp3lame -b:a 96k \
-              "public/assets/cinematics/audio/${actor}.mp3"
-          done
-
-      - name: Test, lint, and build stable v1.20.1
+      - name: Test, lint, and build stable v1.20.2
         working-directory: games/nighttrace
         run: |
           pnpm test

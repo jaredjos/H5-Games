@@ -18,6 +18,11 @@ export interface LightRingProfile {
   filamentCount: number
   moteCount: number
   petalCount: number
+  orbitBandCount: number
+  pulseWaveCount: number
+  energyKnotCount: number
+  rotationSpeed: number
+  coronaOpacity: number
   materialOpacity: number
   awakened: boolean
 }
@@ -33,6 +38,11 @@ const PROFILE_SOURCE = [
     filamentCount: 6,
     moteCount: 6,
     petalCount: 0,
+    orbitBandCount: 1,
+    pulseWaveCount: 1,
+    energyKnotCount: 2,
+    rotationSpeed: 0.1,
+    coronaOpacity: 0.24,
     materialOpacity: 0.08,
     awakened: false,
   },
@@ -45,7 +55,12 @@ const PROFILE_SOURCE = [
     bossDamageMultiplier: 0.7,
     filamentCount: 7,
     moteCount: 9,
-    petalCount: 0,
+    petalCount: 1,
+    orbitBandCount: 2,
+    pulseWaveCount: 1,
+    energyKnotCount: 3,
+    rotationSpeed: 0.13,
+    coronaOpacity: 0.3,
     materialOpacity: 0.095,
     awakened: false,
   },
@@ -58,7 +73,12 @@ const PROFILE_SOURCE = [
     bossDamageMultiplier: 0.7,
     filamentCount: 8,
     moteCount: 12,
-    petalCount: 2,
+    petalCount: 3,
+    orbitBandCount: 2,
+    pulseWaveCount: 2,
+    energyKnotCount: 5,
+    rotationSpeed: 0.16,
+    coronaOpacity: 0.37,
     materialOpacity: 0.115,
     awakened: false,
   },
@@ -71,7 +91,12 @@ const PROFILE_SOURCE = [
     bossDamageMultiplier: 0.7,
     filamentCount: 9,
     moteCount: 15,
-    petalCount: 3,
+    petalCount: 5,
+    orbitBandCount: 3,
+    pulseWaveCount: 2,
+    energyKnotCount: 7,
+    rotationSpeed: 0.19,
+    coronaOpacity: 0.44,
     materialOpacity: 0.135,
     awakened: false,
   },
@@ -84,7 +109,12 @@ const PROFILE_SOURCE = [
     bossDamageMultiplier: 0.7,
     filamentCount: 10,
     moteCount: 19,
-    petalCount: 4,
+    petalCount: 7,
+    orbitBandCount: 4,
+    pulseWaveCount: 3,
+    energyKnotCount: 10,
+    rotationSpeed: 0.23,
+    coronaOpacity: 0.52,
     materialOpacity: 0.16,
     awakened: false,
   },
@@ -97,7 +127,12 @@ const PROFILE_SOURCE = [
     bossDamageMultiplier: 0.7,
     filamentCount: 13,
     moteCount: 24,
-    petalCount: 6,
+    petalCount: 10,
+    orbitBandCount: 5,
+    pulseWaveCount: 4,
+    energyKnotCount: 14,
+    rotationSpeed: 0.28,
+    coronaOpacity: 0.62,
     materialOpacity: 0.2,
     awakened: true,
   },

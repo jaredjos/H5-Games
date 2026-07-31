@@ -201,9 +201,11 @@ function CinematicSession({
     cinematic.beats?.find(
       (beat) => elapsedMs >= beat.startMs && elapsedMs < beat.endMs,
     ) ?? null
-  const heroAsset = cinematic.kind === 'interlude'
-    ? undefined
-    : scene.heroKeyframeAsset ?? cinematic.heroAsset
+  // Intro and Memory key art already contains its authored hero composition.
+  // Only the finale retains a separate runtime actor layer for its climax beat.
+  const heroAsset = cinematic.kind === 'finale'
+    ? scene.heroKeyframeAsset ?? cinematic.heroAsset
+    : undefined
   const progressLabels =
     scene.progressLabels?.slice(0, 3) ??
     [
@@ -337,18 +339,29 @@ function CinematicSession({
       seekCinematicAudio(audio, 0)
       try {
         const attempt = audio.play()
-        audio.pause()
-        void attempt.catch(() => undefined).finally(() => {
-          audio.volume = mutedRef.current ? 0 : volumeRef.current
-        })
+        void attempt
+          .then(() => {
+            const isActive = [...audioEntriesRef.current.entries()].some(
+              ([lineId, entry]) =>
+                entry.audio === audio && activeAudioIdRef.current === lineId,
+            )
+            if (!isActive) {
+              audio.pause()
+              seekCinematicAudio(audio, 0)
+            }
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            audio.volume = mutedRef.current ? 0 : volumeRef.current
+          })
       } catch {
         audio.pause()
         audio.volume = mutedRef.current ? 0 : volumeRef.current
       }
     }
 
-    // Keep this synchronous with the trusted click. Waiting for all three
-    // actor reels to buffer delayed both the score and the scene by seconds.
+    // Keep this synchronous with the trusted click. Waiting for every
+    // narration source to buffer would delay both the score and the scene.
     beginClock(0)
   }, [beginClock, playback])
 

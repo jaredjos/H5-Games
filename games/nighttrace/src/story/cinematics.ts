@@ -130,10 +130,9 @@ const HERO_ASSET_BY_POSE: Readonly<Record<CinematicHeroAction, string>> = {
 }
 
 const BOSS_ATLAS = 'assets/nighttrace-boss-atlas.webp'
+const LAST_STAR_AUDIO_ROOT = 'assets/cinematics/audio/last-star'
 
 const NARRATION_REMOTE_REELS = {
-  star:
-    'https://resource2.heygen.ai/text_to_speech/eff3caa328f246b192c5cc03e7f2d48a/0fe77e0eee104bc78469a57bbe1a6550/id=d39ed1ef-e7fe-4b5d-b3e0-11d8c3bb0d19.wav',
   bearer:
     'https://resource2.heygen.ai/text_to_speech/eff3caa328f246b192c5cc03e7f2d48a/0a0b38624ac64ec6afcd5842a977ca10/id=9aa06026-f195-4240-ac7f-662c321d8792.wav',
   sovereign:
@@ -156,21 +155,26 @@ const clip = (
   endMs,
 })
 
+const localLastStarClip = (id: string, endMs: number): NarrationClip => ({
+  audioSrc: `${LAST_STAR_AUDIO_ROOT}/${id}.wav`,
+  startMs: 0,
+  endMs,
+})
+
 /**
- * Three hosted, cacheable actor performances avoid dozens of tiny requests.
- * Each story line seeks into its authored take. Captions remain the
- * deterministic fallback when narration is unavailable or the player is
- * offline. If local reels are packaged later, they can replace these primaries
- * without changing line timing.
+ * The Last Star uses independent same-origin takes so every scene begins at
+ * sample zero without remote buffering or reel seeking. The existing Bearer
+ * and Sovereign performances remain hosted reels. Captions are the
+ * deterministic fallback whenever narration is unavailable.
  */
 const NARRATION_CLIPS: Readonly<Record<string, NarrationClip>> = {
-  'intro-star-01': clip('star', 239, 8_099),
-  'intro-star-02': clip('star', 8_920, 15_799),
-  'intro-star-03': clip('star', 16_139, 19_199),
-  'intro-star-04': clip('star', 20_219, 23_920),
-  'finale-star-01': clip('star', 52_799, 55_259),
-  'finale-star-02': clip('star', 56_520, 59_619),
-  'finale-star-03': clip('star', 60_180, 63_439),
+  'intro-star-01': localLastStarClip('intro-star-01', 6_502),
+  'intro-star-02': localLastStarClip('intro-star-02', 5_733),
+  'intro-star-03': localLastStarClip('intro-star-03', 3_246),
+  'intro-star-04': localLastStarClip('intro-star-04', 3_664),
+  'finale-star-01': localLastStarClip('finale-star-01', 2_735),
+  'finale-star-02': localLastStarClip('finale-star-02', 3_638),
+  'finale-star-03': localLastStarClip('finale-star-03', 5_011),
 
   'intro-bearer-01': clip('bearer', 140, 1_620),
   'finale-bearer-01': clip('bearer', 20_760, 21_540),
@@ -699,7 +703,7 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
         'Last Star',
         'If it takes me, the world goes dark.',
         9_200,
-        3_300,
+        3_900,
       ),
       line('finale-bearer-01', 'Bearer', 'Trust the path.', 14_200, 2_000),
       line('finale-bearer-02', 'Bearer', 'Now.', 18_000, 1_100),
@@ -715,7 +719,7 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
         'Last Star',
         'I was never the last light. I was the first.',
         24_300,
-        3_800,
+        5_300,
       ),
       line(
         'finale-bearer-03',

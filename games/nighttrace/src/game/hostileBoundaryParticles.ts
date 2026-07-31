@@ -2,7 +2,16 @@ export const HOSTILE_BOUNDARY_PARTICLE_KINDS = Object.freeze([
   'filament',
   'mote',
 ] as const)
-export const HOSTILE_BOUNDARY_BRIGHTNESS_GAIN = 1.78
+export const HOSTILE_BOUNDARY_BRIGHTNESS_GAIN = 2.15
+export const HOSTILE_BOUNDARY_FRAME_BUDGET = Object.freeze({
+  desktop: 560,
+  mobile: 320,
+} as const)
+export const HOSTILE_BOUNDARY_PRIORITY_MINIMUM = Object.freeze({
+  desktop: 12,
+  mobile: 8,
+} as const)
+export const HOSTILE_BOUNDARY_HORDE_MINIMUM = 2
 
 export type HostileBoundaryParticleKind =
   (typeof HOSTILE_BOUNDARY_PARTICLE_KINDS)[number]
@@ -68,6 +77,9 @@ const clamp01 = (value: number) => clamp(value, 0, 1)
 const finiteOr = (value: number, fallback: number) =>
   Number.isFinite(value) ? value : fallback
 
+const finiteCount = (value: number) =>
+  Math.floor(Math.max(0, finiteOr(value, 0)))
+
 const fractional = (value: number) => value - Math.floor(value)
 
 const smoothstep = (value: number) => {
@@ -93,18 +105,31 @@ const requestedParticleCount = (
   lod: HostileBoundaryLod,
 ) => {
   if (prominence === 'horde') {
-    return lod === 'mobile' ? 9 + stage * 2 : 15 + stage * 3
+    return lod === 'mobile' ? 18 + stage * 2 : 28 + stage * 4
   }
-  return lod === 'mobile' ? 14 + stage * 3 : 24 + stage * 4
+  return lod === 'mobile' ? 28 + stage * 4 : 48 + stage * 8
+}
+
+export interface HostileBoundaryPriorityPoolInput {
+  readonly frameBudget: number
+  readonly priorityFootprints: number
+  readonly hordeFootprints: number
+  readonly lod: HostileBoundaryLod
+}
+
+export interface HostileBoundaryPriorityPools {
+  readonly priorityBudget: number
+  readonly hordeBudget: number
+  readonly unusedBudget: number
 }
 
 const warningEnvelope = (progress: number) => {
   const safe = clamp01(progress)
-  const rise = smoothstep(safe / 0.24)
-  const decay = 1 - smoothstep((safe - 0.84) / 0.16)
-  // Keep the broken perimeter readable through the final release frame.
-  // Earlier builds faded it to zero just as the attack became dangerous.
-  return rise * (0.74 + decay * 0.26)
+  const rise = smoothstep(safe / 0.14)
+  const releasePressure = smoothstep((safe - 0.42) / 0.5)
+  // Establish the dodge boundary quickly, then build restrained pressure into
+  // the release. It never disappears during the final decision window.
+  return rise * (0.82 + releasePressure * 0.18)
 }
 
 /**
@@ -140,6 +165,64 @@ export function reserveHostileBoundaryParticleQuota(
   })
 }
 
+/**
+ * Splits the shared warning budget before any footprints render. Boss warnings
+ * and every projectile destination receive their readable target density first;
+ * elite-horde fields retain a two-particle floor whenever the frame budget can
+ * support it. Keeping independent pools makes the result stable regardless of
+ * entity iteration order.
+ */
+export function allocateHostileBoundaryPriorityPools(
+  input: HostileBoundaryPriorityPoolInput,
+): HostileBoundaryPriorityPools {
+  const frameBudget = Math.max(0, finiteCount(input.frameBudget))
+  const priorityFootprints = Math.max(
+    0,
+    finiteCount(input.priorityFootprints),
+  )
+  const hordeFootprints = Math.max(0, finiteCount(input.hordeFootprints))
+  const priorityTargetPerFootprint = input.lod === 'mobile' ? 40 : 72
+  const hordeTargetPerFootprint = input.lod === 'mobile' ? 24 : 40
+  const priorityDesired = priorityFootprints * priorityTargetPerFootprint
+  const hordeDesired = hordeFootprints * hordeTargetPerFootprint
+
+  if (frameBudget === 0 || priorityFootprints + hordeFootprints === 0) {
+    return Object.freeze({
+      priorityBudget: 0,
+      hordeBudget: 0,
+      unusedBudget: frameBudget,
+    })
+  }
+
+  if (priorityDesired + hordeDesired <= frameBudget) {
+    return Object.freeze({
+      priorityBudget: priorityDesired,
+      hordeBudget: hordeDesired,
+      unusedBudget: frameBudget - priorityDesired - hordeDesired,
+    })
+  }
+
+  const priorityFloor =
+    priorityFootprints * HOSTILE_BOUNDARY_PRIORITY_MINIMUM[input.lod]
+  const hordeFloor = hordeFootprints * HOSTILE_BOUNDARY_HORDE_MINIMUM
+  let priorityBudget: number
+  let hordeBudget: number
+
+  if (priorityFloor + hordeFloor <= frameBudget) {
+    priorityBudget = Math.min(priorityDesired, frameBudget - hordeFloor)
+    hordeBudget = Math.min(hordeDesired, frameBudget - priorityBudget)
+  } else {
+    priorityBudget = Math.min(priorityDesired, priorityFloor, frameBudget)
+    hordeBudget = Math.min(hordeDesired, frameBudget - priorityBudget)
+  }
+
+  return Object.freeze({
+    priorityBudget,
+    hordeBudget,
+    unusedBudget: frameBudget - priorityBudget - hordeBudget,
+  })
+}
+
 export function sampleHostileBoundaryParticles(
   input: HostileBoundaryParticleInput,
 ): readonly HostileBoundaryParticle[] {
@@ -168,9 +251,9 @@ export function sampleHostileBoundaryParticles(
       ? 1
       : Math.min(count - 1, Math.max(1, Math.ceil(count * 0.62)))
   const envelope = warningEnvelope(progress)
-  const reducedEnergy = input.reducedFlash ? 0.56 : 1
+  const reducedEnergy = input.reducedFlash ? 0.72 : 1
   const motionScale = input.reducedFlash ? 0.36 : 1
-  const prominenceGain = input.prominence === 'boss' ? 1 : 0.86
+  const prominenceGain = input.prominence === 'boss' ? 1 : 0.9
   const motionTime = finiteOr(input.motionTime, 0)
   const seed = Math.trunc(finiteOr(input.seed, 0))
   const particles: HostileBoundaryParticle[] = []
@@ -308,8 +391,8 @@ export function sampleHostileBoundaryParticles(
       reducedEnergy *
       twinkle *
       (kind === 'filament'
-        ? 0.52 + sizeUnit * 0.36
-        : 0.3 + sizeUnit * 0.32)
+        ? 0.64 + sizeUnit * 0.28
+        : 0.38 + sizeUnit * 0.28)
 
     particles.push(
       Object.freeze({
@@ -320,8 +403,8 @@ export function sampleHostileBoundaryParticles(
         baseV,
         size:
           kind === 'filament'
-            ? 0.0048 + sizeUnit * 0.0058
-            : 0.0068 + sizeUnit * 0.0088,
+            ? 0.0055 + sizeUnit * 0.0065
+            : 0.008 + sizeUnit * 0.011,
         stretch:
           kind === 'filament'
             ? 4.2 + cosmeticUnit(seed, index, 101) * 5.6
@@ -329,7 +412,7 @@ export function sampleHostileBoundaryParticles(
         rotation,
         alpha: clamp01(alpha),
         glowAlpha: clamp01(
-          (kind === 'filament' ? 0.48 : 0.32) *
+          (kind === 'filament' ? 0.62 : 0.46) *
             prominenceGain *
             reducedEnergy,
         ),

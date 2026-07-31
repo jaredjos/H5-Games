@@ -24,8 +24,8 @@ describe('Nighttrace PWA delivery', () => {
     expect(navigationSource).not.toContain('if (installedIndex) return installedIndex')
   })
 
-  it('uses the v1.20.1 cache namespace and precaches title and cinematic art', () => {
-    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.20.1'")
+  it('uses the v1.20.2 cache namespace and precaches title and cinematic art', () => {
+    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.20.2'")
     expect(serviceWorkerSource).toContain(
       "new URL('assets/nighttrace-title-hero-v2.png', SCOPE_URL).href",
     )
@@ -35,6 +35,8 @@ describe('Nighttrace PWA delivery', () => {
     expect(serviceWorkerSource).toContain(
       "new URL('assets/cinematics/finale-the-first-light.webp', SCOPE_URL).href",
     )
+    expect(serviceWorkerSource.match(/assets\/cinematics\/audio\/last-star\/.+\.wav/g))
+      .toHaveLength(7)
   })
 
   it('streams range media without caching partial MP3 responses', () => {
@@ -80,7 +82,7 @@ describe('Nighttrace PWA delivery', () => {
 
     expect(reload).toHaveBeenCalledTimes(1)
     expect(storage.setItem).toHaveBeenCalledWith(
-      'nighttrace:pwa-controller-reload:v1.20.1',
+      'nighttrace:pwa-controller-reload:v1.20.2',
       '1',
     )
   })

@@ -139,7 +139,9 @@ describe('grounded VFX runtime integration', () => {
       [fieldParticleDrawing, 'field'],
       [laneParticleDrawing, 'lane'],
     ] as const) {
-      expect(drawing.match(/reserveHostileBoundaryQuota\(\)/g)).toHaveLength(1)
+      expect(
+        drawing.match(/reserveHostileBoundaryQuota\(boundaryPriority\)/g),
+      ).toHaveLength(1)
       expect(drawing.match(/sampleHostileBoundaryParticles\(\{/g)).toHaveLength(
         1,
       )
@@ -152,25 +154,31 @@ describe('grounded VFX runtime integration', () => {
       "particle.kind === 'mote'",
     )
     expect(boundaryParticleDrawing).toContain('.ellipse(')
-    expect(boundaryParticleDrawing).toContain('.poly(')
-    expect(boundaryParticleDrawing).not.toContain('.stroke(')
+    expect(boundaryParticleDrawing).toContain('hostileBoundaryGlowGraphics')
+    expect(boundaryParticleDrawing).toContain('hostileBoundaryCoreGraphics')
+    expect(boundaryParticleDrawing).toContain('.quadraticCurveTo(')
+    expect(boundaryParticleDrawing).toContain('.stroke(')
+    expect(boundaryParticleDrawing).not.toContain('.arc(')
     expect(boundaryParticleDrawing).not.toContain('.circle(')
     expect(boundaryParticleDrawing).not.toContain('drawPolyline')
     expect(boundaryParticleDrawing).not.toContain('drawSegmentedRing')
     expect(boundaryParticleDrawing).not.toContain('drawRadialTicks')
+    expect(projectileDestinationDrawing).toMatch(
+      /projectile\.palette,[\s\S]*?true,[\s\S]*?\)/,
+    )
   })
 
-  it('pre-counts hostile footprints and allocates fair quotas before drawing any zone', () => {
+  it('pre-counts priority and horde footprints into independent pools before drawing any zone', () => {
     const effectDrawing = section(
       '  private drawEffects()',
       '  private drawJoystick()',
     )
     const quotaPreCount = section(
       '  private allocateHostileBoundaryParticleQuotas()',
-      '  private reserveHostileBoundaryQuota()',
+      '  private reserveHostileBoundaryQuota(',
     )
     const quotaReservation = section(
-      '  private reserveHostileBoundaryQuota()',
+      '  private reserveHostileBoundaryQuota(',
       '  private drawBossTelegraphParticle(',
     )
     const firstTelegraphDraw = effectDrawing.indexOf(
@@ -186,20 +194,32 @@ describe('grounded VFX runtime integration', () => {
     expect(quotaAllocation).toBeGreaterThanOrEqual(0)
     expect(quotaAllocation).toBeLessThan(firstTelegraphDraw)
     expect(quotaAllocation).toBeLessThan(firstProjectileDraw)
-    expect(quotaPreCount).toMatch(
-      /this\.telegraphs\.reduce\([\s\S]*?telegraph\.active/,
-    )
+    expect(quotaPreCount).toContain('telegraph.active && telegraph.bossAttack')
+    expect(quotaPreCount).toContain('telegraph.active && !telegraph.bossAttack')
     expect(quotaPreCount).toMatch(
       /this\.hostileProjectiles\.reduce\([\s\S]*?destinationVisible/,
+    )
+    expect(quotaPreCount).toContain(
+      'allocateHostileBoundaryPriorityPools({',
+    )
+    expect(quotaPreCount).toContain('priorityFootprints,')
+    expect(quotaPreCount).toContain(
+      'hordeFootprints: hordeTelegraphCount',
     )
     expect(quotaReservation).toContain(
       'reserveHostileBoundaryParticleQuota({',
     )
     expect(quotaReservation).toContain(
-      'remainingBudget: this.groundedVfxBoundaryBudget',
+      '? this.hostileBoundaryPriorityBudget',
     )
     expect(quotaReservation).toContain(
-      'remainingFootprints: this.hostileBoundaryFootprintsRemaining',
+      ': this.hostileBoundaryHordeBudget',
+    )
+    expect(quotaReservation).toContain(
+      '? this.hostileBoundaryPriorityFootprintsRemaining',
+    )
+    expect(quotaReservation).toContain(
+      ': this.hostileBoundaryHordeFootprintsRemaining',
     )
     expect(quotaReservation).toContain(
       'reservation.remainingFootprints',

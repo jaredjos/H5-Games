@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  allocateHostileBoundaryPriorityPools,
   HOSTILE_BOUNDARY_BRIGHTNESS_GAIN,
+  HOSTILE_BOUNDARY_FRAME_BUDGET,
+  HOSTILE_BOUNDARY_HORDE_MINIMUM,
   HOSTILE_BOUNDARY_PARTICLE_KINDS,
+  HOSTILE_BOUNDARY_PRIORITY_MINIMUM,
   reserveHostileBoundaryParticleQuota,
   sampleHostileBoundaryParticles,
   type HostileBoundaryParticle,
@@ -24,7 +28,33 @@ const numericValues = (particle: HostileBoundaryParticle) =>
 
 describe('hostile boundary particles', () => {
   it('keeps the approved high-contrast dodge perimeter legible', () => {
-    expect(HOSTILE_BOUNDARY_BRIGHTNESS_GAIN).toBeCloseTo(1.78)
+    expect(HOSTILE_BOUNDARY_BRIGHTNESS_GAIN).toBeGreaterThanOrEqual(2)
+    expect(HOSTILE_BOUNDARY_FRAME_BUDGET).toEqual({
+      desktop: 560,
+      mobile: 320,
+    })
+  })
+
+  it('provides enough broken spray density for boss, horde, desktop, and mobile warnings', () => {
+    const sampleCount = (
+      prominence: 'boss' | 'horde',
+      lod: 'desktop' | 'mobile',
+      stage: 0 | 1 | 2 | 3,
+    ) => sampleHostileBoundaryParticles({
+      ...activeInput,
+      prominence,
+      lod,
+      stage,
+    }).length
+
+    expect(sampleCount('boss', 'desktop', 0)).toBe(48)
+    expect(sampleCount('boss', 'desktop', 3)).toBe(72)
+    expect(sampleCount('boss', 'mobile', 0)).toBe(28)
+    expect(sampleCount('boss', 'mobile', 3)).toBe(40)
+    expect(sampleCount('horde', 'desktop', 0)).toBe(28)
+    expect(sampleCount('horde', 'desktop', 3)).toBe(40)
+    expect(sampleCount('horde', 'mobile', 0)).toBe(18)
+    expect(sampleCount('horde', 'mobile', 3)).toBe(24)
   })
 
   it('returns immutable finite particles for every footprint, prominence, stage, and LOD', () => {
@@ -129,7 +159,17 @@ describe('hostile boundary particles', () => {
     })
 
     expect(late).not.toHaveLength(0)
-    expect(Math.max(...late.map(({ alpha }) => alpha))).toBeGreaterThan(0.25)
+    expect(Math.max(...late.map(({ alpha }) => alpha))).toBeGreaterThan(0.55)
+  })
+
+  it('establishes a readable perimeter early in the windup', () => {
+    const early = sampleHostileBoundaryParticles({
+      ...activeInput,
+      progress: 0.12,
+    })
+
+    expect(early).not.toHaveLength(0)
+    expect(Math.max(...early.map(({ alpha }) => alpha))).toBeGreaterThan(0.5)
   })
 
   it('reduces flash energy and motion without moving authored anchors', () => {
@@ -211,8 +251,8 @@ describe('hostile boundary quota reservation', () => {
   )
 
   it.each([
-    [260, 80],
-    [420, 120],
+    [HOSTILE_BOUNDARY_FRAME_BUDGET.mobile, 80],
+    [HOSTILE_BOUNDARY_FRAME_BUDGET.desktop, 120],
   ])(
     'reserves both particle classes across the %i-particle runtime cap and %i maximum visible footprints',
     (cap, footprintCount) => {
@@ -247,6 +287,69 @@ describe('hostile boundary quota reservation', () => {
       quota: 0,
       remainingBudget: 12,
       remainingFootprints: 0,
+    })
+  })
+
+  it.each([
+    ['mobile', HOSTILE_BOUNDARY_FRAME_BUDGET.mobile, 3, 80, 40],
+    ['desktop', HOSTILE_BOUNDARY_FRAME_BUDGET.desktop, 3, 120, 72],
+  ] as const)(
+    'prioritizes boss and projectile footprints under crowded %s load',
+    (lod, frameBudget, priorityFootprints, hordeFootprints, expectedPriorityQuota) => {
+      const pools = allocateHostileBoundaryPriorityPools({
+        frameBudget,
+        priorityFootprints,
+        hordeFootprints,
+        lod,
+      })
+      const priorityQuota = Math.floor(
+        pools.priorityBudget / priorityFootprints,
+      )
+      const hordeQuota = Math.ceil(pools.hordeBudget / hordeFootprints)
+
+      expect(priorityQuota).toBe(expectedPriorityQuota)
+      expect(priorityQuota).toBeGreaterThan(hordeQuota)
+      expect(hordeQuota).toBeGreaterThanOrEqual(
+        HOSTILE_BOUNDARY_HORDE_MINIMUM,
+      )
+      expect(
+        pools.priorityBudget + pools.hordeBudget + pools.unusedBudget,
+      ).toBe(frameBudget)
+    },
+  )
+
+  it('protects priority warnings first when the minimum floors exceed the frame cap', () => {
+    const priorityFootprints = 30
+    const pools = allocateHostileBoundaryPriorityPools({
+      frameBudget: HOSTILE_BOUNDARY_FRAME_BUDGET.mobile,
+      priorityFootprints,
+      hordeFootprints: 100,
+      lod: 'mobile',
+    })
+
+    expect(pools.priorityBudget).toBe(
+      priorityFootprints * HOSTILE_BOUNDARY_PRIORITY_MINIMUM.mobile,
+    )
+    expect(pools.priorityBudget / priorityFootprints).toBeGreaterThan(
+      pools.hordeBudget / 100,
+    )
+    expect(
+      pools.priorityBudget + pools.hordeBudget + pools.unusedBudget,
+    ).toBe(HOSTILE_BOUNDARY_FRAME_BUDGET.mobile)
+  })
+
+  it('does not spend unused warning budget when all footprints reach authored density', () => {
+    expect(
+      allocateHostileBoundaryPriorityPools({
+        frameBudget: HOSTILE_BOUNDARY_FRAME_BUDGET.mobile,
+        priorityFootprints: 1,
+        hordeFootprints: 1,
+        lod: 'mobile',
+      }),
+    ).toEqual({
+      priorityBudget: 40,
+      hordeBudget: 24,
+      unusedBudget: HOSTILE_BOUNDARY_FRAME_BUDGET.mobile - 64,
     })
   })
 })

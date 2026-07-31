@@ -37,11 +37,27 @@ describe('Dawnward Aegis Combat Lab prototype', () => {
       expect(current.diameter).toBeGreaterThan(previous.diameter)
       expect(current.filamentCount).toBeGreaterThan(previous.filamentCount)
       expect(current.moteCount).toBeGreaterThan(previous.moteCount)
+      expect(current.orbitBandCount).toBeGreaterThanOrEqual(
+        previous.orbitBandCount,
+      )
+      expect(current.pulseWaveCount).toBeGreaterThanOrEqual(
+        previous.pulseWaveCount,
+      )
+      expect(current.energyKnotCount).toBeGreaterThan(
+        previous.energyKnotCount,
+      )
+      expect(current.rotationSpeed).toBeGreaterThan(previous.rotationSpeed)
+      expect(current.coronaOpacity).toBeGreaterThan(previous.coronaOpacity)
       expect(current.materialOpacity).toBeGreaterThan(previous.materialOpacity)
       expect(lightRingDamagePerSecond(current.rank)).toBeGreaterThan(
         lightRingDamagePerSecond(previous.rank),
       )
     }
+
+    expect(new Set(LIGHT_RING_PROFILES.map(({ orbitBandCount }) => orbitBandCount)).size)
+      .toBeGreaterThanOrEqual(4)
+    expect(new Set(LIGHT_RING_PROFILES.map(({ pulseWaveCount }) => pulseWaveCount)).size)
+      .toBeGreaterThanOrEqual(3)
   })
 
   it('damages hordes and bosses whose collision circles touch the aura', () => {

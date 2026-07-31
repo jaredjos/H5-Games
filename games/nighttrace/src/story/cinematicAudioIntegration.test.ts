@@ -55,6 +55,9 @@ describe('cinematic audio runtime integration', () => {
     )
 
     expect(continueFromGesture).toContain('beginClock(0)')
+    expect(continueFromGesture).toContain('.then(() => {')
+    expect(continueFromGesture.indexOf('.then(() => {'))
+      .toBeLessThan(continueFromGesture.indexOf('audio.pause()'))
     expect(continueFromGesture).not.toContain('Promise.allSettled')
     expect(continueFromGesture).not.toContain('.then(() => beginClock')
   })
@@ -65,10 +68,11 @@ describe('cinematic audio runtime integration', () => {
     expect(source).toContain('const probe = scoreRef.current')
   })
 
-  it('keeps narration-only UI and the small runtime hero out of subtitle-only memories', () => {
+  it('keeps narration-only UI and duplicate runtime heroes out of intro and memories', () => {
     expect(source).toContain(
-      "const heroAsset = cinematic.kind === 'interlude'",
+      "const heroAsset = cinematic.kind === 'finale'",
     )
+    expect(source).toContain("Only the finale retains a separate runtime actor layer")
     expect(source).toContain('{hasNarration && narrationUnavailable ? (')
     expect(source).toContain('{hasNarration ? (')
     expect(source).toContain('{captionsVisible && activeLine ? (')

@@ -8,6 +8,7 @@ import {
   musicRouteForLevel,
   resolveMusicLevels,
   weaponAudioCue,
+  type MusicDeviceHints,
   type MusicScene,
   type MusicTrackId,
   type MusicVariant,
@@ -64,6 +65,27 @@ const SOUNDS: Record<SoundName, SoundShape> = {
 }
 
 const primedMusic = new Map<string, HTMLAudioElement>()
+const authorizedMusicSources = new Set<string>()
+let authorizedAudioContext: AudioContext | undefined
+
+function musicDeviceHints(): MusicDeviceHints {
+  if (typeof navigator === 'undefined') return {}
+  const hints = navigator as NavigatorWithAudioHints
+  return {
+    saveData: hints.connection?.saveData,
+    deviceMemory: hints.deviceMemory,
+  }
+}
+
+function musicSourcesForLevel(levelId: number) {
+  const hints = musicDeviceHints()
+  const route = musicRouteForLevel(levelId)
+  const variant = chooseMusicVariant(hints)
+  return [
+    appAssetUrl(`assets/audio/${musicAssetName(route.ambient, variant)}`),
+    appAssetUrl(`assets/audio/${musicAssetName(route.boss, variant)}`),
+  ]
+}
 
 /**
  * Begin downloading the likely encounter and cinematic scores while the
@@ -71,11 +93,7 @@ const primedMusic = new Map<string, HTMLAudioElement>()
  */
 export function primeNighttraceMusic(levelId: number) {
   if (typeof Audio === 'undefined' || typeof navigator === 'undefined') return
-  const hints = navigator as NavigatorWithAudioHints
-  for (const assetName of musicAssetsToPrime(levelId, {
-    saveData: hints.connection?.saveData,
-    deviceMemory: hints.deviceMemory,
-  })) {
+  for (const assetName of musicAssetsToPrime(levelId, musicDeviceHints())) {
     const source = appAssetUrl(`assets/audio/${assetName}`)
     if (primedMusic.has(source)) continue
     const audio = new Audio(source)
@@ -83,6 +101,91 @@ export function primeNighttraceMusic(levelId: number) {
     audio.load()
     primedMusic.set(source, audio)
   }
+}
+
+/**
+ * Capture the trusted UI gesture before React mounts the Pixi runtime. The
+ * selected encounter tracks begin silently on their final media elements and
+ * a running AudioContext is retained for the runtime to consume. This avoids
+ * waiting for a second battlefield tap after a campaign cinematic.
+ */
+export function authorizeNighttraceMusicHandoff(levelId: number) {
+  if (
+    typeof Audio === 'undefined' ||
+    typeof window === 'undefined' ||
+    typeof navigator === 'undefined'
+  ) {
+    return
+  }
+
+  primeNighttraceMusic(levelId)
+  const selectedSources = new Set(musicSourcesForLevel(levelId))
+
+  for (const source of authorizedMusicSources) {
+    if (selectedSources.has(source)) continue
+    const stale = primedMusic.get(source)
+    stale?.pause()
+    if (stale) {
+      try {
+        stale.currentTime = 0
+      } catch {
+        // A not-yet-loaded element is already paused and safe to retain.
+      }
+    }
+    authorizedMusicSources.delete(source)
+  }
+
+  if (!authorizedAudioContext || authorizedAudioContext.state === 'closed') {
+    try {
+      authorizedAudioContext = new window.AudioContext()
+    } catch {
+      authorizedAudioContext = undefined
+    }
+  }
+  if (authorizedAudioContext?.state === 'suspended') {
+    void authorizedAudioContext.resume().catch(() => undefined)
+  }
+
+  for (const source of selectedSources) {
+    const audio = primedMusic.get(source)
+    if (!audio) continue
+    audio.loop = true
+    audio.volume = 0
+    try {
+      audio.currentTime = 0
+    } catch {
+      // Metadata can still be arriving; playback will begin at its default 0.
+    }
+    authorizedMusicSources.add(source)
+    try {
+      void audio.play().catch(() => {
+        authorizedMusicSources.delete(source)
+      })
+    } catch {
+      authorizedMusicSources.delete(source)
+    }
+  }
+}
+
+export function hasAuthorizedNighttraceMusicHandoff(levelId: number) {
+  if (authorizedAudioContext && authorizedAudioContext.state !== 'closed') {
+    return true
+  }
+  return musicSourcesForLevel(levelId).some((source) =>
+    authorizedMusicSources.has(source))
+}
+
+function takeAuthorizedAudioContext() {
+  const context = authorizedAudioContext
+  authorizedAudioContext = undefined
+  return context
+}
+
+function takeAuthorizedMusicElement(source: string) {
+  if (!authorizedMusicSources.delete(source)) return undefined
+  const element = primedMusic.get(source)
+  if (element) primedMusic.delete(source)
+  return element
 }
 
 export class NighttraceAudio {
@@ -384,7 +487,7 @@ export class NighttraceAudio {
     const AudioContextConstructor = window.AudioContext
     if (!AudioContextConstructor) return
 
-    const context = new AudioContextConstructor()
+    const context = takeAuthorizedAudioContext() ?? new AudioContextConstructor()
     const master = context.createGain()
     const music = context.createGain()
     const sfx = context.createGain()
@@ -438,17 +541,20 @@ export class NighttraceAudio {
     const output = this.music
     if (!context || !output) return undefined
 
+    const sourceUrl = this.musicTrackUrl(id)
+    const element = takeAuthorizedMusicElement(sourceUrl) ?? new Audio()
     try {
-      const element = new Audio()
       element.loop = true
       element.preload = role === 'ambient' ? 'auto' : 'metadata'
-      element.volume = 1
-      element.src = this.musicTrackUrl(id)
+      if (!element.src) element.src = sourceUrl
       const source = context.createMediaElementSource(element)
       const gain = context.createGain()
       gain.gain.value = 0
       source.connect(gain)
       gain.connect(output)
+      // Authorized elements are already playing at zero volume. Restore their
+      // level only after MediaElementSource owns the route and its gain is 0.
+      element.volume = 1
       const track: MusicTrack = {
         id,
         element,
@@ -463,6 +569,7 @@ export class NighttraceAudio {
     } catch {
       // Local/file launchers and hardened browsers can reject media routing.
       // The procedural drone remains a complete, low-cost fallback.
+      element.pause()
       return undefined
     }
   }

@@ -43,7 +43,10 @@ import {
   getLevel,
   type UpgradeDraftContext,
 } from './content'
-import { NighttraceAudio } from './audio'
+import {
+  hasAuthorizedNighttraceMusicHandoff,
+  NighttraceAudio,
+} from './audio'
 import {
   HERO_FIRE_DURATION,
   HERO_FIRE_RELEASE_TIME,
@@ -171,7 +174,9 @@ import {
   type BossTelegraphParticle,
 } from './bossTelegraphParticles'
 import {
+  allocateHostileBoundaryPriorityPools,
   HOSTILE_BOUNDARY_BRIGHTNESS_GAIN,
+  HOSTILE_BOUNDARY_FRAME_BUDGET,
   reserveHostileBoundaryParticleQuota,
   sampleHostileBoundaryParticles,
   type HostileBoundaryParticle,
@@ -222,6 +227,7 @@ import {
   lightRingTouchesTarget,
   type LightRingRank,
 } from './lightRingSkill'
+import { lightRingRenderPlan } from './lightRingPresentation'
 import {
   COMBAT_TEXT_CAP_DESKTOP,
   COMBAT_TEXT_CAP_MOBILE,
@@ -269,6 +275,7 @@ const HERO_MATERIAL_FRAME = Object.freeze({
   impact: 8,
   lance: 10,
   fragments: 11,
+  halo: 12,
   fracture: 13,
   dust: 15,
 } as const)
@@ -541,9 +548,15 @@ class NighttraceRuntime {
   private readonly groundedVfxSmokeGraphics = new Graphics()
   private readonly groundedVfxDustGraphics = new Graphics()
   private readonly groundedVfxCinderGraphics = new Graphics()
+  private readonly hostileBoundaryGlowGraphics = new Graphics()
+  private readonly hostileBoundaryCoreGraphics = new Graphics()
   private readonly motionGraphics = new Graphics()
   private readonly projectileTrailGraphics = new Graphics()
   private readonly hostileProjectileGraphics = new Graphics()
+  private readonly lightRingAdditiveGraphics = new Graphics()
+  private readonly lightRingGraphics = new Graphics()
+  private readonly lightRingOverlayAdditiveGraphics = new Graphics()
+  private readonly lightRingOverlayGraphics = new Graphics()
   private readonly weaponVfxAdditiveGraphics = new Graphics()
   private readonly weaponVfxGraphics = new Graphics()
   private readonly screenEffects = new Container()
@@ -589,8 +602,10 @@ class NighttraceRuntime {
   private readonly groundedVfxMaterialSprites: Sprite[] = []
   private groundedVfxMaterialCursor = 0
   private groundedVfxParticleBudget = 0
-  private groundedVfxBoundaryBudget = 0
-  private hostileBoundaryFootprintsRemaining = 0
+  private hostileBoundaryPriorityBudget = 0
+  private hostileBoundaryPriorityFootprintsRemaining = 0
+  private hostileBoundaryHordeBudget = 0
+  private hostileBoundaryHordeFootprintsRemaining = 0
   private sparkTexture = Texture.WHITE
   private background?: Sprite
   private settings: GameSettings
@@ -937,6 +952,7 @@ class NighttraceRuntime {
       )
       this.groundedVfxMaterialLayer.sortableChildren = true
       this.groundedVfxCinderGraphics.blendMode = 'add'
+      this.hostileBoundaryGlowGraphics.blendMode = 'add'
       this.weaponMaterialLayer.sortableChildren = true
       this.pickupLayer.addChild(this.pickupAuraGraphics)
       this.enemyLayer.addChild(this.motionGraphics)
@@ -945,11 +961,21 @@ class NighttraceRuntime {
         this.hostileProjectileGraphics,
       )
       this.weaponVfxAdditiveGraphics.blendMode = 'add'
-      this.enemyForegroundLayer.addChild(this.groundedVfxCinderGraphics)
+      this.lightRingAdditiveGraphics.blendMode = 'add'
+      this.lightRingOverlayAdditiveGraphics.blendMode = 'add'
+      this.enemyForegroundLayer.addChild(
+        this.groundedVfxCinderGraphics,
+        this.hostileBoundaryGlowGraphics,
+        this.hostileBoundaryCoreGraphics,
+      )
       this.effectLayer.addChild(
         this.motionEchoLayer,
+        this.lightRingAdditiveGraphics,
+        this.lightRingGraphics,
         this.weaponVfxAdditiveGraphics,
         this.weaponVfxGraphics,
+        this.lightRingOverlayAdditiveGraphics,
+        this.lightRingOverlayGraphics,
       )
       this.app.stage.addChild(this.world, this.screenEffects)
       this.screenEffects.addChild(
@@ -1044,6 +1070,11 @@ class NighttraceRuntime {
       this.app.ticker.add(this.tick)
       this.layout()
       this.initialized = true
+      if (hasAuthorizedNighttraceMusicHandoff(this.level.id)) {
+        void this.audio.unlock().catch(() => {
+          // A normal battlefield interaction can retry on hardened browsers.
+        })
+      }
       if (this.showcase) this.spawnShowcaseTargets()
       else if (!this.runConfig.bossOnly) {
         for (let index = 0; index < 4; index += 1) this.spawnEnemy()
@@ -5293,6 +5324,8 @@ class NighttraceRuntime {
     this.groundedVfxDustGraphics.clear()
     this.groundedVfxSmokeGraphics.clear()
     this.groundedVfxCinderGraphics.clear()
+    this.hostileBoundaryGlowGraphics.clear()
+    this.hostileBoundaryCoreGraphics.clear()
   }
 
   private finishGroundedVfxFrame() {
@@ -5331,29 +5364,56 @@ class NighttraceRuntime {
   }
 
   private allocateHostileBoundaryParticleQuotas() {
-    this.groundedVfxBoundaryBudget =
-      this.visualLod === 'mobile' ? 260 : 420
-    this.hostileBoundaryFootprintsRemaining =
-      this.telegraphs.reduce(
-        (count, telegraph) => count + Number(telegraph.active),
-        0,
-      ) +
-      this.hostileProjectiles.reduce(
-        (count, projectile) =>
-          count +
-          Number(hostileProjectilePoseAt(projectile.state).destinationVisible),
-        0,
-      )
+    const lod = this.visualLod === 'mobile' ? 'mobile' : 'desktop'
+    const bossTelegraphCount = this.telegraphs.reduce(
+      (count, telegraph) =>
+        count + Number(telegraph.active && telegraph.bossAttack),
+      0,
+    )
+    const hordeTelegraphCount = this.telegraphs.reduce(
+      (count, telegraph) =>
+        count + Number(telegraph.active && !telegraph.bossAttack),
+      0,
+    )
+    const projectileDestinationCount = this.hostileProjectiles.reduce(
+      (count, projectile) =>
+        count +
+        Number(hostileProjectilePoseAt(projectile.state).destinationVisible),
+      0,
+    )
+    const priorityFootprints =
+      bossTelegraphCount + projectileDestinationCount
+    const pools = allocateHostileBoundaryPriorityPools({
+      frameBudget: HOSTILE_BOUNDARY_FRAME_BUDGET[lod],
+      priorityFootprints,
+      hordeFootprints: hordeTelegraphCount,
+      lod,
+    })
+
+    this.hostileBoundaryPriorityBudget = pools.priorityBudget
+    this.hostileBoundaryPriorityFootprintsRemaining = priorityFootprints
+    this.hostileBoundaryHordeBudget = pools.hordeBudget
+    this.hostileBoundaryHordeFootprintsRemaining = hordeTelegraphCount
   }
 
-  private reserveHostileBoundaryQuota() {
+  private reserveHostileBoundaryQuota(priority: boolean) {
     const reservation = reserveHostileBoundaryParticleQuota({
-      remainingBudget: this.groundedVfxBoundaryBudget,
-      remainingFootprints: this.hostileBoundaryFootprintsRemaining,
+      remainingBudget: priority
+        ? this.hostileBoundaryPriorityBudget
+        : this.hostileBoundaryHordeBudget,
+      remainingFootprints: priority
+        ? this.hostileBoundaryPriorityFootprintsRemaining
+        : this.hostileBoundaryHordeFootprintsRemaining,
     })
-    this.groundedVfxBoundaryBudget = reservation.remainingBudget
-    this.hostileBoundaryFootprintsRemaining =
-      reservation.remainingFootprints
+    if (priority) {
+      this.hostileBoundaryPriorityBudget = reservation.remainingBudget
+      this.hostileBoundaryPriorityFootprintsRemaining =
+        reservation.remainingFootprints
+    } else {
+      this.hostileBoundaryHordeBudget = reservation.remainingBudget
+      this.hostileBoundaryHordeFootprintsRemaining =
+        reservation.remainingFootprints
+    }
     return reservation.quota
   }
 
@@ -5478,86 +5538,82 @@ class NighttraceRuntime {
       0,
       1,
     )
-    const bone = 0xe8e4d8
-    const silver = 0xb7c2c3
+    const bone = 0xf4f0e6
+    const silver = 0xd3dcdb
     const color =
       Math.abs(particle.baseU * 17 + particle.baseV * 29) % 1 > 0.38
         ? bone
         : silver
-    const size = Math.max(0.72, scale * particle.size)
+    const minimumSize = this.visualLod === 'mobile' ? 1.2 : 0.92
+    const size = Math.max(minimumSize, scale * particle.size)
     const rotation = rotationOffset + particle.rotation
 
     if (particle.kind === 'mote') {
-      this.groundedVfxCinderGraphics
+      this.hostileBoundaryGlowGraphics
         .ellipse(
           x,
           y,
-          size * (2.15 + particle.glowAlpha),
-          size * (1.7 + particle.glowAlpha * 0.4),
+          size * (3.2 + particle.glowAlpha * 1.4),
+          size * (2.5 + particle.glowAlpha * 0.72),
         )
         .fill({
           color: silver,
-          alpha: boundaryAlpha * particle.glowAlpha * 0.42,
+          alpha: boundaryAlpha * particle.glowAlpha * 0.46,
         })
-      this.groundedVfxCinderGraphics
-        .ellipse(x, y, size, size * 0.82)
+      this.hostileBoundaryCoreGraphics
+        .ellipse(x, y, size * 1.08, size * 0.86)
         .fill({
           color,
-          alpha: boundaryAlpha * 0.98,
+          alpha: clamp(boundaryAlpha * 1.04, 0, 1),
         })
       return
     }
 
-    const halfLength = size * particle.stretch
-    const halfWidth = Math.max(0.46, size * 0.46)
+    const halfLength = Math.max(3.2, size * particle.stretch)
+    const coreWidth = Math.max(
+      this.visualLod === 'mobile' ? 1.3 : 0.9,
+      size * 0.62,
+    )
+    const glowWidth = coreWidth * (3.2 + particle.glowAlpha * 0.8)
     const tangentX = Math.cos(rotation)
     const tangentY = Math.sin(rotation)
     const normalX = -tangentY
     const normalY = tangentX
     const bend =
       Math.sin(particle.baseU * 19 + particle.baseV * 23) *
-      halfWidth *
-      0.88
-    const tipAX = x - tangentX * halfLength + normalX * bend
-    const tipAY = y - tangentY * halfLength + normalY * bend
-    const tipBX = x + tangentX * halfLength - normalX * bend * 0.45
-    const tipBY = y + tangentY * halfLength - normalY * bend * 0.45
+      halfLength *
+      0.12
+    const tipAX = x - tangentX * halfLength
+    const tipAY = y - tangentY * halfLength
+    const tipBX = x + tangentX * halfLength
+    const tipBY = y + tangentY * halfLength
+    const controlX = x + normalX * bend
+    const controlY = y + normalY * bend
 
-    this.groundedVfxCinderGraphics
-      .poly(
-        [
-          tipAX - normalX * halfWidth * 1.8,
-          tipAY - normalY * halfWidth * 1.8,
-          tipBX - normalX * halfWidth * 0.72,
-          tipBY - normalY * halfWidth * 0.72,
-          tipBX + normalX * halfWidth * 0.72,
-          tipBY + normalY * halfWidth * 0.72,
-          tipAX + normalX * halfWidth * 1.8,
-          tipAY + normalY * halfWidth * 1.8,
-        ],
-        true,
-      )
-      .fill({
+    // Two-pass isolated curves reproduce a physical spray of illuminated dust:
+    // a broad, dim silver bloom under a fine bone-white core. No segments are
+    // joined, so these can never resolve into a HUD-like continuous outline.
+    this.hostileBoundaryGlowGraphics
+      .moveTo(tipAX, tipAY)
+      .quadraticCurveTo(controlX, controlY, tipBX, tipBY)
+      .stroke({
         color: silver,
-        alpha: boundaryAlpha * particle.glowAlpha * 0.36,
+        width: glowWidth,
+        alpha: boundaryAlpha * particle.glowAlpha * 0.42,
+        cap: 'round',
       })
-    this.groundedVfxCinderGraphics
-      .poly(
-        [
-          tipAX,
-          tipAY,
-          x - normalX * halfWidth,
-          y - normalY * halfWidth,
-          tipBX,
-          tipBY,
-          x + normalX * halfWidth,
-          y + normalY * halfWidth,
-        ],
-        true,
-      )
-      .fill({
+    this.hostileBoundaryCoreGraphics
+      .moveTo(tipAX, tipAY)
+      .quadraticCurveTo(controlX, controlY, tipBX, tipBY)
+      .stroke({
         color,
-        alpha: boundaryAlpha,
+        width: coreWidth,
+        alpha: clamp(
+          boundaryAlpha * (0.84 + particle.glowAlpha * 0.2),
+          0,
+          1,
+        ),
+        cap: 'round',
       })
   }
 
@@ -5578,8 +5634,9 @@ class NighttraceRuntime {
     bossId: BossId | undefined,
     palette: HostileTelegraphMaterialPalette,
     boss: boolean,
+    boundaryPriority: boolean,
   ) {
-    const boundaryQuota = this.reserveHostileBoundaryQuota()
+    const boundaryQuota = this.reserveHostileBoundaryQuota(boundaryPriority)
     const boundaryParticles = sampleHostileBoundaryParticles({
       prominence: boss ? 'boss' : 'horde',
       footprint: 'field',
@@ -5637,6 +5694,7 @@ class NighttraceRuntime {
     bossId: BossId | undefined,
     palette: HostileTelegraphMaterialPalette,
     boss: boolean,
+    boundaryPriority: boolean,
   ) {
     const dx = end.x - start.x
     const dy = end.y - start.y
@@ -5647,7 +5705,7 @@ class NighttraceRuntime {
     const normalY = tangentX
     const angle = Math.atan2(dy, dx)
 
-    const boundaryQuota = this.reserveHostileBoundaryQuota()
+    const boundaryQuota = this.reserveHostileBoundaryQuota(boundaryPriority)
     const boundaryParticles = sampleHostileBoundaryParticles({
       prominence: boss ? 'boss' : 'horde',
       footprint: 'lane',
@@ -5716,6 +5774,7 @@ class NighttraceRuntime {
     opacityScale = 1,
     bossId?: BossId,
     hostilePalette?: HostileTelegraphMaterialPalette,
+    hostileBoundaryPriority = boss,
   ) {
     const pose = sampleGroundedVfxPose(kind, { progress })
     const texture = this.hostileGroundFieldTexture
@@ -5731,6 +5790,7 @@ class NighttraceRuntime {
           bossId,
           hostilePalette,
           boss,
+          hostileBoundaryPriority,
         )
       }
       return
@@ -5891,6 +5951,7 @@ class NighttraceRuntime {
         bossId,
         hostilePalette,
         boss,
+        hostileBoundaryPriority,
       )
     }
   }
@@ -5907,6 +5968,7 @@ class NighttraceRuntime {
     opacityScale = 1,
     bossId?: BossId,
     hostilePalette?: HostileTelegraphMaterialPalette,
+    hostileBoundaryPriority = boss,
   ) {
     const pose = sampleGroundedVfxPose(kind, { progress })
     const texture = this.hostileGroundLaneTexture
@@ -5922,6 +5984,7 @@ class NighttraceRuntime {
           bossId,
           hostilePalette,
           boss,
+          hostileBoundaryPriority,
         )
       }
       return
@@ -6090,6 +6153,7 @@ class NighttraceRuntime {
         bossId,
         hostilePalette,
         boss,
+        hostileBoundaryPriority,
       )
     }
   }
@@ -6517,6 +6581,8 @@ class NighttraceRuntime {
   private drawLightRingAura(
     graphics: Graphics,
     additiveGraphics: Graphics,
+    overlayGraphics: Graphics,
+    overlayAdditiveGraphics: Graphics,
   ) {
     const profile = lightRingProfile(this.lightRingRank)
     if (!profile) return
@@ -6530,15 +6596,27 @@ class NighttraceRuntime {
         : profile.rank >= 2
           ? 'combined'
           : 'solo'
-    const breath = Math.sin(this.motionClock * 1.35 + profile.rank * 0.47)
+    const reducedMotionScale = this.settings.reducedShake ? 0.28 : 1
+    const motionTime = this.motionClock * reducedMotionScale
+    const renderPlan = lightRingRenderPlan(
+      profile,
+      this.visualLod === 'mobile' ? 'mobile' : 'desktop',
+    )
+    const breath = Math.sin(
+      motionTime * 1.72 + profile.rank * 0.47,
+    )
     const pulse = clamp(
       this.lightRingPulse / (this.settings.reducedFlash ? 0.1 : 0.18),
       0,
       1,
     )
-    const radius = profile.radius * (1 + breath * 0.008 + pulse * 0.022)
-    const ivory = profile.awakened ? 0xfff8df : 0xeee5cf
-    const gold = profile.awakened ? 0xf2c86b : 0xcaa454
+    const radius =
+      profile.radius *
+      (1 + breath * (this.settings.reducedShake ? 0.013 : 0.028) + pulse * 0.035)
+    const ivory = profile.awakened ? 0xfffff2 : 0xfff4d3
+    const gold = profile.awakened ? 0xffdf86 : 0xf3b54d
+    const amber = profile.awakened ? 0xffa43f : 0xe36d24
+    const whiteHot = 0xffffff
     const reducedFlashScale = this.settings.reducedFlash ? 0.68 : 1
 
     // A subdued, textured pool grounds the barrier without adding another
@@ -6560,20 +6638,123 @@ class NighttraceRuntime {
       stage,
       seed: 4_913 + profile.rank * 173,
       tint: gold,
-      frame: profile.awakened
-        ? HERO_MATERIAL_FRAME.gather
-        : HERO_MATERIAL_FRAME.driftA,
-      angle: this.motionClock * (profile.awakened ? -0.055 : 0.035),
+      frame: HERO_MATERIAL_FRAME.halo,
+      angle:
+        motionTime *
+        profile.rotationSpeed *
+        (profile.awakened ? -0.9 : 0.72),
       materialOpacity:
-        (profile.materialOpacity + pulse * 0.035) * reducedFlashScale,
-      stretchX: 1.04,
-      stretchY: 0.82,
+        (profile.materialOpacity + pulse * 0.055) * reducedFlashScale,
+      stretchX: 1.1,
+      stretchY: 0.88,
     })
+
+    // Each rank gains authored, counter-rotating bands. They are composed from
+    // broken arcs with a broad ember corona and a fine white-hot core, avoiding
+    // the flat closed-circle language of a HUD outline.
+    const orbitBandCount = renderPlan.orbitBandCount
+    for (let band = 0; band < orbitBandCount; band += 1) {
+      const direction = band % 2 === 0 ? 1 : -1
+      const bandRadius = radius * (0.84 + band * 0.052)
+      const segmentCount = renderPlan.orbitSegmentCount
+      const rotation =
+        motionTime *
+          profile.rotationSpeed *
+          direction *
+          (0.78 + band * 0.16) +
+        band * 0.63
+
+      for (let segment = 0; segment < segmentCount; segment += 1) {
+        const noise = replacementCosmeticUnit(
+          5_147 + profile.rank * 149 + band * 31,
+          segment,
+          193,
+        )
+        const center =
+          rotation +
+          (Math.PI * 2 * segment) / segmentCount +
+          (noise - 0.5) * 0.17
+        const span =
+          (Math.PI * 2 / segmentCount) *
+          (0.38 + noise * 0.28)
+        const start = center - span * 0.5
+        const end = center + span * 0.5
+        const bandAlpha =
+          (profile.coronaOpacity * (0.62 + band * 0.07) + pulse * 0.16) *
+          reducedFlashScale
+
+        additiveGraphics
+          .arc(x, y, bandRadius, start, end)
+          .stroke({
+            color: band % 2 === 0 ? amber : gold,
+            width: 12 + profile.rank * 0.8,
+            alpha: bandAlpha * 0.12,
+            cap: 'round',
+          })
+          .arc(x, y, bandRadius, start, end)
+          .stroke({
+            color: gold,
+            width: 4.2 + profile.rank * 0.32,
+            alpha: bandAlpha * 0.3,
+            cap: 'round',
+          })
+        graphics
+          .arc(x, y, bandRadius, start, end)
+          .stroke({
+            color: segment % 3 === 0 ? whiteHot : ivory,
+            width: 0.95 + profile.rank * 0.1,
+            alpha: Math.min(0.92, bandAlpha + 0.16),
+            cap: 'round',
+          })
+      }
+    }
+
+    // Staggered, expanding wave fronts make the aura visibly radiate. Their
+    // discontinuous spans preserve a physical corona instead of a diagram.
+    const pulseWaveCount = this.settings.reducedShake
+      ? 1
+      : renderPlan.pulseWaveCount
+    for (let wave = 0; wave < pulseWaveCount; wave += 1) {
+      const waveProgress =
+        (motionTime * (0.34 + profile.rank * 0.025) + wave / pulseWaveCount) %
+        1
+      const waveRadius = radius * (0.78 + waveProgress * 0.35)
+      const waveFade = Math.sin(waveProgress * Math.PI)
+      const waveSegments = renderPlan.waveSegmentCount
+      for (let segment = 0; segment < waveSegments; segment += 1) {
+        const start =
+          (Math.PI * 2 * segment) / waveSegments +
+          wave * 0.41 +
+          motionTime * 0.03
+        const span =
+          (Math.PI * 2 / waveSegments) *
+          (0.34 +
+            replacementCosmeticUnit(profile.rank * 503 + wave, segment, 197) *
+              0.2)
+        additiveGraphics
+          .arc(x, y, waveRadius, start, start + span)
+          .stroke({
+            color: amber,
+            width: 10 + profile.rank * 0.65,
+            alpha: waveFade * (0.07 + profile.rank * 0.008),
+            cap: 'round',
+          })
+        graphics
+          .arc(x, y, waveRadius, start, start + span)
+          .stroke({
+            color: gold,
+            width: 0.75 + profile.rank * 0.08,
+            alpha: waveFade * (0.2 + profile.rank * 0.025),
+            cap: 'round',
+          })
+      }
+    }
 
     // One irregular, broken perimeter replaces closed vector rings. Each arc
     // has its own radius and span, so the silhouette reads as fine light woven
     // through smoke rather than a HUD circle painted on the floor.
-    for (let filament = 0; filament < profile.filamentCount; filament += 1) {
+    const filamentCount = renderPlan.filamentCount
+    for (let filament = 0; filament < filamentCount; filament += 1) {
       const unit = replacementCosmeticUnit(
         8_111 + profile.rank * 101,
         filament,
@@ -6590,36 +6771,39 @@ class NighttraceRuntime {
         227,
       )
       const start =
-        (Math.PI * 2 * filament) / profile.filamentCount +
-        this.motionClock * (filament % 2 === 0 ? 0.018 : -0.014) +
+        (Math.PI * 2 * filament) / filamentCount +
+        motionTime *
+          profile.rotationSpeed *
+          (filament % 2 === 0 ? 1.12 : -0.86) +
         (unit - 0.5) * 0.18
       const span =
-        (Math.PI * 2 / profile.filamentCount) *
+        (Math.PI * 2 / filamentCount) *
         (0.42 + spanUnit * 0.34)
       const strandRadius = radius * (0.965 + (radiusUnit - 0.5) * 0.045)
       const strandAlpha =
-        (0.31 + profile.rank * 0.027 + pulse * 0.22) *
+        (0.44 + profile.rank * 0.04 + pulse * 0.24) *
         reducedFlashScale
 
       additiveGraphics
         .arc(x, y, strandRadius, start, start + span)
         .stroke({
           color: gold,
-          width: 6.5 + profile.rank * 0.38 + pulse * 2.4,
-          alpha: strandAlpha * 0.14,
+          width: 8.5 + profile.rank * 0.55 + pulse * 2.8,
+          alpha: strandAlpha * 0.18,
           cap: 'round',
         })
       graphics
         .arc(x, y, strandRadius, start, start + span)
         .stroke({
           color: filament % 3 === 0 ? gold : ivory,
-          width: profile.awakened ? 1.35 : 0.92,
-          alpha: strandAlpha,
+          width: profile.awakened ? 1.85 : 1.25,
+          alpha: Math.min(0.96, strandAlpha),
           cap: 'round',
         })
     }
 
-    for (let mote = 0; mote < profile.moteCount; mote += 1) {
+    const moteCount = renderPlan.moteCount
+    for (let mote = 0; mote < moteCount; mote += 1) {
       const orbit = replacementCosmeticUnit(
         9_701 + profile.rank * 137,
         mote,
@@ -6632,9 +6816,11 @@ class NighttraceRuntime {
       )
       const angle =
         orbit * Math.PI * 2 +
-        this.motionClock * (0.045 + (mote % 4) * 0.009)
+        motionTime *
+          profile.rotationSpeed *
+          (mote % 2 === 0 ? 0.85 : -0.62)
       const breathingOffset =
-        Math.sin(this.motionClock * (1.2 + drift) + mote * 1.71) *
+        Math.sin(motionTime * (1.2 + drift) + mote * 1.71) *
         (4 + profile.rank * 0.8)
       const moteRadius =
         radius * (0.88 + drift * 0.23) + breathingOffset
@@ -6643,16 +6829,16 @@ class NighttraceRuntime {
         profile.rank * 0.08 +
         replacementCosmeticUnit(profile.rank * 331, mote, 251) * 1.35
       const moteAlpha =
-        (0.2 + profile.rank * 0.023 + pulse * 0.18) *
+        (0.32 + profile.rank * 0.032 + pulse * 0.2) *
         reducedFlashScale
 
       additiveGraphics
         .circle(
           x + Math.cos(angle) * moteRadius,
           y + Math.sin(angle) * moteRadius,
-          moteSize * 2.8,
+          moteSize * 3.6,
         )
-        .fill({ color: gold, alpha: moteAlpha * 0.13 })
+        .fill({ color: gold, alpha: moteAlpha * 0.2 })
       graphics
         .circle(
           x + Math.cos(angle) * moteRadius,
@@ -6665,12 +6851,62 @@ class NighttraceRuntime {
         })
     }
 
+    const energyKnotCount = renderPlan.energyKnotCount
+    for (let knot = 0; knot < energyKnotCount; knot += 1) {
+      const direction = knot % 2 === 0 ? 1 : -1
+      const angle =
+        (Math.PI * 2 * knot) / energyKnotCount +
+        motionTime *
+          profile.rotationSpeed *
+          direction *
+          (1.2 + (knot % 3) * 0.16)
+      const knotRadius = radius * (0.89 + (knot % 3) * 0.04)
+      const knotX = x + Math.cos(angle) * knotRadius
+      const knotY = y + Math.sin(angle) * knotRadius
+      const tangent = angle + direction * Math.PI * 0.5
+      const tailLength = 5 + profile.rank * 1.45
+      const knotAlpha =
+        (0.48 + profile.rank * 0.045 + pulse * 0.2) * reducedFlashScale
+
+      additiveGraphics
+        .moveTo(
+          knotX - Math.cos(tangent) * tailLength,
+          knotY - Math.sin(tangent) * tailLength,
+        )
+        .lineTo(knotX, knotY)
+        .stroke({
+          color: amber,
+          width: 7 + profile.rank * 0.55,
+          alpha: knotAlpha * 0.16,
+          cap: 'round',
+        })
+        .circle(knotX, knotY, 4.2 + profile.rank * 0.22)
+        .fill({ color: gold, alpha: knotAlpha * 0.24 })
+      graphics
+        .moveTo(
+          knotX - Math.cos(tangent) * tailLength,
+          knotY - Math.sin(tangent) * tailLength,
+        )
+        .lineTo(knotX, knotY)
+        .stroke({
+          color: ivory,
+          width: 0.85 + profile.rank * 0.08,
+          alpha: knotAlpha,
+          cap: 'round',
+        })
+        .circle(knotX, knotY, 1 + profile.rank * 0.08)
+        .fill({ color: whiteHot, alpha: Math.min(1, knotAlpha + 0.18) })
+    }
+
     // Upper ranks grow a few curved light-plumes from the perimeter. They are
     // deliberately sparse, asymmetrical and bezier-shaped—never radial ticks.
-    for (let petal = 0; petal < profile.petalCount; petal += 1) {
+    const petalCount = renderPlan.petalCount
+    for (let petal = 0; petal < petalCount; petal += 1) {
       const angle =
-        (Math.PI * 2 * petal) / profile.petalCount -
-        this.motionClock * 0.026 +
+        (Math.PI * 2 * petal) / petalCount -
+        motionTime *
+          profile.rotationSpeed *
+          0.72 +
         (replacementCosmeticUnit(profile.rank * 409, petal, 263) - 0.5) *
           0.24
       const direction = petal % 2 === 0 ? 1 : -1
@@ -6683,7 +6919,7 @@ class NighttraceRuntime {
       const endX = x + Math.cos(endAngle) * radius * 1.015
       const endY = y + Math.sin(endAngle) * radius * 1.015
       const plumeAlpha =
-        (0.24 + profile.rank * 0.025 + pulse * 0.18) *
+        (0.38 + profile.rank * 0.035 + pulse * 0.2) *
         reducedFlashScale
 
       additiveGraphics
@@ -6691,8 +6927,8 @@ class NighttraceRuntime {
         .quadraticCurveTo(controlX, controlY, endX, endY)
         .stroke({
           color: gold,
-          width: 7 + profile.rank * 0.45,
-          alpha: plumeAlpha * 0.1,
+          width: 9 + profile.rank * 0.65,
+          alpha: plumeAlpha * 0.15,
           cap: 'round',
         })
       graphics
@@ -6700,8 +6936,52 @@ class NighttraceRuntime {
         .quadraticCurveTo(controlX, controlY, endX, endY)
         .stroke({
           color: petal % 3 === 0 ? gold : ivory,
-          width: profile.awakened ? 1.45 : 1.05,
-          alpha: plumeAlpha,
+          width: profile.awakened ? 1.85 : 1.25,
+          alpha: Math.min(0.94, plumeAlpha),
+          cap: 'round',
+        })
+    }
+
+    // A sparse perimeter-only pass renders above the rest of the spell arsenal.
+    // It preserves the Aegis gameplay boundary without lifting the full aura
+    // over other attacks or rebuilding a continuous HUD-like circle.
+    for (
+      let segment = 0;
+      segment < renderPlan.overlaySegmentCount;
+      segment += 1
+    ) {
+      const noise = replacementCosmeticUnit(
+        12_811 + profile.rank * 181,
+        segment,
+        277,
+      )
+      const center =
+        (Math.PI * 2 * segment) / renderPlan.overlaySegmentCount -
+        motionTime * profile.rotationSpeed * 0.22 +
+        (noise - 0.5) * 0.2
+      const span =
+        (Math.PI * 2 / renderPlan.overlaySegmentCount) *
+        (0.12 + noise * 0.09)
+      const start = center - span * 0.5
+      const end = center + span * 0.5
+      const overlayRadius = radius * (1.004 + (noise - 0.5) * 0.018)
+      const overlayAlpha =
+        (0.5 + profile.rank * 0.035 + pulse * 0.12) * reducedFlashScale
+
+      overlayAdditiveGraphics
+        .arc(x, y, overlayRadius, start, end)
+        .stroke({
+          color: gold,
+          width: 4.4 + profile.rank * 0.28,
+          alpha: overlayAlpha * 0.16,
+          cap: 'round',
+        })
+      overlayGraphics
+        .arc(x, y, overlayRadius, start, end)
+        .stroke({
+          color: segment % 3 === 0 ? whiteHot : ivory,
+          width: 0.72 + profile.rank * 0.06,
+          alpha: Math.min(0.88, overlayAlpha),
           cap: 'round',
         })
     }
@@ -6709,14 +6989,28 @@ class NighttraceRuntime {
 
   private drawWeaponEffects() {
     this.beginAuthoredSpellMaterialFrame()
+    this.lightRingAdditiveGraphics.clear()
+    this.lightRingGraphics.clear()
+    this.lightRingOverlayAdditiveGraphics.clear()
+    this.lightRingOverlayGraphics.clear()
     this.weaponVfxAdditiveGraphics.clear()
     this.weaponVfxGraphics.clear()
     const additiveGraphics = this.weaponVfxAdditiveGraphics
     const graphics = this.weaponVfxGraphics
     const energyScale = this.currentSceneVfxEnergyScale()
+    const lightRingEnergyScale = Math.max(0.78, energyScale)
+    this.lightRingAdditiveGraphics.alpha = lightRingEnergyScale
+    this.lightRingGraphics.alpha = lightRingEnergyScale
+    this.lightRingOverlayAdditiveGraphics.alpha = lightRingEnergyScale
+    this.lightRingOverlayGraphics.alpha = lightRingEnergyScale
     additiveGraphics.alpha = energyScale
     graphics.alpha = energyScale
-    this.drawLightRingAura(graphics, additiveGraphics)
+    this.drawLightRingAura(
+      this.lightRingGraphics,
+      this.lightRingAdditiveGraphics,
+      this.lightRingOverlayGraphics,
+      this.lightRingOverlayAdditiveGraphics,
+    )
     for (let index = this.weaponEffects.length - 1; index >= 0; index -= 1) {
       const effect = this.weaponEffects[index]
       if (effect.life <= 0) {
@@ -7164,6 +7458,7 @@ class NighttraceRuntime {
         config.boss ? 0.92 : 0.78,
         config.boss ? this.bossLevel.bossId : undefined,
         projectile.palette,
+        true,
       )
     }
     this.finishGroundedVfxFrame()

@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.20.1`
+- Current web release: `v1.20.2`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -244,6 +244,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.19.0`: The Last Light adds a voiced prologue, nine first-clear interludes, a level-ten climax, cinematic controls and settings, and the replayable Dawn Archive without changing combat balance or repeat-clear flow.
 - `v1.20.0`: reliable zero-lag audio/cinematic startup, all eleven scenes in Combat Lab, expressive dialogue portraits, source-aware damage feedback and compact colored combat text, brighter grounded hostile boundaries, an explicit test-covered forgiving hero hitbox, and the Lab-only Dawnward Aegis ranks I–V plus Awakened.
 - `v1.20.1`: Memories become complete subtitle-only scenes without voice-reel bleed or stray runtime hero sprites; victory receives a guaranteed real-time Sovereign-defeated handoff; hostile fields, lanes, and projectile destinations retain high-contrast broken filaments through release; the Bearer's collision follows a model-aligned body ellipse; and Dawnward Aegis moves above the scrolling Combat Lab arsenal with Rank I as the default.
+- `v1.20.2`: removes the duplicate runtime hero from the Prologue, replaces the Last Star's shared remote reel with seven timing-verified youthful local clips, hands authorized music directly into gameplay after the Prologue, strengthens every hostile field/lane/destination with independent two-pass bone-white filaments and motes, and gives Dawnward Aegis distinct radiating, pulsing, counter-rotating visuals across Ranks I–V and Awakened.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

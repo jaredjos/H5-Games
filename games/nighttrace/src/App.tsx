@@ -29,7 +29,10 @@ import {
   normalizeCombatLabConfig,
 } from './game/modes'
 import { currentLocalWeaponShowcase } from './game/showcase'
-import { primeNighttraceMusic } from './game/audio'
+import {
+  authorizeNighttraceMusicHandoff,
+  primeNighttraceMusic,
+} from './game/audio'
 import type {
   GameSettings,
   GameSnapshot,
@@ -337,6 +340,9 @@ export default function App() {
   ])
 
   const beginCampaign = useCallback(() => {
+    // Capture the title-button gesture before the Prologue mounts so the
+    // first encounter can inherit an already-authorized music pipeline.
+    authorizeNighttraceMusicHandoff(selectedLevelId)
     const shouldPlayIntro = shouldPlayCampaignIntro({
       mode: save.settings.cinematics,
       seenCinematics: save.story.seenCinematics,
@@ -350,11 +356,15 @@ export default function App() {
   }, [
     save.settings.cinematics,
     save.story.seenCinematics,
+    selectedLevelId,
     showCinematic,
   ])
 
   const launchRun = useCallback((runConfig: RunConfig) => {
     void requestLandscapeMode()
+    // React mounts Pixi after this click has returned. Arm the final encounter
+    // tracks now so gameplay does not wait for the player's first movement.
+    authorizeNighttraceMusicHandoff(runConfig.arenaLevelId)
     setActiveRun(runConfig)
     setSnapshot(undefined)
     setResult(undefined)
