@@ -1,0 +1,43 @@
+{
+  "provider": "Google Gemini API",
+  "model": "gemini-3.1-flash-tts-preview",
+  "voice": "Leda",
+  "generatedAt": "2026-07-31T14:46:57.940Z",
+  "clips": [
+    {
+      "id": "intro-star-01",
+      "durationMs": 6502,
+      "bytes": 312156
+    },
+    {
+      "id": "intro-star-02",
+      "durationMs": 5733,
+      "bytes": 275216
+    },
+    {
+      "id": "intro-star-03",
+      "durationMs": 3246,
+      "bytes": 155874
+    },
+    {
+      "id": "intro-star-04",
+      "durationMs": 3664,
+      "bytes": 175908
+    },
+    {
+      "id": "finale-star-01",
+      "durationMs": 2735,
+      "bytes": 131316
+    },
+    {
+      "id": "finale-star-02",
+      "durationMs": 3638,
+      "bytes": 174670
+    },
+    {
+      "id": "finale-star-03",
+      "durationMs": 5011,
+      "bytes": 240582
+    }
+  ]
+}

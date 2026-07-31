@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.20.1'
+const CACHE_VERSION = 'v1.20.2'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
 const ASSET_CACHE = `${CACHE_PREFIX}assets-${CACHE_VERSION}`
@@ -17,6 +17,13 @@ const SHELL_URLS = [
   new URL('assets/campaign-disk-background.webp', SCOPE_URL).href,
   new URL('assets/cinematics/intro-a-world-without-dawn.webp', SCOPE_URL).href,
   new URL('assets/cinematics/finale-the-first-light.webp', SCOPE_URL).href,
+  new URL('assets/cinematics/audio/last-star/intro-star-01.wav', SCOPE_URL).href,
+  new URL('assets/cinematics/audio/last-star/intro-star-02.wav', SCOPE_URL).href,
+  new URL('assets/cinematics/audio/last-star/intro-star-03.wav', SCOPE_URL).href,
+  new URL('assets/cinematics/audio/last-star/intro-star-04.wav', SCOPE_URL).href,
+  new URL('assets/cinematics/audio/last-star/finale-star-01.wav', SCOPE_URL).href,
+  new URL('assets/cinematics/audio/last-star/finale-star-02.wav', SCOPE_URL).href,
+  new URL('assets/cinematics/audio/last-star/finale-star-03.wav', SCOPE_URL).href,
   new URL('assets/cinder-foundry-arena.webp', SCOPE_URL).href,
   new URL('assets/first-beacon-arena.webp', SCOPE_URL).href,
   new URL('assets/glassreed-mire-arena.webp', SCOPE_URL).href,
