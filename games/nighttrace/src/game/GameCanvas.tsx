@@ -227,13 +227,17 @@ import {
   COMBAT_TEXT_CAP_MOBILE,
   COMBAT_TEXT_COLORS,
   CombatTextQueue,
-  HERO_CONTACT_TRIGGER_RADIUS,
-  HERO_HIT_RADIUS,
-  HERO_MELEE_RELEASE_RADIUS,
+  HERO_BODY_CENTER_OFFSET_Y,
+  HERO_BODY_HALF_HEIGHT,
+  HERO_BODY_HALF_WIDTH,
+  HERO_CONTACT_TRIGGER_PADDING,
+  HERO_MELEE_RELEASE_PADDING,
+  circleTouchesHeroBody,
   combatTextFontSize,
   combatTextPose,
   createPlayerHitFeedback,
   formatCombatDamage,
+  laneTouchesHeroBody,
   type CombatTextTarget,
   type PlayerDamageContext,
   type PlayerHitFeedback,
@@ -1009,8 +1013,12 @@ class NighttraceRuntime {
         this.playerHitGraphics,
       )
       this.host.dataset.hitboxOverlay = String(this.showHitboxOverlay)
-      this.host.dataset.heroHitRadius = String(HERO_HIT_RADIUS)
-      this.host.dataset.heroHitCenter = 'feet'
+      this.host.dataset.heroHitbox = 'model-ellipse'
+      this.host.dataset.heroHitHalfWidth = String(HERO_BODY_HALF_WIDTH)
+      this.host.dataset.heroHitHalfHeight = String(HERO_BODY_HALF_HEIGHT)
+      this.host.dataset.heroHitCenterOffsetY = String(
+        HERO_BODY_CENTER_OFFSET_Y,
+      )
 
       this.cinematicTitle.anchor.set(0.5)
       this.cinematicTitle.alpha = 0
@@ -1412,6 +1420,12 @@ class NighttraceRuntime {
     if (this.destroyed || !this.initialized) return
     const realDelta = Math.min(this.qaMode ? 0.25 : 0.05, ticker.deltaMS / 1000)
     const maxSteps = this.qaMode ? 160 : MAX_STEPS_PER_FRAME
+    if (this.completed && this.endSequenceTimer > 0) {
+      this.endSequenceTimer = Math.max(
+        0,
+        this.endSequenceTimer - realDelta,
+      )
+    }
     if (this.hitStop > 0) {
       this.hitStop = Math.max(0, this.hitStop - realDelta)
       this.render()
@@ -1436,7 +1450,6 @@ class NighttraceRuntime {
     this.advanceMotion(delta)
     if (this.completed) {
       this.updateVisualEffects(delta)
-      this.endSequenceTimer = Math.max(0, this.endSequenceTimer - delta)
       this.snapshotClock += delta
       if (this.snapshotClock >= 0.1) {
         this.snapshotClock = 0
@@ -2379,11 +2392,14 @@ class NighttraceRuntime {
         enemy.attackMotionStyle === 'melee' &&
         contactAttackProgress >= 0.42
       ) {
-        const releaseDx = this.player.x - enemy.x
-        const releaseDy = this.player.y - enemy.y
         if (
-          releaseDx * releaseDx + releaseDy * releaseDy <=
-          (enemy.radius + HERO_MELEE_RELEASE_RADIUS) ** 2
+          circleTouchesHeroBody(
+            this.player.x,
+            this.player.y,
+            enemy.x,
+            enemy.y,
+            enemy.radius + HERO_MELEE_RELEASE_PADDING,
+          )
         ) {
           this.damagePlayer(enemy.pendingContactDamage, {
             kind: 'contact',
@@ -2455,7 +2471,13 @@ class NighttraceRuntime {
       enemy.y = clamp(enemy.y + enemy.vy * delta, 34, WORLD_HEIGHT - 34)
 
       if (
-        distance <= enemy.radius + HERO_CONTACT_TRIGGER_RADIUS &&
+        circleTouchesHeroBody(
+          this.player.x,
+          this.player.y,
+          enemy.x,
+          enemy.y,
+          enemy.radius + HERO_CONTACT_TRIGGER_PADDING,
+        ) &&
         enemy.contactCooldown <= 0
       ) {
         this.triggerEnemyAttack(
@@ -3503,20 +3525,24 @@ class NighttraceRuntime {
       telegraph.active = false
       this.activeTelegraphCount = Math.max(0, this.activeTelegraphCount - 1)
 
-      const playerDeltaX = this.player.x - telegraph.x
-      const playerDeltaY = this.player.y - telegraph.y
-      const localX =
-        Math.cos(telegraph.angle) * playerDeltaX + Math.sin(telegraph.angle) * playerDeltaY
-      const localY =
-        -Math.sin(telegraph.angle) * playerDeltaX + Math.cos(telegraph.angle) * playerDeltaY
       const hit =
         telegraph.kind === 'circle'
-          ? playerDeltaX ** 2 + playerDeltaY ** 2 <=
-            (telegraph.radius + HERO_HIT_RADIUS) ** 2
-          : localX >= 0 &&
-            localX <= telegraph.length &&
-            Math.abs(localY) <=
-              telegraph.width * 0.5 + HERO_HIT_RADIUS
+          ? circleTouchesHeroBody(
+              this.player.x,
+              this.player.y,
+              telegraph.x,
+              telegraph.y,
+              telegraph.radius,
+            )
+          : laneTouchesHeroBody(
+              this.player.x,
+              this.player.y,
+              telegraph.x,
+              telegraph.y,
+              telegraph.angle,
+              telegraph.length,
+              telegraph.width,
+            )
 
       if (hit) {
         this.damagePlayer(telegraph.damage, {
@@ -3624,10 +3650,13 @@ class NighttraceRuntime {
           )
           continue
         }
-        if (
-          distanceSquared(event.destination, this.player) <=
-          (event.radius + HERO_HIT_RADIUS) ** 2
-        ) {
+        if (circleTouchesHeroBody(
+          this.player.x,
+          this.player.y,
+          event.destination.x,
+          event.destination.y,
+          event.radius,
+        )) {
           this.damagePlayer(event.damage, {
             kind: 'projectile',
             boss: event.boss,
@@ -4120,10 +4149,13 @@ class NighttraceRuntime {
     }
     this.pendingResult = result
     this.endSequenceVictory = victory
-    this.endSequenceDuration = victory ? 1.9 : 1.72
+    this.endSequenceDuration = victory ? 2.8 : 2.2
     this.endSequenceTimer = this.endSequenceDuration
-    this.cinematicTitle.text = victory ? 'DAWN RECLAIMED' : 'TRACE SEVERED'
+    this.cinematicTitle.text = victory
+      ? 'SOVEREIGN DEFEATED'
+      : 'TRACE SEVERED'
     this.cinematicTitle.tint = victory ? 0xffd978 : 0xff657c
+    this.emitSnapshot(true)
     this.rings.push({
       x: this.player.x,
       y: this.player.y,
@@ -5300,7 +5332,7 @@ class NighttraceRuntime {
 
   private allocateHostileBoundaryParticleQuotas() {
     this.groundedVfxBoundaryBudget =
-      this.visualLod === 'mobile' ? 112 : 160
+      this.visualLod === 'mobile' ? 260 : 420
     this.hostileBoundaryFootprintsRemaining =
       this.telegraphs.reduce(
         (count, telegraph) => count + Number(telegraph.active),
@@ -5465,13 +5497,13 @@ class NighttraceRuntime {
         )
         .fill({
           color: silver,
-          alpha: boundaryAlpha * particle.glowAlpha * 0.3,
+          alpha: boundaryAlpha * particle.glowAlpha * 0.42,
         })
       this.groundedVfxCinderGraphics
         .ellipse(x, y, size, size * 0.82)
         .fill({
           color,
-          alpha: boundaryAlpha * 0.92,
+          alpha: boundaryAlpha * 0.98,
         })
       return
     }
@@ -5507,7 +5539,7 @@ class NighttraceRuntime {
       )
       .fill({
         color: silver,
-        alpha: boundaryAlpha * particle.glowAlpha * 0.2,
+        alpha: boundaryAlpha * particle.glowAlpha * 0.36,
       })
     this.groundedVfxCinderGraphics
       .poly(
@@ -7209,15 +7241,21 @@ class NighttraceRuntime {
     this.hero!.tint = 0xffffff
 
     if (this.showHitboxOverlay && this.runConfig.mode === 'combat-lab') {
+      const bodyCenterY = collisionY + HERO_BODY_CENTER_OFFSET_Y
       this.hitboxGraphics
-        .circle(collisionX, collisionY, HERO_HIT_RADIUS)
-        .fill({ color: 0x7fe9ff, alpha: 0.075 })
-      for (let marker = 0; marker < 10; marker += 1) {
-        const angle = (marker / 10) * Math.PI * 2
+        .ellipse(
+          collisionX,
+          bodyCenterY,
+          HERO_BODY_HALF_WIDTH,
+          HERO_BODY_HALF_HEIGHT,
+        )
+        .fill({ color: 0x7fe9ff, alpha: 0.09 })
+      for (let marker = 0; marker < 14; marker += 1) {
+        const angle = (marker / 14) * Math.PI * 2
         this.hitboxGraphics
           .ellipse(
-            collisionX + Math.cos(angle) * HERO_HIT_RADIUS,
-            collisionY + Math.sin(angle) * HERO_HIT_RADIUS,
+            collisionX + Math.cos(angle) * HERO_BODY_HALF_WIDTH,
+            bodyCenterY + Math.sin(angle) * HERO_BODY_HALF_HEIGHT,
             1.45,
             0.9,
           )
@@ -8157,6 +8195,13 @@ class NighttraceRuntime {
           : undefined,
       paused: this.isPaused(),
       hitboxOverlay: this.showHitboxOverlay,
+      ending: this.completed
+        ? {
+            victory: Boolean(this.endSequenceVictory),
+            levelId: this.bossLevel.id,
+            bossName: this.bossLevel.bossName,
+          }
+        : undefined,
     }
   }
 

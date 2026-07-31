@@ -2,7 +2,7 @@ export const HOSTILE_BOUNDARY_PARTICLE_KINDS = Object.freeze([
   'filament',
   'mote',
 ] as const)
-export const HOSTILE_BOUNDARY_BRIGHTNESS_GAIN = 1.15
+export const HOSTILE_BOUNDARY_BRIGHTNESS_GAIN = 1.78
 
 export type HostileBoundaryParticleKind =
   (typeof HOSTILE_BOUNDARY_PARTICLE_KINDS)[number]
@@ -93,16 +93,18 @@ const requestedParticleCount = (
   lod: HostileBoundaryLod,
 ) => {
   if (prominence === 'horde') {
-    return lod === 'mobile' ? 6 + stage : 10 + stage * 2
+    return lod === 'mobile' ? 9 + stage * 2 : 15 + stage * 3
   }
-  return lod === 'mobile' ? 10 + stage * 2 : 18 + stage * 3
+  return lod === 'mobile' ? 14 + stage * 3 : 24 + stage * 4
 }
 
 const warningEnvelope = (progress: number) => {
   const safe = clamp01(progress)
   const rise = smoothstep(safe / 0.24)
   const decay = 1 - smoothstep((safe - 0.84) / 0.16)
-  return rise * decay
+  // Keep the broken perimeter readable through the final release frame.
+  // Earlier builds faded it to zero just as the attack became dangerous.
+  return rise * (0.74 + decay * 0.26)
 }
 
 /**
@@ -168,7 +170,7 @@ export function sampleHostileBoundaryParticles(
   const envelope = warningEnvelope(progress)
   const reducedEnergy = input.reducedFlash ? 0.56 : 1
   const motionScale = input.reducedFlash ? 0.36 : 1
-  const prominenceGain = input.prominence === 'boss' ? 1 : 0.72
+  const prominenceGain = input.prominence === 'boss' ? 1 : 0.86
   const motionTime = finiteOr(input.motionTime, 0)
   const seed = Math.trunc(finiteOr(input.seed, 0))
   const particles: HostileBoundaryParticle[] = []
@@ -306,8 +308,8 @@ export function sampleHostileBoundaryParticles(
       reducedEnergy *
       twinkle *
       (kind === 'filament'
-        ? 0.34 + sizeUnit * 0.34
-        : 0.2 + sizeUnit * 0.28)
+        ? 0.52 + sizeUnit * 0.36
+        : 0.3 + sizeUnit * 0.32)
 
     particles.push(
       Object.freeze({
@@ -318,8 +320,8 @@ export function sampleHostileBoundaryParticles(
         baseV,
         size:
           kind === 'filament'
-            ? 0.004 + sizeUnit * 0.005
-            : 0.006 + sizeUnit * 0.008,
+            ? 0.0048 + sizeUnit * 0.0058
+            : 0.0068 + sizeUnit * 0.0088,
         stretch:
           kind === 'filament'
             ? 4.2 + cosmeticUnit(seed, index, 101) * 5.6
@@ -327,7 +329,7 @@ export function sampleHostileBoundaryParticles(
         rotation,
         alpha: clamp01(alpha),
         glowAlpha: clamp01(
-          (kind === 'filament' ? 0.32 : 0.2) *
+          (kind === 'filament' ? 0.48 : 0.32) *
             prominenceGain *
             reducedEnergy,
         ),

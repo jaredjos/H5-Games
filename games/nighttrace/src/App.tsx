@@ -50,6 +50,7 @@ import {
   MobileTouchControls,
   PauseOverlay,
   ReviveOverlay,
+  RunEndingOverlay,
   UpgradeOverlay,
 } from './ui/GameUI'
 import {
@@ -757,6 +758,7 @@ export default function App() {
                 snapshot.paused ||
                 snapshot.revivePending ||
                 snapshot.awaitingStart ||
+                Boolean(snapshot.ending) ||
                 Boolean(snapshot.upgradeOptions?.length)
                   ? true
                   : undefined
@@ -765,6 +767,7 @@ export default function App() {
                 snapshot.paused ||
                 snapshot.revivePending ||
                 snapshot.awaitingStart ||
+                Boolean(snapshot.ending) ||
                 Boolean(snapshot.upgradeOptions?.length)
                   ? true
                   : undefined
@@ -809,9 +812,13 @@ export default function App() {
             {snapshot.revivePending && !isTouchDevicePortrait ? (
               <ReviveOverlay onRevive={revive} onDecline={declineRevive} />
             ) : null}
+            {snapshot.ending ? (
+              <RunEndingOverlay ending={snapshot.ending} />
+            ) : null}
             {snapshot.paused &&
             !snapshot.revivePending &&
             !snapshot.awaitingStart &&
+            !snapshot.ending &&
             !isTouchDevicePortrait &&
             !snapshot.upgradeOptions?.length ? (
               <PauseOverlay

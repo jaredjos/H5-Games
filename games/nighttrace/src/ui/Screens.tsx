@@ -583,6 +583,95 @@ function setWeaponAwakened(loadout: StartingLoadout, id: WeaponId, awakened: boo
   })
 }
 
+function CombatLabLightRing({
+  rank,
+  onRankChange,
+}: {
+  rank: number
+  onRankChange: (rank: number) => void
+}) {
+  const lightRing = lightRingProfile(rank)
+
+  return (
+    <section
+      className={`combat-lab-light-ring${lightRing ? ' is-equipped' : ''}${lightRing?.awakened ? ' is-awakened' : ''}`}
+      aria-label={`${LIGHT_RING_SKILL_NAME} experimental skill`}
+    >
+      <div className="combat-lab-light-ring__identity">
+        <span className="combat-lab-light-ring__sigil" aria-hidden="true">
+          <Sparkles size={22} />
+        </span>
+        <span>
+          <small>New · Lab prototype · always visible</small>
+          <strong>
+            {lightRing?.awakened
+              ? LIGHT_RING_AWAKENING_NAME
+              : LIGHT_RING_SKILL_NAME}
+          </strong>
+          <p>
+            A broken ivory-gold perimeter burns every hostile body that enters
+            its light. Select a spell rank before launching the simulation.
+          </p>
+        </span>
+      </div>
+      <div
+        className="combat-lab-light-ring__ranks"
+        role="radiogroup"
+        aria-label="Dawnward Aegis spell rank"
+      >
+        <button
+          className={rank === 0 ? 'is-selected' : ''}
+          role="radio"
+          aria-checked={rank === 0}
+          onClick={() => onRankChange(0)}
+        >
+          Off
+        </button>
+        {LIGHT_RING_PROFILES.map((profile) => (
+          <button
+            key={profile.rank}
+            className={[
+              rank === profile.rank ? 'is-selected' : '',
+              profile.awakened ? 'is-awakened' : '',
+            ].filter(Boolean).join(' ')}
+            role="radio"
+            aria-checked={rank === profile.rank}
+            onClick={() => onRankChange(profile.rank)}
+          >
+            {profile.awakened ? 'Awakened' : `Rank ${profile.rank}`}
+          </button>
+        ))}
+      </div>
+      <div className="combat-lab-light-ring__readout" aria-live="polite">
+        {lightRing ? (
+          <>
+            <span>
+              Diameter <strong>{lightRing.diameter}</strong>
+            </span>
+            <span>
+              Horde DPS{' '}
+              <strong>{Math.round(lightRingDamagePerSecond(lightRing.rank))}</strong>
+            </span>
+            <span>
+              Boss DPS{' '}
+              <strong>{Math.round(lightRingDamagePerSecond(lightRing.rank, true))}</strong>
+            </span>
+            <span>
+              Material{' '}
+              <strong>{lightRing.awakened ? 'Ascendant' : lightRing.label}</strong>
+            </span>
+          </>
+        ) : (
+          <span>
+            Select one of five spell ranks or its Awakened state to add the
+            prototype to this simulation.
+          </span>
+        )}
+      </div>
+    </section>
+  )
+}
+
 export function CombatLabScreen({
   save,
   config,
@@ -799,6 +888,10 @@ export function CombatLabScreen({
               </div>
               <span>Rank 0 removes a pattern</span>
             </div>
+            <CombatLabLightRing
+              rank={normalized.lightRingRank}
+              onRankChange={(lightRingRank) => updateConfig({ lightRingRank })}
+            />
             <div className="combat-lab-weapon-list">
               {Object.values(WEAPONS).map((weapon) => {
                 const owned = normalized.loadout.weapons.find((entry) => entry.id === weapon.id)
@@ -859,84 +952,6 @@ export function CombatLabScreen({
                 )
               })}
             </div>
-
-            <section
-              className={`combat-lab-light-ring${lightRing ? ' is-equipped' : ''}${lightRing?.awakened ? ' is-awakened' : ''}`}
-              aria-label={`${LIGHT_RING_SKILL_NAME} experimental skill`}
-            >
-              <div className="combat-lab-light-ring__identity">
-                <span className="combat-lab-light-ring__sigil" aria-hidden="true">
-                  <Sparkles size={22} />
-                </span>
-                <span>
-                  <small>Experimental pattern · Lab only</small>
-                  <strong>
-                    {lightRing?.awakened
-                      ? LIGHT_RING_AWAKENING_NAME
-                      : LIGHT_RING_SKILL_NAME}
-                  </strong>
-                  <p>
-                    A broken ivory-gold perimeter burns every hostile body that
-                    enters its light.
-                  </p>
-                </span>
-              </div>
-              <div
-                className="combat-lab-light-ring__ranks"
-                role="radiogroup"
-                aria-label="Dawnward Aegis spell rank"
-              >
-                <button
-                  className={normalized.lightRingRank === 0 ? 'is-selected' : ''}
-                  role="radio"
-                  aria-checked={normalized.lightRingRank === 0}
-                  onClick={() => updateConfig({ lightRingRank: 0 })}
-                >
-                  Off
-                </button>
-                {LIGHT_RING_PROFILES.map((profile) => (
-                  <button
-                    key={profile.rank}
-                    className={[
-                      normalized.lightRingRank === profile.rank
-                        ? 'is-selected'
-                        : '',
-                      profile.awakened ? 'is-awakened' : '',
-                    ].filter(Boolean).join(' ')}
-                    role="radio"
-                    aria-checked={normalized.lightRingRank === profile.rank}
-                    onClick={() => updateConfig({ lightRingRank: profile.rank })}
-                  >
-                    {profile.awakened ? 'Awakened' : `Rank ${profile.rank}`}
-                  </button>
-                ))}
-              </div>
-              <div className="combat-lab-light-ring__readout" aria-live="polite">
-                {lightRing ? (
-                  <>
-                    <span>
-                      Diameter <strong>{lightRing.diameter}</strong>
-                    </span>
-                    <span>
-                      Horde DPS{' '}
-                      <strong>{Math.round(lightRingDamagePerSecond(lightRing.rank))}</strong>
-                    </span>
-                    <span>
-                      Boss DPS{' '}
-                      <strong>{Math.round(lightRingDamagePerSecond(lightRing.rank, true))}</strong>
-                    </span>
-                    <span>
-                      Material <strong>{lightRing.awakened ? 'Ascendant' : lightRing.label}</strong>
-                    </span>
-                  </>
-                ) : (
-                  <span>
-                    Select one of five spell ranks or its Awakened state to add
-                    the prototype to this simulation.
-                  </span>
-                )}
-              </div>
-            </section>
 
             <div className="combat-lab-traces">
               <div className="combat-lab-traces__heading">

@@ -546,15 +546,12 @@
 }
 
 .nt-cinematic__captions p {
-  display: -webkit-box;
   max-width: 74ch;
   margin: 0;
-  overflow: hidden;
   color: #f7f5ef;
   font: 500 clamp(0.76rem, 1.18vw, 1.22rem) / 1.38 Inter, system-ui, sans-serif;
   letter-spacing: 0.016em;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 
 .nt-cinematic__audio-notice {

@@ -23,6 +23,31 @@ describe('cinematic audio runtime integration', () => {
     expect(sync).not.toContain("id !== line?.id")
   })
 
+  it('enforces each authored clip end before the already-playing fast path', () => {
+    const sync = section(
+      '  const syncAudioToTimeline = useCallback(',
+      '  const beginClock = useCallback(',
+    )
+    const clipEnd = sync.indexOf('if (clipPosition.reachedEnd)')
+    const alreadyPlaying = sync.indexOf(
+      'if (activeAudioIdRef.current === line.id && !entry.audio.paused) return',
+    )
+
+    expect(clipEnd).toBeGreaterThanOrEqual(0)
+    expect(alreadyPlaying).toBeGreaterThan(clipEnd)
+  })
+
+  it('marks a rejected line failed so it is not retried every animation frame', () => {
+    const sync = section(
+      '  const syncAudioToTimeline = useCallback(',
+      '  const beginClock = useCallback(',
+    )
+
+    expect(sync).toContain('pendingAudioIdsRef.current.has(line.id)')
+    expect(sync).toContain('failedAudioIdsRef.current.add(line.id)')
+    expect(sync).toContain('.catch(markPlayFailed)')
+  })
+
   it('starts the score and timeline directly from Continue without a buffer barrier', () => {
     const continueFromGesture = section(
       '  const continueFromGesture = useCallback(',
@@ -38,5 +63,17 @@ describe('cinematic audio runtime integration', () => {
     expect(source).toContain('score.load()')
     expect(source).toContain('audio.load()')
     expect(source).toContain('const probe = scoreRef.current')
+  })
+
+  it('keeps narration-only UI and the small runtime hero out of subtitle-only memories', () => {
+    expect(source).toContain(
+      "const heroAsset = cinematic.kind === 'interlude'",
+    )
+    expect(source).toContain('{hasNarration && narrationUnavailable ? (')
+    expect(source).toContain('{hasNarration ? (')
+    expect(source).toContain('{captionsVisible && activeLine ? (')
+    expect(source).not.toContain(
+      '{captionsVisible && activeLine && activePortrait ? (',
+    )
   })
 })

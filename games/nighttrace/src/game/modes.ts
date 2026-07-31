@@ -240,7 +240,7 @@ export const DEFAULT_COMBAT_LAB_CONFIG: CombatLabConfig = {
   encounter: 'boss',
   playerLevel: 1,
   bossHealthMultiplier: 1,
-  lightRingRank: 0,
+  lightRingRank: 1,
   loadout: getCombatLabPresetLoadout('solo'),
 }
 
@@ -272,7 +272,9 @@ export function normalizeCombatLabConfig(value: unknown): CombatLabConfig {
       COMBAT_LAB_BOSS_HEALTH_MIN,
       COMBAT_LAB_BOSS_HEALTH_MAX,
     ),
-    lightRingRank: normalizeLightRingRank(source.lightRingRank),
+    lightRingRank: normalizeLightRingRank(
+      source.lightRingRank ?? DEFAULT_COMBAT_LAB_CONFIG.lightRingRank,
+    ),
     loadout: normalizeStartingLoadout(
       source.loadout ?? DEFAULT_COMBAT_LAB_CONFIG.loadout,
     ),

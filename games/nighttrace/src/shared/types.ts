@@ -169,6 +169,12 @@ export interface BossSnapshot {
   phase: number
 }
 
+export interface RunEndingSnapshot {
+  victory: boolean
+  levelId: number
+  bossName: string
+}
+
 export interface GameSnapshot {
   runMode: RunMode
   invincible: boolean
@@ -199,6 +205,7 @@ export interface GameSnapshot {
   tutorial?: string
   paused: boolean
   hitboxOverlay?: boolean
+  ending?: RunEndingSnapshot
 }
 
 export interface RunResult {

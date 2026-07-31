@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
   CircuitBoard,
+  Crown,
   Droplets,
   Flame,
   Gauge,
@@ -30,6 +31,7 @@ import type {
   ModuleId,
   ModuleDefinition,
   RunMode,
+  RunEndingSnapshot,
   TraceModId,
   TraceModDefinition,
   UpgradeOption,
@@ -507,6 +509,44 @@ export function EncounterGate({
           <p id="encounter-gate-description">{copy.description}</p>
           <CrestButton onClick={onBegin}><Play size={17} /> {copy.button}</CrestButton>
         </PanelFrame>
+      </div>
+    </section>
+  )
+}
+
+export function RunEndingOverlay({
+  ending,
+}: {
+  ending: RunEndingSnapshot
+}) {
+  return (
+    <section
+      className={`run-ending-overlay${ending.victory ? ' is-victory' : ' is-defeat'}`}
+      role="status"
+      aria-live="assertive"
+      aria-atomic="true"
+    >
+      <div className="run-ending-overlay__veil" />
+      <div className="run-ending-overlay__content">
+        <span className="run-ending-overlay__crest" aria-hidden="true">
+          {ending.victory ? <Crown /> : <StarMark />}
+        </span>
+        <small>
+          {ending.victory
+            ? `Sector ${String(ending.levelId).padStart(2, '0')} reclaimed`
+            : 'The trace has fallen'}
+        </small>
+        <h1>
+          {ending.victory
+            ? `${ending.bossName} Defeated`
+            : 'Trace Severed'}
+        </h1>
+        <OrnamentRule />
+        <p>
+          {ending.victory
+            ? 'The Sovereign crown is broken. A recovered Memory follows.'
+            : 'The night endures. Rise again and redraw the path.'}
+        </p>
       </div>
     </section>
   )

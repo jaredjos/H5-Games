@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  cinematicClipPosition,
   pauseInactiveCinematicAudio,
   seekCinematicAudio,
   type CinematicAudioLike,
@@ -61,5 +62,20 @@ describe('cinematic audio coordination', () => {
       },
     }
     expect(seekCinematicAudio(streaming, 4)).toBe(false)
+  })
+
+  it('marks an authored reel segment complete before it can spill into the next line', () => {
+    expect(cinematicClipPosition(2_000, 1_000, 500, 1_500)).toEqual({
+      sourceTime: 1.5,
+      reachedEnd: true,
+    })
+    expect(cinematicClipPosition(1_999, 1_000, 500, 1_500)).toEqual({
+      sourceTime: 1.499,
+      reachedEnd: false,
+    })
+    expect(cinematicClipPosition(2_000, 1_000, 500)).toEqual({
+      sourceTime: 1.5,
+      reachedEnd: false,
+    })
   })
 })

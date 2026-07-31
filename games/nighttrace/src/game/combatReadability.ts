@@ -1,6 +1,89 @@
-export const HERO_HIT_RADIUS = 18
-export const HERO_CONTACT_TRIGGER_RADIUS = 25
-export const HERO_MELEE_RELEASE_RADIUS = 42
+/**
+ * The Bearer's collision body follows the visible character instead of the
+ * old feet-centred circle. The authored sprite root sits at the boots, so the
+ * ellipse extends upward through the torso while excluding cape flourishes.
+ */
+export const HERO_BODY_HALF_WIDTH = 17
+export const HERO_BODY_HALF_HEIGHT = 36
+export const HERO_BODY_CENTER_OFFSET_Y = -36
+export const HERO_CONTACT_TRIGGER_PADDING = 8
+export const HERO_MELEE_RELEASE_PADDING = 25
+
+export interface HeroBodyPoint {
+  readonly x: number
+  readonly y: number
+}
+
+const heroBodyCenter = (
+  playerX: number,
+  playerY: number,
+): HeroBodyPoint => ({
+  x: finiteOr(playerX, 0),
+  y: finiteOr(playerY, 0) + HERO_BODY_CENTER_OFFSET_Y,
+})
+
+/**
+ * Tests a circular hostile footprint against the Bearer's body ellipse.
+ * Expanding both ellipse axes by the hostile radius is a stable, conservative
+ * Minkowski approximation that remains readable at every camera scale.
+ */
+export function circleTouchesHeroBody(
+  playerX: number,
+  playerY: number,
+  circleX: number,
+  circleY: number,
+  circleRadius: number,
+) {
+  const center = heroBodyCenter(playerX, playerY)
+  const radius = Math.max(0, finiteOr(circleRadius, 0))
+  const halfWidth = HERO_BODY_HALF_WIDTH + radius
+  const halfHeight = HERO_BODY_HALF_HEIGHT + radius
+  const dx = finiteOr(circleX, 0) - center.x
+  const dy = finiteOr(circleY, 0) - center.y
+  return (dx / halfWidth) ** 2 + (dy / halfHeight) ** 2 <= 1
+}
+
+/**
+ * Tests an oriented hostile lane against the Bearer's body ellipse. Ellipse
+ * support radii are projected onto the lane's tangent and normal, keeping the
+ * collision footprint aligned with the visible model for every attack angle.
+ */
+export function laneTouchesHeroBody(
+  playerX: number,
+  playerY: number,
+  laneX: number,
+  laneY: number,
+  laneAngle: number,
+  laneLength: number,
+  laneWidth: number,
+) {
+  const center = heroBodyCenter(playerX, playerY)
+  const angle = finiteOr(laneAngle, 0)
+  const tangentX = Math.cos(angle)
+  const tangentY = Math.sin(angle)
+  const normalX = -tangentY
+  const normalY = tangentX
+  const dx = center.x - finiteOr(laneX, 0)
+  const dy = center.y - finiteOr(laneY, 0)
+  const localX = tangentX * dx + tangentY * dy
+  const localY = normalX * dx + normalY * dy
+  const supportX = Math.hypot(
+    HERO_BODY_HALF_WIDTH * tangentX,
+    HERO_BODY_HALF_HEIGHT * tangentY,
+  )
+  const supportY = Math.hypot(
+    HERO_BODY_HALF_WIDTH * normalX,
+    HERO_BODY_HALF_HEIGHT * normalY,
+  )
+  const length = Math.max(0, finiteOr(laneLength, 0))
+  const halfLaneWidth = Math.max(0, finiteOr(laneWidth, 0)) * 0.5
+
+  return (
+    localX >= -supportX &&
+    localX <= length + supportX &&
+    Math.abs(localY) <= halfLaneWidth + supportY
+  )
+}
 
 export const COMBAT_TEXT_COLORS = Object.freeze({
   critical: 0xffdf79,

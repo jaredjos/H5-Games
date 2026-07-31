@@ -4,20 +4,42 @@ import {
   COMBAT_TEXT_COALESCE_SECONDS,
   COMBAT_TEXT_COLORS,
   CombatTextQueue,
-  HERO_CONTACT_TRIGGER_RADIUS,
-  HERO_HIT_RADIUS,
-  HERO_MELEE_RELEASE_RADIUS,
+  HERO_BODY_CENTER_OFFSET_Y,
+  HERO_BODY_HALF_HEIGHT,
+  HERO_BODY_HALF_WIDTH,
+  HERO_CONTACT_TRIGGER_PADDING,
+  HERO_MELEE_RELEASE_PADDING,
+  circleTouchesHeroBody,
   combatTextFontSize,
   combatTextPose,
   createPlayerHitFeedback,
   formatCombatDamage,
+  laneTouchesHeroBody,
 } from './combatReadability'
 
 describe('hero collision readability contract', () => {
-  it('preserves the approved forgiving feet-centered collision radii', () => {
-    expect(HERO_HIT_RADIUS).toBe(18)
-    expect(HERO_CONTACT_TRIGGER_RADIUS).toBe(25)
-    expect(HERO_MELEE_RELEASE_RADIUS).toBe(42)
+  it('uses a model-aligned body ellipse instead of a feet circle', () => {
+    expect(HERO_BODY_HALF_WIDTH).toBe(17)
+    expect(HERO_BODY_HALF_HEIGHT).toBe(36)
+    expect(HERO_BODY_CENTER_OFFSET_Y).toBe(-36)
+    expect(HERO_CONTACT_TRIGGER_PADDING).toBe(8)
+    expect(HERO_MELEE_RELEASE_PADDING).toBe(25)
+  })
+
+  it('hits the visible torso and boots while excluding space below the model', () => {
+    expect(circleTouchesHeroBody(100, 100, 100, 66, 0)).toBe(true)
+    expect(circleTouchesHeroBody(100, 100, 100, 99, 0)).toBe(true)
+    expect(circleTouchesHeroBody(100, 100, 100, 106, 0)).toBe(false)
+    expect(circleTouchesHeroBody(100, 100, 118, 64, 0)).toBe(false)
+    expect(circleTouchesHeroBody(100, 100, 118, 64, 2)).toBe(true)
+  })
+
+  it('projects the body ellipse onto hostile lanes at every angle', () => {
+    expect(laneTouchesHeroBody(100, 100, 0, 64, 0, 90, 8)).toBe(true)
+    expect(laneTouchesHeroBody(100, 100, 0, 112, 0, 90, 8)).toBe(false)
+    expect(
+      laneTouchesHeroBody(100, 100, 100, 0, Math.PI / 2, 55, 8),
+    ).toBe(true)
   })
 })
 

@@ -23,8 +23,8 @@ const numericValues = (particle: HostileBoundaryParticle) =>
   )
 
 describe('hostile boundary particles', () => {
-  it('applies the approved subtle brightness lift without changing density', () => {
-    expect(HOSTILE_BOUNDARY_BRIGHTNESS_GAIN).toBeCloseTo(1.15)
+  it('keeps the approved high-contrast dodge perimeter legible', () => {
+    expect(HOSTILE_BOUNDARY_BRIGHTNESS_GAIN).toBeCloseTo(1.78)
   })
 
   it('returns immutable finite particles for every footprint, prominence, stage, and LOD', () => {
@@ -122,6 +122,16 @@ describe('hostile boundary particles', () => {
     )
   })
 
+  it('remains visible through the final dodge frame before release', () => {
+    const late = sampleHostileBoundaryParticles({
+      ...activeInput,
+      progress: 0.98,
+    })
+
+    expect(late).not.toHaveLength(0)
+    expect(Math.max(...late.map(({ alpha }) => alpha))).toBeGreaterThan(0.25)
+  })
+
   it('reduces flash energy and motion without moving authored anchors', () => {
     const normal = sampleHostileBoundaryParticles(activeInput)
     const reduced = sampleHostileBoundaryParticles({
@@ -201,8 +211,8 @@ describe('hostile boundary quota reservation', () => {
   )
 
   it.each([
-    [112, 56],
-    [160, 80],
+    [260, 80],
+    [420, 120],
   ])(
     'reserves both particle classes across the %i-particle runtime cap and %i maximum visible footprints',
     (cap, footprintCount) => {

@@ -8,6 +8,11 @@ export interface CinematicAudioEntryLike<TAudio extends CinematicAudioLike> {
   audio: TAudio
 }
 
+export interface CinematicClipPosition {
+  readonly sourceTime: number
+  readonly reachedEnd: boolean
+}
+
 /**
  * Actor reels are shared by several dialogue lines. Pause each physical media
  * element once and never pause the reel that owns the active line.
@@ -46,3 +51,25 @@ export function seekCinematicAudio(
   }
 }
 
+/**
+ * Resolve a scene-clock position into an authored reel position. Consumers
+ * must check `reachedEnd` before returning early for an already-playing reel;
+ * otherwise the shared reel can run directly into the next actor line.
+ */
+export function cinematicClipPosition(
+  sceneTimeMs: number,
+  lineStartMs: number,
+  audioStartMs = 0,
+  audioEndMs?: number,
+): CinematicClipPosition {
+  const elapsedSeconds = Math.max(0, sceneTimeMs - lineStartMs) / 1000
+  const sourceTime = Math.max(0, audioStartMs) / 1000 + elapsedSeconds
+  const sourceEnd = audioEndMs === undefined
+    ? Number.POSITIVE_INFINITY
+    : Math.max(0, audioEndMs) / 1000
+
+  return {
+    sourceTime,
+    reachedEnd: sourceTime >= sourceEnd,
+  }
+}

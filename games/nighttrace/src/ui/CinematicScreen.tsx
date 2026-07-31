@@ -20,6 +20,7 @@ import {
 import { appAssetUrl } from '../assetUrl'
 import type { GameSettings } from '../shared/types'
 import {
+  cinematicClipPosition,
   pauseInactiveCinematicAudio,
   seekCinematicAudio,
 } from '../story/cinematicAudio'
@@ -166,6 +167,7 @@ function CinematicSession({
   const activeAudioIdRef = useRef<string | null>(null)
   const failedAudioIdsRef = useRef<Set<string>>(new Set())
   const endedAudioIdsRef = useRef<Set<string>>(new Set())
+  const pendingAudioIdsRef = useRef<Set<string>>(new Set())
   const rafRef = useRef<number | null>(null)
   const startedAtRef = useRef(0)
   const offsetRef = useRef(0)
@@ -194,11 +196,14 @@ function CinematicSession({
   const activePortrait = activeLine
     ? getCinematicPortrait(activeLine)
     : null
+  const hasNarration = cinematic.lines.some((line) => Boolean(line.audioSrc))
   const activeBeat =
     cinematic.beats?.find(
       (beat) => elapsedMs >= beat.startMs && elapsedMs < beat.endMs,
     ) ?? null
-  const heroAsset = scene.heroKeyframeAsset ?? cinematic.heroAsset
+  const heroAsset = cinematic.kind === 'interlude'
+    ? undefined
+    : scene.heroKeyframeAsset ?? cinematic.heroAsset
   const progressLabels =
     scene.progressLabels?.slice(0, 3) ??
     [
@@ -255,32 +260,55 @@ function CinematicSession({
         return
       }
 
-      entry.audio.volume = mutedRef.current ? 0 : volumeRef.current
-      if (activeAudioIdRef.current === line.id && !entry.audio.paused) return
-
-      const lineTime = Math.max(0, (timeMs - line.startMs) / 1000)
-      const sourceStart = (line.audioStartMs ?? 0) / 1000
-      const sourceEnd = line.audioEndMs === undefined
-        ? Number.POSITIVE_INFINITY
-        : line.audioEndMs / 1000
-      const sourceTime = sourceStart + lineTime
-      if (sourceTime >= sourceEnd) {
+      const clipPosition = cinematicClipPosition(
+        timeMs,
+        line.startMs,
+        line.audioStartMs,
+        line.audioEndMs,
+      )
+      if (clipPosition.reachedEnd) {
         entry.audio.pause()
         endedAudioIdsRef.current.add(line.id)
+        pendingAudioIdsRef.current.delete(line.id)
         activeAudioIdRef.current = null
         return
       }
-      if (!seekCinematicAudio(entry.audio, sourceTime)) {
+
+      entry.audio.volume = mutedRef.current ? 0 : volumeRef.current
+      if (activeAudioIdRef.current === line.id && !entry.audio.paused) return
+      if (pendingAudioIdsRef.current.has(line.id)) return
+
+      if (!seekCinematicAudio(entry.audio, clipPosition.sourceTime)) {
         activeAudioIdRef.current = null
         return
       }
-      activeAudioIdRef.current = line.id
-      void entry.audio.play().catch((error: unknown) => {
-        if (isAutoplayBlock(error)) {
-          setNarrationUnavailable(true)
+
+      const lifecycle = lifecycleRef.current
+      const markPlayFailed = () => {
+        if (lifecycleRef.current !== lifecycle) return
+        pendingAudioIdsRef.current.delete(line.id)
+        failedAudioIdsRef.current.add(line.id)
+        entry.audio.pause()
+        setNarrationUnavailable(true)
+        if (activeAudioIdRef.current === line.id) {
+          activeAudioIdRef.current = null
         }
-        activeAudioIdRef.current = null
-      })
+      }
+
+      pendingAudioIdsRef.current.add(line.id)
+      activeAudioIdRef.current = line.id
+      try {
+        void entry.audio
+          .play()
+          .then(() => {
+            if (lifecycleRef.current === lifecycle) {
+              pendingAudioIdsRef.current.delete(line.id)
+            }
+          })
+          .catch(markPlayFailed)
+      } catch {
+        markPlayFailed()
+      }
     },
     [cinematic.lines, playback],
   )
@@ -394,9 +422,11 @@ function CinematicSession({
 
   useEffect(() => {
     const generation = lifecycleRef.current + 1
+    const pendingAudioIds = pendingAudioIdsRef.current
     lifecycleRef.current = generation
     failedAudioIdsRef.current.clear()
     endedAudioIdsRef.current.clear()
+    pendingAudioIds.clear()
     activeAudioIdRef.current = null
 
     const entries = new Map<string, AudioEntry>()
@@ -483,6 +513,7 @@ function CinematicSession({
         audio.load()
       }
       entries.clear()
+      pendingAudioIds.clear()
       if (audioEntriesRef.current === entries) {
         audioEntriesRef.current = new Map()
       }
@@ -694,7 +725,7 @@ function CinematicSession({
           </div>
         </div>
 
-        {captionsVisible && activeLine && activePortrait ? (
+        {captionsVisible && activeLine ? (
           <section
             key={activeLine.id}
             className={[
@@ -705,20 +736,22 @@ function CinematicSession({
             aria-live="polite"
             aria-atomic="true"
           >
-            <div className="nt-cinematic__portrait" aria-hidden="true">
-              <div className="nt-cinematic__portrait-aura" />
-              <div className="nt-cinematic__portrait-window">
-                <img
-                  className="nt-cinematic__portrait-sheet"
-                  src={appAssetUrl(activePortrait.asset)}
-                  alt=""
-                  draggable={false}
-                  style={{
-                    transform: `translate3d(-${activePortrait.frame * 25}%, 0, 0)`,
-                  }}
-                />
+            {activePortrait ? (
+              <div className="nt-cinematic__portrait" aria-hidden="true">
+                <div className="nt-cinematic__portrait-aura" />
+                <div className="nt-cinematic__portrait-window">
+                  <img
+                    className="nt-cinematic__portrait-sheet"
+                    src={appAssetUrl(activePortrait.asset)}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      transform: `translate3d(-${activePortrait.frame * 25}%, 0, 0)`,
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            ) : null}
             <div className="nt-cinematic__dialogue-copy">
               <strong className="nt-cinematic__speaker">
                 {activeLine.speaker}
@@ -728,22 +761,24 @@ function CinematicSession({
           </section>
         ) : null}
 
-        {narrationUnavailable ? (
+        {hasNarration && narrationUnavailable ? (
           <div className="nt-cinematic__audio-notice" role="status">
             Narration unavailable · captions continue
           </div>
         ) : null}
 
         <nav className="nt-cinematic__controls" aria-label="Cinematic controls">
-          <button
-            type="button"
-            onClick={() => setMuted((value) => !value)}
-            aria-label={muted ? 'Unmute narration' : 'Mute narration'}
-            aria-pressed={muted}
-            title={muted ? 'Unmute narration' : 'Mute narration'}
-          >
-            {muted ? <VolumeX aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
-          </button>
+          {hasNarration ? (
+            <button
+              type="button"
+              onClick={() => setMuted((value) => !value)}
+              aria-label={muted ? 'Unmute narration' : 'Mute narration'}
+              aria-pressed={muted}
+              title={muted ? 'Unmute narration' : 'Mute narration'}
+            >
+              {muted ? <VolumeX aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setCaptionsVisible((visible) => !visible)}
@@ -803,7 +838,10 @@ function CinematicSession({
             <button type="button" onClick={continueFromGesture} autoFocus>
               Continue the story
             </button>
-            <span>Your browser paused narration until you continue.</span>
+            <span>
+              Your browser paused {hasNarration ? 'narration' : 'cinematic audio'} until you
+              continue.
+            </span>
           </div>
         ) : null}
       </section>

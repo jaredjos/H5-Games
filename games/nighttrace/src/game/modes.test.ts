@@ -158,7 +158,7 @@ describe('Combat Lab presets and normalization', () => {
       encounter: 'boss',
       playerLevel: 1,
       bossHealthMultiplier: 1,
-      lightRingRank: 0,
+      lightRingRank: 1,
       loadout: {
         weapons: [{ id: 'helio-lance', rank: 1 }],
         modules: [],

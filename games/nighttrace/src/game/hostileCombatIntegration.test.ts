@@ -87,7 +87,7 @@ describe('hostile combat runtime integration', () => {
     )
   })
 
-  it('keeps telegraph timing, hit geometry, and damage resolution unchanged', () => {
+  it('keeps telegraph timing and damage resolution while using the model hitbox', () => {
     const update = section(
       '  private updateTelegraphs(',
       '  private launchHostileProjectile(',
@@ -95,14 +95,11 @@ describe('hostile combat runtime integration', () => {
 
     expect(update).toMatch(/telegraph\.life\s*-=\s*delta/)
     expect(update).toContain('if (telegraph.life > 0) continue')
-    expect(update).toMatch(
-      /playerDeltaX\s*\*\*\s*2\s*\+\s*playerDeltaY\s*\*\*\s*2\s*<=\s*\(telegraph\.radius\s*\+\s*HERO_HIT_RADIUS\)\s*\*\*\s*2/,
-    )
-    expect(update).toMatch(/localX\s*>=\s*0/)
-    expect(update).toMatch(/localX\s*<=\s*telegraph\.length/)
-    expect(update).toMatch(
-      /Math\.abs\(localY\)\s*<=\s*telegraph\.width\s*\*\s*0\.5\s*\+\s*HERO_HIT_RADIUS/,
-    )
+    expect(update).toContain('circleTouchesHeroBody(')
+    expect(update).toContain('laneTouchesHeroBody(')
+    expect(update).toContain('telegraph.radius,')
+    expect(update).toContain('telegraph.length,')
+    expect(update).toContain('telegraph.width,')
     expect(
       update.match(/this\.damagePlayer\(telegraph\.damage,\s*\{/g),
     ).toHaveLength(1)

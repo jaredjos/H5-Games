@@ -70,7 +70,7 @@ export interface CinematicLine {
   readonly duration: number
   readonly startMs: number
   readonly endMs: number
-  readonly audioSrc: string
+  readonly audioSrc?: string
   readonly audioFallbackSrc?: string
   readonly audioStartMs?: number
   readonly audioEndMs?: number
@@ -168,37 +168,15 @@ const NARRATION_CLIPS: Readonly<Record<string, NarrationClip>> = {
   'intro-star-02': clip('star', 8_920, 15_799),
   'intro-star-03': clip('star', 16_139, 19_199),
   'intro-star-04': clip('star', 20_219, 23_920),
-  'interlude-01-star-01': clip('star', 24_760, 27_979),
-  'interlude-02-star-01': clip('star', 28_799, 31_760),
-  'interlude-03-star-01': clip('star', 33_419, 37_279),
-  'interlude-04-star-01': clip('star', 38_059, 38_799),
-  'interlude-05-star-01': clip('star', 39_479, 41_719),
-  'interlude-06-star-01': clip('star', 42_040, 45_159),
-  'interlude-07-star-01': clip('star', 46_239, 48_459),
-  'interlude-08-star-01': clip('star', 49_159, 50_619),
-  'interlude-09-star-01': clip('star', 51_299, 52_459),
   'finale-star-01': clip('star', 52_799, 55_259),
   'finale-star-02': clip('star', 56_520, 59_619),
   'finale-star-03': clip('star', 60_180, 63_439),
 
   'intro-bearer-01': clip('bearer', 140, 1_620),
-  'interlude-01-bearer-01': clip('bearer', 2_180, 3_220),
-  'interlude-02-bearer-01': clip('bearer', 3_720, 6_399),
-  'interlude-03-bearer-01': clip('bearer', 6_899, 8_659),
-  'interlude-04-bearer-01': clip('bearer', 8_979, 10_559),
-  'interlude-05-bearer-01': clip('bearer', 11_079, 12_239),
-  'interlude-06-bearer-01': clip('bearer', 12_739, 13_640),
-  'interlude-07-bearer-01': clip('bearer', 14_119, 15_100),
-  'interlude-08-bearer-01': clip('bearer', 15_500, 17_000),
-  'interlude-09-bearer-01': clip('bearer', 17_539, 20_379),
   'finale-bearer-01': clip('bearer', 20_760, 21_540),
   'finale-bearer-02': clip('bearer', 22_139, 22_459),
   'finale-bearer-03': clip('bearer', 23_039, 24_879),
 
-  'interlude-04-sun-eater-01': clip('sovereign', 140, 2_619),
-  'interlude-07-sun-eater-01': clip('sovereign', 3_279, 5_539),
-  'interlude-09-cartographer-01': clip('sovereign', 6_139, 7_159),
-  'interlude-09-sun-eater-01': clip('sovereign', 7_559, 10_719),
   'finale-sun-eater-01': clip('sovereign', 10_760, 13_840),
   'finale-sun-eater-02': clip('sovereign', 14_839, 15_679),
 }
@@ -226,9 +204,13 @@ const line = (
     duration,
     startMs: start,
     endMs: start + duration,
-    audioSrc: narration?.audioSrc ?? `assets/cinematics/audio/${id}.mp3`,
-    audioStartMs: narration?.startMs,
-    audioEndMs: narration?.endMs,
+    ...(narration
+      ? {
+          audioSrc: narration.audioSrc,
+          audioStartMs: narration.startMs,
+          audioEndMs: narration.endMs,
+        }
+      : {}),
   }
 }
 

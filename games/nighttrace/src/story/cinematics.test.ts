@@ -46,6 +46,7 @@ describe('NIGHTTRACE campaign cinematics', () => {
     const audioPaths = new Set<string>()
     const audioSegments = new Set<string>()
     const lineIds = new Set<string>()
+    const voicedLineIds = new Set<string>()
 
     for (const scene of CAMPAIGN_CINEMATICS) {
       expect(scene.duration).toBeGreaterThan(0)
@@ -66,30 +67,63 @@ describe('NIGHTTRACE campaign cinematics', () => {
         expect(line.endMs).toBeLessThanOrEqual(scene.duration)
         expect(line.text.trim().length).toBeGreaterThan(1)
 
-        expect(line.audioSrc).toMatch(
-          /^https:\/\/resource2\.heygen\.ai\/.+\.wav$/,
-        )
-        expect(line.audioFallbackSrc).toBeUndefined()
-        expect(line.audioStartMs).toBeGreaterThanOrEqual(0)
-        expect(line.audioEndMs).toBeGreaterThan(line.audioStartMs ?? 0)
-        expect((line.audioEndMs ?? 0) - (line.audioStartMs ?? 0))
-          .toBeLessThanOrEqual(line.duration)
-        const segment = `${line.audioSrc}#${line.audioStartMs}-${line.audioEndMs}`
-        expect(audioSegments.has(segment), `duplicate voice segment ${segment}`).toBe(false)
-        audioSegments.add(segment)
-        audioPaths.add(line.audioSrc)
+        if (scene.kind === 'interlude') {
+          expect(line.audioSrc).toBeUndefined()
+          expect(line.audioFallbackSrc).toBeUndefined()
+          expect(line.audioStartMs).toBeUndefined()
+          expect(line.audioEndMs).toBeUndefined()
+        } else {
+          expect(line.audioSrc).toMatch(
+            /^https:\/\/resource2\.heygen\.ai\/.+\.wav$/,
+          )
+          expect(line.audioFallbackSrc).toBeUndefined()
+          expect(line.audioStartMs).toBeGreaterThanOrEqual(0)
+          expect(line.audioEndMs).toBeGreaterThan(line.audioStartMs ?? 0)
+          expect((line.audioEndMs ?? 0) - (line.audioStartMs ?? 0))
+            .toBeLessThanOrEqual(line.duration)
+          const segment = `${line.audioSrc}#${line.audioStartMs}-${line.audioEndMs}`
+          expect(audioSegments.has(segment), `duplicate voice segment ${segment}`).toBe(false)
+          audioSegments.add(segment)
+          audioPaths.add(line.audioSrc ?? '')
+          voicedLineIds.add(line.id)
+        }
       }
     }
 
     expect(audioPaths.size).toBe(3)
-    expect(audioSegments.size).toBe(lineIds.size)
+    expect(audioSegments.size).toBe(voicedLineIds.size)
+    expect(voicedLineIds.size).toBe(13)
+    expect(lineIds.size).toBe(35)
+  })
+
+  it('keeps Memories I-IX subtitle-only without losing dialogue or portraits', () => {
+    const memories = CAMPAIGN_CINEMATICS.filter(
+      (scene) => scene.kind === 'interlude',
+    )
+
+    expect(memories).toHaveLength(9)
+    expect(memories.flatMap((scene) => scene.lines)).toHaveLength(22)
+    for (const scene of memories) {
+      for (const line of scene.lines) {
+        expect(line.text.trim()).not.toBe('')
+        expect(line.audioSrc).toBeUndefined()
+      }
+    }
+
+    const cartographer = memories
+      .flatMap((scene) => scene.lines)
+      .find((line) => line.id === 'interlude-09-cartographer-01')
+    expect(cartographer?.speaker).toBe('Cartographer echo')
+    expect(cartographer?.audioSrc).toBeUndefined()
   })
 
   it('never points a cinematic line at an absent local narration asset', () => {
     const localAudioSources = CAMPAIGN_CINEMATICS.flatMap((scene) =>
-      scene.lines
-        .map((line) => line.audioSrc)
-        .filter((source) => !/^https?:\/\//i.test(source)),
+      scene.lines.flatMap((line) =>
+        line.audioSrc && !/^https?:\/\//i.test(line.audioSrc)
+          ? [line.audioSrc]
+          : [],
+      ),
     )
 
     expect(localAudioSources).toEqual([])
