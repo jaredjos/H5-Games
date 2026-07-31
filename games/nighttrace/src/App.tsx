@@ -29,6 +29,7 @@ import {
   normalizeCombatLabConfig,
 } from './game/modes'
 import { currentLocalWeaponShowcase } from './game/showcase'
+import { primeNighttraceMusic } from './game/audio'
 import type {
   GameSettings,
   GameSnapshot,
@@ -73,6 +74,10 @@ import {
   campaignCinematicAfterRun,
   shouldPlayCampaignIntro,
 } from './story/cinematicFlow'
+import {
+  shouldRecordCinematicSeen,
+  type CinematicProgressReturnScreen,
+} from './story/cinematicProgress'
 
 const WEAPON_LIST = Object.values(WEAPONS) as WeaponDefinition[]
 const MODULE_LIST = Object.values(MODULES) as ModuleDefinition[]
@@ -80,7 +85,7 @@ const TRACE_MOD_LIST = Object.values(TRACE_MODS) as TraceModDefinition[]
 const GameCanvas = lazy(() => import('./game/GameCanvas'))
 
 type ShellScreen = Exclude<ScreenId, 'title' | 'cinematic' | 'game' | 'results'>
-type CinematicReturnScreen = 'campaign' | 'results' | 'codex'
+type CinematicReturnScreen = CinematicProgressReturnScreen
 
 function isShellScreen(screen: ScreenId): screen is ShellScreen {
   return (
@@ -225,6 +230,16 @@ export default function App() {
     return () => window.clearTimeout(timeout)
   }, [toast])
 
+  useEffect(() => {
+    primeNighttraceMusic(selectedLevelId)
+    primeNighttraceMusic(selectedTrialLevelId)
+    primeNighttraceMusic(combatLabConfig.arenaLevelId)
+  }, [
+    combatLabConfig.arenaLevelId,
+    selectedLevelId,
+    selectedTrialLevelId,
+  ])
+
   const updateSettings = useCallback((settings: GameSettings) => {
     persist({ ...save, settings })
   }, [persist, save])
@@ -297,7 +312,10 @@ export default function App() {
     if (completedCinematicSessionRef.current === sessionId) return
     completedCinematicSessionRef.current = sessionId
 
-    if (!save.story.seenCinematics.includes(cinematicId)) {
+    if (
+      shouldRecordCinematicSeen(cinematicReturnScreen) &&
+      !save.story.seenCinematics.includes(cinematicId)
+    ) {
       persist({
         ...save,
         story: {
@@ -455,6 +473,10 @@ export default function App() {
     gameRef.current?.togglePause()
   }, [])
 
+  const toggleHitboxOverlay = useCallback(() => {
+    gameRef.current?.toggleHitboxOverlay()
+  }, [])
+
   const activatePulse = useCallback(() => {
     gameRef.current?.activatePulse()
   }, [])
@@ -480,6 +502,15 @@ export default function App() {
         return
       }
       if (screen !== 'game') return
+      if (
+        event.code === 'KeyH' &&
+        snapshot?.runMode === 'combat-lab' &&
+        !snapshot.paused
+      ) {
+        event.preventDefault()
+        toggleHitboxOverlay()
+        return
+      }
       if (
         (event.code === 'Escape' || event.code === 'KeyP') &&
         !snapshot?.awaitingStart &&
@@ -517,10 +548,12 @@ export default function App() {
     screen,
     selectUpgrade,
     snapshot?.paused,
+    snapshot?.runMode,
     snapshot?.awaitingStart,
     snapshot?.revivePending,
     snapshot?.upgradeOptions,
     toggleMute,
+    toggleHitboxOverlay,
     togglePause,
   ])
 
@@ -642,9 +675,12 @@ export default function App() {
       <CombatLabScreen
         save={save}
         config={combatLabConfig}
+        cinematics={CAMPAIGN_CINEMATICS}
         onConfigChange={(config) =>
           setCombatLabConfig(normalizeCombatLabConfig(config))}
         onLaunch={startCombatLab}
+        onPlayCinematic={(cinematic) =>
+          showCinematic(cinematic.id, 'combat-lab')}
         onNavigate={navigate}
       />
     )
@@ -688,7 +724,8 @@ export default function App() {
         onComplete={finishCinematic}
         onSkip={finishCinematic}
         onReplayExit={
-          cinematicReturnScreen === 'codex'
+          cinematicReturnScreen === 'codex' ||
+          cinematicReturnScreen === 'combat-lab'
             ? finishCinematic
             : undefined
         }
@@ -741,6 +778,7 @@ export default function App() {
                 formatTime={formatTime}
                 onPause={togglePause}
                 onPulse={activatePulse}
+                onToggleHitbox={toggleHitboxOverlay}
               />
               <MobileTouchControls
                 pulseCharge={snapshot.pulseCharge}

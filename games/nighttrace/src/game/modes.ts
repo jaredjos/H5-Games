@@ -10,6 +10,7 @@ import type {
   WeaponId,
 } from '../shared/types'
 import { LEVELS, MODULES, TRACE_MODS, WEAPONS } from './content'
+import { normalizeLightRingRank } from './lightRingSkill'
 
 export type CombatLabPresetId = 'solo' | 'combined' | 'mastered' | 'final'
 
@@ -239,6 +240,7 @@ export const DEFAULT_COMBAT_LAB_CONFIG: CombatLabConfig = {
   encounter: 'boss',
   playerLevel: 1,
   bossHealthMultiplier: 1,
+  lightRingRank: 0,
   loadout: getCombatLabPresetLoadout('solo'),
 }
 
@@ -270,6 +272,7 @@ export function normalizeCombatLabConfig(value: unknown): CombatLabConfig {
       COMBAT_LAB_BOSS_HEALTH_MIN,
       COMBAT_LAB_BOSS_HEALTH_MAX,
     ),
+    lightRingRank: normalizeLightRingRank(source.lightRingRank),
     loadout: normalizeStartingLoadout(
       source.loadout ?? DEFAULT_COMBAT_LAB_CONFIG.loadout,
     ),
@@ -526,6 +529,7 @@ export function buildCombatLabRunConfig(value: unknown): RunConfig {
     fixedLoadout: true,
     playerLevel: config.playerLevel,
     bossHealthMultiplier: config.bossHealthMultiplier,
+    lightRingRank: config.lightRingRank,
     startingLoadout: normalizeStartingLoadout(config.loadout),
   }
 }

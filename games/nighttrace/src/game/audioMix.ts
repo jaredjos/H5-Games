@@ -91,6 +91,23 @@ export function musicAssetName(
   return `nighttrace-${trackId}-loop${compactSuffix}.mp3`
 }
 
+export function musicAssetsToPrime(
+  levelId: number,
+  device: MusicDeviceHints = {},
+) {
+  const route = musicRouteForLevel(levelId)
+  const variant = chooseMusicVariant(device)
+  return [
+    ...new Set([
+      musicAssetName(route.ambient, variant),
+      musicAssetName(route.boss, variant),
+      // Campaign cinematics intentionally use these compact score masters.
+      musicAssetName('haunted', 'compact'),
+      musicAssetName('boss', 'compact'),
+    ]),
+  ]
+}
+
 export function weaponAudioCue(weaponId: string): WeaponAudioCue {
   if (weaponId === 'ash-halo') return 'graveglass'
   if (weaponId === 'null-bell') return 'harrow'

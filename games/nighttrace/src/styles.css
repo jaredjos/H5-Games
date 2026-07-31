@@ -2551,6 +2551,14 @@ kbd {
   text-align: right;
 }
 
+.vitality-hud.is-health-hit .health-line {
+  animation: vitalityHealthImpact 300ms cubic-bezier(.2,.75,.25,1);
+}
+
+.vitality-hud.is-shield-hit .shield-line > span {
+  animation: vitalityShieldImpact 300ms cubic-bezier(.2,.75,.25,1);
+}
+
 .timer-hud {
   position: absolute;
   top: 34px;
@@ -3852,6 +3860,32 @@ kbd {
   to { opacity: 1; transform: translateX(0); }
 }
 
+@keyframes vitalityHealthImpact {
+  0% {
+    border-color: rgba(255, 112, 124, .92);
+    box-shadow:
+      inset 0 0 10px rgba(123, 15, 36, .7),
+      0 0 16px rgba(255, 86, 111, .42);
+  }
+  100% {
+    border-color: rgba(240, 214, 149, .62);
+    box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .7);
+  }
+}
+
+@keyframes vitalityShieldImpact {
+  0% {
+    border-color: rgba(134, 231, 255, .96);
+    box-shadow:
+      inset 0 0 8px rgba(32, 142, 178, .66),
+      0 0 14px rgba(94, 214, 239, .42);
+  }
+  100% {
+    border-color: rgba(98, 221, 245, .44);
+    box-shadow: none;
+  }
+}
+
 @media (max-height: 760px) and (min-width: 901px) {
   .app-header {
     height: 64px;
@@ -4271,6 +4305,13 @@ kbd {
   .run-metrics,
   .pause-control {
     display: none;
+  }
+
+  .lab-hitbox-control {
+    right: 14px;
+    top: 34px;
+    min-height: 25px;
+    padding: 4px 7px;
   }
 
   .mobile-controls {
@@ -6741,6 +6782,44 @@ select:focus-visible {
   line-height: 1.25;
 }
 
+.combat-lab-cinematics {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.combat-lab-cinematics label {
+  display: grid;
+  gap: 7px;
+  color: #8f989c;
+  font: 500 .55rem/1 var(--display);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.combat-lab-cinematics label > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--cyan);
+}
+
+.combat-lab-cinematics select {
+  min-width: 0;
+  border: 1px solid rgba(98, 221, 245, .22);
+  background: rgba(2, 10, 15, .88);
+  color: #d9eef0;
+  padding: 10px 11px;
+}
+
+.combat-lab-cinematics__note {
+  margin: 10px 0 0;
+  color: #686d70;
+  font-size: .49rem;
+  line-height: 1.5;
+}
+
 .combat-lab-arsenal__heading {
   display: flex;
   align-items: end;
@@ -6862,6 +6941,175 @@ select:focus-visible {
   border-color: rgba(240, 214, 149, .62);
   color: var(--gold-bright);
   box-shadow: 0 0 12px rgba(240, 214, 149, .13);
+}
+
+.combat-lab-light-ring {
+  position: relative;
+  display: grid;
+  gap: 11px;
+  margin-top: 11px;
+  padding: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(210, 181, 119, .18);
+  background:
+    radial-gradient(circle at 12% 10%, rgba(238, 220, 177, .055), transparent 32%),
+    linear-gradient(125deg, rgba(16, 13, 9, .92), rgba(2, 8, 12, .9) 58%);
+}
+
+.combat-lab-light-ring::after {
+  position: absolute;
+  inset: 0;
+  border-top: 1px solid rgba(248, 234, 196, .08);
+  pointer-events: none;
+  content: '';
+}
+
+.combat-lab-light-ring.is-equipped {
+  border-color: rgba(224, 197, 131, .42);
+  box-shadow:
+    inset 0 0 32px rgba(208, 164, 76, .045),
+    0 0 18px rgba(191, 153, 78, .035);
+}
+
+.combat-lab-light-ring.is-awakened {
+  border-color: rgba(255, 230, 166, .67);
+  background:
+    radial-gradient(circle at 12% 10%, rgba(255, 240, 201, .11), transparent 35%),
+    linear-gradient(125deg, rgba(28, 20, 9, .94), rgba(3, 9, 13, .92) 62%);
+}
+
+.combat-lab-light-ring__identity {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.combat-lab-light-ring__identity > span:last-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.combat-lab-light-ring__sigil {
+  display: grid;
+  flex: 0 0 45px;
+  width: 45px;
+  height: 45px;
+  place-items: center;
+  border: 1px solid rgba(238, 220, 177, .34);
+  color: #f0d99e;
+  background:
+    radial-gradient(circle, rgba(255, 244, 210, .16), transparent 32%),
+    linear-gradient(145deg, rgba(198, 157, 75, .12), rgba(2, 7, 11, .8));
+  box-shadow: inset 0 0 18px rgba(245, 218, 149, .07);
+  clip-path: polygon(50% 0, 92% 18%, 100% 66%, 67% 100%, 20% 92%, 0 47%, 17% 11%);
+}
+
+.combat-lab-light-ring__identity small {
+  color: #b99b60;
+  font: 500 .46rem/1 var(--display);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.combat-lab-light-ring__identity strong {
+  color: #eee2c4;
+  font: 500 .68rem/1.2 var(--display);
+  letter-spacing: .075em;
+  text-transform: uppercase;
+}
+
+.combat-lab-light-ring__identity p {
+  margin: 1px 0 0;
+  color: #77766f;
+  font-size: .48rem;
+  line-height: 1.35;
+}
+
+.combat-lab-light-ring__ranks {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.combat-lab-light-ring__ranks button {
+  min-height: 30px;
+  padding: 5px 3px;
+  border: 1px solid rgba(205, 180, 125, .13);
+  color: #6f6d67;
+  background: rgba(2, 7, 11, .72);
+  font: 500 .43rem/1 var(--display);
+  letter-spacing: .035em;
+  cursor: pointer;
+}
+
+.lab-hitbox-control {
+  position: absolute;
+  right: 20px;
+  top: 94px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid rgba(126, 230, 250, .28);
+  color: rgba(209, 242, 248, .72);
+  background: rgba(2, 7, 11, .76);
+  font: 600 .51rem/1 var(--display);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.lab-hitbox-control.is-active {
+  border-color: rgba(126, 230, 250, .65);
+  color: #e5fbff;
+  background: rgba(11, 44, 53, .82);
+  box-shadow: 0 0 15px rgba(94, 214, 239, .16);
+}
+
+.lab-hitbox-control svg {
+  color: var(--cyan);
+}
+
+.combat-lab-light-ring__ranks button:hover {
+  color: #d7c9a8;
+  border-color: rgba(224, 197, 131, .32);
+}
+
+.combat-lab-light-ring__ranks button.is-selected {
+  color: #f4e8ca;
+  border-color: rgba(239, 213, 151, .58);
+  background:
+    linear-gradient(145deg, rgba(210, 168, 84, .2), rgba(7, 9, 10, .86));
+  box-shadow: inset 0 0 13px rgba(255, 226, 158, .06);
+}
+
+.combat-lab-light-ring__ranks button.is-awakened {
+  color: #c2a96f;
+}
+
+.combat-lab-light-ring__ranks button.is-awakened.is-selected {
+  color: #fff0c5;
+  border-color: rgba(255, 226, 154, .76);
+}
+
+.combat-lab-light-ring__readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  min-height: 18px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(208, 178, 111, .11);
+  color: #72726d;
+  font-size: .46rem;
+}
+
+.combat-lab-light-ring__readout strong {
+  margin-left: 3px;
+  color: #e6d7b4;
+  font-weight: 600;
 }
 
 .combat-lab-traces {

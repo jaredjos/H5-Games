@@ -171,6 +171,7 @@ import {
   type BossTelegraphParticle,
 } from './bossTelegraphParticles'
 import {
+  HOSTILE_BOUNDARY_BRIGHTNESS_GAIN,
   reserveHostileBoundaryParticleQuota,
   sampleHostileBoundaryParticles,
   type HostileBoundaryParticle,
@@ -212,6 +213,31 @@ import {
   tracePointAllowance,
   tracePulseReward,
 } from './tracePulse'
+import {
+  LIGHT_RING_AWAKENING_NAME,
+  LIGHT_RING_SKILL_NAME,
+  lightRingProfile,
+  lightRingRankForRun,
+  lightRingTickDamage,
+  lightRingTouchesTarget,
+  type LightRingRank,
+} from './lightRingSkill'
+import {
+  COMBAT_TEXT_CAP_DESKTOP,
+  COMBAT_TEXT_CAP_MOBILE,
+  COMBAT_TEXT_COLORS,
+  CombatTextQueue,
+  HERO_CONTACT_TRIGGER_RADIUS,
+  HERO_HIT_RADIUS,
+  HERO_MELEE_RELEASE_RADIUS,
+  combatTextFontSize,
+  combatTextPose,
+  createPlayerHitFeedback,
+  formatCombatDamage,
+  type CombatTextTarget,
+  type PlayerDamageContext,
+  type PlayerHitFeedback,
+} from './combatReadability'
 
 const WORLD_WIDTH = 1672
 const WORLD_HEIGHT = 941
@@ -250,6 +276,7 @@ export interface GameCanvasHandle {
   selectUpgrade(optionId: string): void
   rerollUpgrade(): void
   togglePause(): void
+  toggleHitboxOverlay(): void
   activatePulse(): void
   setOrientationPaused(paused: boolean): void
 }
@@ -517,6 +544,7 @@ class NighttraceRuntime {
   private readonly weaponVfxGraphics = new Graphics()
   private readonly screenEffects = new Container()
   private readonly screenFlash = new Graphics()
+  private readonly playerDamageVignette = new Graphics()
   private readonly cinematicGraphics = new Graphics()
   private readonly cinematicTitle = new Text({
     text: '',
@@ -531,6 +559,9 @@ class NighttraceRuntime {
     },
   })
   private readonly joystickGraphics = new Graphics()
+  private readonly hitboxGraphics = new Graphics()
+  private readonly playerHitGraphics = new Graphics()
+  private readonly combatTextLayer = new Container()
   private readonly audio: NighttraceAudio
   private input?: GameInput
   private resizeObserver?: ResizeObserver
@@ -561,6 +592,9 @@ class NighttraceRuntime {
   private settings: GameSettings
   private readonly visualLod: CharacterVisualLod
   private readonly visualProfile: CharacterVisualProfile
+  private readonly combatTextQueue: CombatTextQueue
+  private readonly combatTextSprites = new Map<number, Text>()
+  private readonly combatTextPool: Text[] = []
   private destroyed = false
   private applicationReady = false
   private initialized = false
@@ -588,6 +622,9 @@ class NighttraceRuntime {
   private modules: OwnedModule[] = []
   private traceMods: TraceModId[] = []
   private readonly weaponDamage = new Map<WeaponId, number>()
+  private readonly lightRingRank: LightRingRank
+  private lightRingTickRemaining = 0
+  private lightRingPulse = 0
   private readonly random: DeterministicRandom
   private readonly enemies: EnemyEntity[] = []
   private readonly projectiles: ProjectileEntity[] = []
@@ -629,6 +666,9 @@ class NighttraceRuntime {
   private heroAttackAngle = 0
   private heroHurtRemaining = 0
   private heroHurtDuration = 0
+  private playerHitFeedback?: PlayerHitFeedback
+  private playerHitFeedbackRemaining = 0
+  private showHitboxOverlay = false
   private lastHeroEchoAt = -10
   private endSequenceTimer = 0
   private endSequenceDuration = 0
@@ -667,6 +707,10 @@ class NighttraceRuntime {
     this.host = host
     this.level = level
     this.runConfig = runConfig
+    this.lightRingRank = lightRingRankForRun(
+      runConfig.mode,
+      runConfig.lightRingRank,
+    )
     this.bossLevel = getLevel(runConfig.bossLevelId)
     this.settings = settings
     this.unlockedWeapons = [...new Set([...ALL_WEAPON_IDS, ...unlockedWeapons])]
@@ -690,6 +734,15 @@ class NighttraceRuntime {
         ? requestedLod
         : detectedLod
     this.visualProfile = CHARACTER_VISUAL_PROFILES[this.visualLod]
+    this.combatTextQueue = new CombatTextQueue(
+      this.visualLod === 'mobile'
+        ? COMBAT_TEXT_CAP_MOBILE
+        : COMBAT_TEXT_CAP_DESKTOP,
+    )
+    this.showHitboxOverlay =
+      runConfig.mode === 'combat-lab' &&
+      typeof location !== 'undefined' &&
+      new URLSearchParams(location.search).has('hitbox')
     this.groundedVfxSmokeGraphics.filters = [
       new BlurFilter({
         strength: this.visualLod === 'mobile' ? 3 : 4,
@@ -870,6 +923,7 @@ class NighttraceRuntime {
         this.effectLayer,
         this.enemyForegroundLayer,
         this.actorLayer,
+        this.combatTextLayer,
       )
       this.trailLayer.addChild(this.loopGraphics, this.trailGlow, this.trailCore)
       this.threatGroundLayer.addChild(
@@ -896,6 +950,7 @@ class NighttraceRuntime {
       this.app.stage.addChild(this.world, this.screenEffects)
       this.screenEffects.addChild(
         this.screenFlash,
+        this.playerDamageVignette,
         this.cinematicGraphics,
         this.cinematicTitle,
         this.joystickGraphics,
@@ -948,7 +1003,14 @@ class NighttraceRuntime {
       this.hero.scale.set(HERO_ART_SCALE)
       this.hero.position.set(this.player.x, this.player.y)
       this.hero.filters = null
-      this.actorLayer.addChild(this.hero)
+      this.actorLayer.addChild(
+        this.hitboxGraphics,
+        this.hero,
+        this.playerHitGraphics,
+      )
+      this.host.dataset.hitboxOverlay = String(this.showHitboxOverlay)
+      this.host.dataset.heroHitRadius = String(HERO_HIT_RADIUS)
+      this.host.dataset.heroHitCenter = 'feet'
 
       this.cinematicTitle.anchor.set(0.5)
       this.cinematicTitle.alpha = 0
@@ -956,6 +1018,14 @@ class NighttraceRuntime {
       this.host.dataset.materialVfxReady = 'retired'
       this.host.dataset.actorReadability = 'protected'
       this.host.dataset.authoredSpellMaterials = AUTHORED_SPELL_ASSET_REVISION
+      const lightRing = lightRingProfile(this.lightRingRank)
+      this.host.dataset.lightRingRank = String(this.lightRingRank)
+      this.host.dataset.lightRingDiameter = String(lightRing?.diameter ?? 0)
+      this.host.dataset.lightRingState = lightRing?.awakened
+        ? LIGHT_RING_AWAKENING_NAME
+        : lightRing
+          ? LIGHT_RING_SKILL_NAME
+          : 'disabled'
 
       this.input = new GameInput(this.host, {
         onInteract: () => void this.audio.unlock(),
@@ -986,6 +1056,7 @@ class NighttraceRuntime {
   updateSettings(settings: GameSettings) {
     this.settings = settings
     this.audio.updateSettings(settings)
+    if (!settings.showDamageNumbers) this.combatTextQueue.clear()
   }
 
   beginEncounter() {
@@ -1021,6 +1092,9 @@ class NighttraceRuntime {
     this.shieldDelay = Math.max(this.shieldDelay, REVIVE_INVULNERABILITY_SECONDS + 1.8)
     this.heroHurtRemaining = 0
     this.heroHurtDuration = 0
+    this.playerHitFeedback = undefined
+    this.playerHitFeedbackRemaining = 0
+    this.combatTextQueue.clear()
     this.trace.length = 0
     this.trace.push({ x: this.player.x, y: this.player.y })
     this.clearReviveSanctuary()
@@ -1236,6 +1310,13 @@ class NighttraceRuntime {
       this.upgradeOptions?.length
     ) return
     this.manualPaused = !this.manualPaused
+    this.emitSnapshot(true)
+  }
+
+  toggleHitboxOverlay() {
+    if (this.runConfig.mode !== 'combat-lab') return
+    this.showHitboxOverlay = !this.showHitboxOverlay
+    this.host.dataset.hitboxOverlay = String(this.showHitboxOverlay)
     this.emitSnapshot(true)
   }
 
@@ -1486,6 +1567,7 @@ class NighttraceRuntime {
       return
     }
     this.rebuildEnemyGrid()
+    this.updateLightRing(delta)
     this.updateWeapons(delta)
     this.updateProjectiles(delta)
     if (!this.runConfig.bossOnly) {
@@ -1579,6 +1661,12 @@ class NighttraceRuntime {
     // may pulse posture and light, but never fades the silhouette out beneath
     // upgrade overdraw.
     this.hero.alpha = Math.max(0.96, heroPose.alpha)
+    this.drawPlayerCombatReadability(
+      playerRenderX,
+      playerRenderY,
+      playerRenderX + heroPose.offsetX,
+      playerRenderY + heroPose.offsetY,
+    )
     const heroGlow = Math.max(heroPose.glow, authoredGlow)
     this.motionGraphics.clear()
     // Use direct ellipse geometry for actor grounding. Filtered white sprites
@@ -1757,6 +1845,7 @@ class NighttraceRuntime {
     this.drawEffects()
     this.drawJoystick()
     this.updateCamera()
+    this.syncCombatTextSprites()
   }
 
   private layout() {
@@ -2294,9 +2383,15 @@ class NighttraceRuntime {
         const releaseDy = this.player.y - enemy.y
         if (
           releaseDx * releaseDx + releaseDy * releaseDy <=
-          (enemy.radius + 42) ** 2
+          (enemy.radius + HERO_MELEE_RELEASE_RADIUS) ** 2
         ) {
-          this.damagePlayer(enemy.pendingContactDamage)
+          this.damagePlayer(enemy.pendingContactDamage, {
+            kind: 'contact',
+            boss: enemy.isBoss,
+            originX: enemy.x,
+            originY: enemy.y,
+            color: this.actorAccentColor(enemy),
+          })
         }
         enemy.pendingContactDamage = 0
       } else if (enemy.pendingContactDamage > 0 && contactAttackProgress < 0) {
@@ -2359,7 +2454,10 @@ class NighttraceRuntime {
       enemy.x = clamp(enemy.x + enemy.vx * delta, 38, WORLD_WIDTH - 38)
       enemy.y = clamp(enemy.y + enemy.vy * delta, 34, WORLD_HEIGHT - 34)
 
-      if (distance <= enemy.radius + 25 && enemy.contactCooldown <= 0) {
+      if (
+        distance <= enemy.radius + HERO_CONTACT_TRIGGER_RADIUS &&
+        enemy.contactCooldown <= 0
+      ) {
         this.triggerEnemyAttack(
           enemy,
           'melee',
@@ -2524,6 +2622,55 @@ class NighttraceRuntime {
         64,
         WORLD_HEIGHT - 64,
       ),
+    }
+  }
+
+  private updateLightRing(delta: number) {
+    const profile = lightRingProfile(this.lightRingRank)
+    if (!profile) return
+
+    this.lightRingTickRemaining -= delta
+    if (this.lightRingTickRemaining > 0) return
+    this.lightRingTickRemaining = profile.tickSeconds
+
+    const candidates = this.queryEnemyGrid(
+      this.player.x,
+      this.player.y,
+      profile.radius + 150,
+    )
+    let hitCount = 0
+    for (const enemy of candidates) {
+      if (
+        !enemy.active ||
+        !lightRingTouchesTarget(
+          this.lightRingRank,
+          this.player.x,
+          this.player.y,
+          enemy.x,
+          enemy.y,
+          enemy.radius,
+        )
+      ) {
+        continue
+      }
+
+      this.damageEnemy(
+        enemy,
+        lightRingTickDamage(this.lightRingRank, enemy.isBoss),
+        'helio-lance',
+        false,
+        false,
+        profile.awakened ? 0xfff4ca : 0xe9dfbd,
+      )
+      hitCount += 1
+    }
+
+    if (hitCount > 0) {
+      this.lightRingPulse = Math.max(
+        this.lightRingPulse,
+        this.settings.reducedFlash ? 0.1 : 0.18,
+      )
+      this.host.dataset.lightRingLastHits = String(hitCount)
     }
   }
 
@@ -3364,12 +3511,26 @@ class NighttraceRuntime {
         -Math.sin(telegraph.angle) * playerDeltaX + Math.cos(telegraph.angle) * playerDeltaY
       const hit =
         telegraph.kind === 'circle'
-          ? playerDeltaX ** 2 + playerDeltaY ** 2 <= (telegraph.radius + 18) ** 2
+          ? playerDeltaX ** 2 + playerDeltaY ** 2 <=
+            (telegraph.radius + HERO_HIT_RADIUS) ** 2
           : localX >= 0 &&
             localX <= telegraph.length &&
-            Math.abs(localY) <= telegraph.width * 0.5 + 18
+            Math.abs(localY) <=
+              telegraph.width * 0.5 + HERO_HIT_RADIUS
 
-      if (hit) this.damagePlayer(telegraph.damage)
+      if (hit) {
+        this.damagePlayer(telegraph.damage, {
+          kind: 'telegraph',
+          boss: telegraph.bossAttack,
+          originX: telegraph.x,
+          originY: telegraph.y,
+          color:
+            telegraph.color ??
+            (telegraph.bossAttack
+              ? bossPresentation(this.bossLevel.bossId).primaryColor
+              : 0x8f3348),
+        })
+      }
       const ashColor = telegraph.bossAttack ? 0x766963 : 0x5c5552
       if (telegraph.kind === 'line') {
         const endX = telegraph.x + Math.cos(telegraph.angle) * telegraph.length
@@ -3465,9 +3626,15 @@ class NighttraceRuntime {
         }
         if (
           distanceSquared(event.destination, this.player) <=
-          (event.radius + 18) ** 2
+          (event.radius + HERO_HIT_RADIUS) ** 2
         ) {
-          this.damagePlayer(event.damage)
+          this.damagePlayer(event.damage, {
+            kind: 'projectile',
+            boss: event.boss,
+            originX: projectile.state.config.origin.x,
+            originY: projectile.state.config.origin.y,
+            color: projectile.state.config.color,
+          })
         }
         this.spawnBurst(
           event.destination.x,
@@ -3606,6 +3773,15 @@ class NighttraceRuntime {
         effect.hitPulseLife = Math.max(0, effect.hitPulseLife - delta)
       }
     }
+    this.lightRingPulse = Math.max(0, this.lightRingPulse - delta)
+    this.combatTextQueue.advance(delta)
+    this.playerHitFeedbackRemaining = Math.max(
+      0,
+      this.playerHitFeedbackRemaining - delta,
+    )
+    if (this.playerHitFeedbackRemaining <= 0) {
+      this.playerHitFeedback = undefined
+    }
     this.screenFlashAlpha = Math.max(0, this.screenFlashAlpha - delta * 1.5)
     this.shake = Math.max(0, this.shake - delta * 26)
   }
@@ -3708,6 +3884,7 @@ class NighttraceRuntime {
     weaponId: WeaponId,
     trackWeaponDamage = true,
     allowFaultline = true,
+    impactColor?: number,
   ) {
     if (this.revivePending || !enemy.active || rawDamage <= 0) return
     const forceRank = this.persistentUpgrades.force ?? 0
@@ -3730,10 +3907,27 @@ class NighttraceRuntime {
     if (trackWeaponDamage) {
       this.weaponDamage.set(weaponId, (this.weaponDamage.get(weaponId) ?? 0) + damage)
     }
-    if (this.settings.showDamageNumbers && (critical || damage >= 45)) {
-      this.spawnDamageNumber(enemy.x, enemy.y - enemy.radius, Math.round(damage), critical)
+    if (this.settings.showDamageNumbers) {
+      const damageColor = critical
+        ? COMBAT_TEXT_COLORS.critical
+        : impactColor ?? WEAPONS[weaponId].color
+      this.queueCombatText(
+        `enemy:${enemy.uid}:${weaponId}`,
+        enemy.isBoss ? 'boss' : 'horde',
+        enemy.x,
+        enemy.y - enemy.radius * (enemy.isBoss ? 0.98 : 0.78),
+        damage,
+        damageColor,
+        critical,
+      )
     }
-    this.spawnBurst(enemy.x, enemy.y, critical ? 0xfff2b0 : WEAPONS[weaponId].color, critical ? 7 : 3, 95)
+    this.spawnBurst(
+      enemy.x,
+      enemy.y,
+      critical ? 0xfff2b0 : impactColor ?? WEAPONS[weaponId].color,
+      critical ? 7 : 3,
+      95,
+    )
     const lethal = enemy.hp <= 0
     const wasBoss = enemy.isBoss
     if (lethal) {
@@ -3809,17 +4003,20 @@ class NighttraceRuntime {
     }
   }
 
-  private damagePlayer(amount: number) {
+  private damagePlayer(amount: number, context: PlayerDamageContext) {
     if (
       this.hurtCooldown > 0 ||
       this.reviveInvulnerability > 0 ||
       this.revivePending ||
       this.completed
     ) return
-    let remaining =
+    const incomingDamage =
       amount *
       GLOBAL_DIFFICULTY_MULTIPLIER *
       (this.qaMode ? 0.1 : 0.72)
+    let remaining = incomingDamage
+    const shieldBefore = this.player.shield
+    const hpBefore = this.player.hp
     if (!this.runConfig.invincible && this.player.shield > 0) {
       const absorbed = Math.min(this.player.shield, remaining)
       this.player.shield -= absorbed
@@ -3831,10 +4028,53 @@ class NighttraceRuntime {
       this.player.hp = this.player.maxHp
       this.player.shield = this.player.maxShield
     }
+    const shieldDamage = this.runConfig.invincible
+      ? 0
+      : Math.max(0, shieldBefore - this.player.shield)
+    const healthDamage = this.runConfig.invincible
+      ? 0
+      : Math.max(0, hpBefore - this.player.hp)
+    const guardedDamage = this.runConfig.invincible
+      ? Math.max(0, incomingDamage)
+      : 0
+    const feedback = createPlayerHitFeedback({
+      playerX: this.player.x,
+      playerY: this.player.y,
+      maxHp: this.player.maxHp,
+      healthDamage: healthDamage + guardedDamage,
+      shieldDamage,
+      context,
+    })
+    if (feedback) {
+      this.playerHitFeedback = feedback
+      this.playerHitFeedbackRemaining = feedback.duration
+    }
+    if (this.settings.showDamageNumbers) {
+      if (shieldDamage > 0 || guardedDamage > 0) {
+        this.queueCombatText(
+          guardedDamage > 0 ? 'hero:guard' : 'hero:shield',
+          'hero-shield',
+          this.player.x + 9,
+          this.player.y - 38,
+          shieldDamage + guardedDamage,
+          COMBAT_TEXT_COLORS.heroShield,
+        )
+      }
+      if (healthDamage > 0) {
+        this.queueCombatText(
+          'hero:health',
+          'hero-health',
+          this.player.x - 9,
+          this.player.y - 52,
+          healthDamage,
+          COMBAT_TEXT_COLORS.heroHealth,
+        )
+      }
+    }
     this.hurtCooldown = this.qaMode ? 0.75 : 0.42
     this.shieldDelay = 4
     this.shake = Math.max(this.shake, 9)
-    this.screenFlashAlpha = this.settings.reducedFlash ? 0.035 : 0.2
+    this.screenFlashAlpha = this.settings.reducedFlash ? 0.012 : 0.045
     this.heroHurtDuration = 0.32
     this.heroHurtRemaining = this.heroHurtDuration
     this.audio.play('hurt')
@@ -4031,33 +4271,81 @@ class NighttraceRuntime {
     }
   }
 
-  private spawnDamageNumber(x: number, y: number, damage: number, critical: boolean) {
-    const text = new Text({
-      text: critical ? `${damage}!` : String(damage),
-      style: {
-        fontFamily: 'Inter, sans-serif',
-        fontSize: critical ? 22 : 16,
-        fontWeight: '700',
-        fill: critical ? 0xffed8f : 0xf3fbff,
-        stroke: { color: 0x081018, width: 4 },
-      },
+  private queueCombatText(
+    targetKey: string,
+    target: CombatTextTarget,
+    x: number,
+    y: number,
+    amount: number,
+    color: number,
+    critical = false,
+  ) {
+    this.combatTextQueue.request({
+      targetKey,
+      target,
+      x,
+      y,
+      amount,
+      color,
+      critical,
     })
-    text.anchor.set(0.5)
-    text.position.set(x, y)
-    this.effectLayer.addChild(text)
-    const started = performance.now()
-    const animate = () => {
-      if (this.destroyed || text.destroyed) return
-      const progress = (performance.now() - started) / 620
-      if (progress >= 1) {
-        text.destroy()
-        return
-      }
-      text.y = y - progress * 42
-      text.alpha = 1 - progress
-      requestAnimationFrame(animate)
+  }
+
+  private syncCombatTextSprites() {
+    const entries = this.settings.showDamageNumbers
+      ? this.combatTextQueue.active()
+      : []
+    const activeIds = new Set(entries.map(({ id }) => id))
+
+    for (const [id, text] of this.combatTextSprites) {
+      if (activeIds.has(id)) continue
+      text.visible = false
+      this.combatTextSprites.delete(id)
+      this.combatTextPool.push(text)
     }
-    requestAnimationFrame(animate)
+
+    const inverseWorldScale = 1 / Math.max(0.001, this.world.scale.x)
+    for (const entry of entries) {
+      let text = this.combatTextSprites.get(entry.id)
+      if (!text) {
+        text = this.combatTextPool.pop()
+        if (!text) {
+          text = new Text({
+            text: '',
+            style: {
+              fontFamily: 'Inter, Arial, sans-serif',
+              fontSize: 12,
+              fontWeight: '800',
+              fill: 0xffffff,
+              stroke: { color: 0x03070c, width: 2 },
+              dropShadow: {
+                color: 0x000000,
+                alpha: 0.82,
+                blur: 2,
+                distance: 1,
+              },
+            },
+          })
+          text.anchor.set(0.5)
+          text.eventMode = 'none'
+          this.combatTextLayer.addChild(text)
+        }
+        this.combatTextSprites.set(entry.id, text)
+      }
+
+      const pose = combatTextPose(entry)
+      text.text = `${formatCombatDamage(entry.amount)}${entry.critical ? '!' : ''}`
+      text.style.fontSize = combatTextFontSize(entry)
+      text.style.fill = entry.color
+      text.style.stroke = {
+        color: 0x03070c,
+        width: entry.critical ? 3 : 2,
+      }
+      text.position.set(pose.x, pose.y)
+      text.scale.set(pose.scale * inverseWorldScale)
+      text.alpha = pose.alpha
+      text.visible = true
+    }
   }
 
   private deactivateProjectile(projectile: ProjectileEntity) {
@@ -5153,6 +5441,11 @@ class NighttraceRuntime {
     rotationOffset = 0,
   ) {
     if (particle.alpha <= 0.003) return
+    const boundaryAlpha = clamp(
+      particle.alpha * HOSTILE_BOUNDARY_BRIGHTNESS_GAIN,
+      0,
+      1,
+    )
     const bone = 0xe8e4d8
     const silver = 0xb7c2c3
     const color =
@@ -5172,13 +5465,13 @@ class NighttraceRuntime {
         )
         .fill({
           color: silver,
-          alpha: particle.alpha * particle.glowAlpha * 0.3,
+          alpha: boundaryAlpha * particle.glowAlpha * 0.3,
         })
       this.groundedVfxCinderGraphics
         .ellipse(x, y, size, size * 0.82)
         .fill({
           color,
-          alpha: particle.alpha * 0.92,
+          alpha: boundaryAlpha * 0.92,
         })
       return
     }
@@ -5214,7 +5507,7 @@ class NighttraceRuntime {
       )
       .fill({
         color: silver,
-        alpha: particle.alpha * particle.glowAlpha * 0.2,
+        alpha: boundaryAlpha * particle.glowAlpha * 0.2,
       })
     this.groundedVfxCinderGraphics
       .poly(
@@ -5232,7 +5525,7 @@ class NighttraceRuntime {
       )
       .fill({
         color,
-        alpha: particle.alpha,
+        alpha: boundaryAlpha,
       })
   }
 
@@ -6189,6 +6482,199 @@ class NighttraceRuntime {
     )
   }
 
+  private drawLightRingAura(
+    graphics: Graphics,
+    additiveGraphics: Graphics,
+  ) {
+    const profile = lightRingProfile(this.lightRingRank)
+    if (!profile) return
+
+    const x = lerp(this.player.previousX, this.player.x, this.interpolation)
+    const y = lerp(this.player.previousY, this.player.y, this.interpolation)
+    const stage: WeaponVfxStage = profile.awakened
+      ? 'final'
+      : profile.rank >= 4
+        ? 'mastered'
+        : profile.rank >= 2
+          ? 'combined'
+          : 'solo'
+    const breath = Math.sin(this.motionClock * 1.35 + profile.rank * 0.47)
+    const pulse = clamp(
+      this.lightRingPulse / (this.settings.reducedFlash ? 0.1 : 0.18),
+      0,
+      1,
+    )
+    const radius = profile.radius * (1 + breath * 0.008 + pulse * 0.022)
+    const ivory = profile.awakened ? 0xfff8df : 0xeee5cf
+    const gold = profile.awakened ? 0xf2c86b : 0xcaa454
+    const reducedFlashScale = this.settings.reducedFlash ? 0.68 : 1
+
+    // A subdued, textured pool grounds the barrier without adding another
+    // outlined circle. The authored material atlas supplies smoke and light
+    // breakup beneath the hand-drawn perimeter filaments.
+    graphics
+      .ellipse(x, y + radius * 0.025, radius * 0.93, radius * 0.67)
+      .fill({
+        color: 0x6b4b18,
+        alpha:
+          (0.014 + profile.rank * 0.002 + pulse * 0.016) *
+          reducedFlashScale,
+      })
+    this.drawHeroPowerMaterialEvent({
+      x,
+      y,
+      radius: radius * 0.87,
+      progress: 0.34,
+      stage,
+      seed: 4_913 + profile.rank * 173,
+      tint: gold,
+      frame: profile.awakened
+        ? HERO_MATERIAL_FRAME.gather
+        : HERO_MATERIAL_FRAME.driftA,
+      angle: this.motionClock * (profile.awakened ? -0.055 : 0.035),
+      materialOpacity:
+        (profile.materialOpacity + pulse * 0.035) * reducedFlashScale,
+      stretchX: 1.04,
+      stretchY: 0.82,
+    })
+
+    // One irregular, broken perimeter replaces closed vector rings. Each arc
+    // has its own radius and span, so the silhouette reads as fine light woven
+    // through smoke rather than a HUD circle painted on the floor.
+    for (let filament = 0; filament < profile.filamentCount; filament += 1) {
+      const unit = replacementCosmeticUnit(
+        8_111 + profile.rank * 101,
+        filament,
+        211,
+      )
+      const radiusUnit = replacementCosmeticUnit(
+        8_111 + profile.rank * 101,
+        filament,
+        223,
+      )
+      const spanUnit = replacementCosmeticUnit(
+        8_111 + profile.rank * 101,
+        filament,
+        227,
+      )
+      const start =
+        (Math.PI * 2 * filament) / profile.filamentCount +
+        this.motionClock * (filament % 2 === 0 ? 0.018 : -0.014) +
+        (unit - 0.5) * 0.18
+      const span =
+        (Math.PI * 2 / profile.filamentCount) *
+        (0.42 + spanUnit * 0.34)
+      const strandRadius = radius * (0.965 + (radiusUnit - 0.5) * 0.045)
+      const strandAlpha =
+        (0.31 + profile.rank * 0.027 + pulse * 0.22) *
+        reducedFlashScale
+
+      additiveGraphics
+        .arc(x, y, strandRadius, start, start + span)
+        .stroke({
+          color: gold,
+          width: 6.5 + profile.rank * 0.38 + pulse * 2.4,
+          alpha: strandAlpha * 0.14,
+          cap: 'round',
+        })
+      graphics
+        .arc(x, y, strandRadius, start, start + span)
+        .stroke({
+          color: filament % 3 === 0 ? gold : ivory,
+          width: profile.awakened ? 1.35 : 0.92,
+          alpha: strandAlpha,
+          cap: 'round',
+        })
+    }
+
+    for (let mote = 0; mote < profile.moteCount; mote += 1) {
+      const orbit = replacementCosmeticUnit(
+        9_701 + profile.rank * 137,
+        mote,
+        239,
+      )
+      const drift = replacementCosmeticUnit(
+        9_701 + profile.rank * 137,
+        mote,
+        241,
+      )
+      const angle =
+        orbit * Math.PI * 2 +
+        this.motionClock * (0.045 + (mote % 4) * 0.009)
+      const breathingOffset =
+        Math.sin(this.motionClock * (1.2 + drift) + mote * 1.71) *
+        (4 + profile.rank * 0.8)
+      const moteRadius =
+        radius * (0.88 + drift * 0.23) + breathingOffset
+      const moteSize =
+        0.75 +
+        profile.rank * 0.08 +
+        replacementCosmeticUnit(profile.rank * 331, mote, 251) * 1.35
+      const moteAlpha =
+        (0.2 + profile.rank * 0.023 + pulse * 0.18) *
+        reducedFlashScale
+
+      additiveGraphics
+        .circle(
+          x + Math.cos(angle) * moteRadius,
+          y + Math.sin(angle) * moteRadius,
+          moteSize * 2.8,
+        )
+        .fill({ color: gold, alpha: moteAlpha * 0.13 })
+      graphics
+        .circle(
+          x + Math.cos(angle) * moteRadius,
+          y + Math.sin(angle) * moteRadius,
+          moteSize,
+        )
+        .fill({
+          color: mote % 4 === 0 ? gold : ivory,
+          alpha: moteAlpha,
+        })
+    }
+
+    // Upper ranks grow a few curved light-plumes from the perimeter. They are
+    // deliberately sparse, asymmetrical and bezier-shaped—never radial ticks.
+    for (let petal = 0; petal < profile.petalCount; petal += 1) {
+      const angle =
+        (Math.PI * 2 * petal) / profile.petalCount -
+        this.motionClock * 0.026 +
+        (replacementCosmeticUnit(profile.rank * 409, petal, 263) - 0.5) *
+          0.24
+      const direction = petal % 2 === 0 ? 1 : -1
+      const startX = x + Math.cos(angle) * radius * 0.93
+      const startY = y + Math.sin(angle) * radius * 0.93
+      const controlAngle = angle + direction * (0.12 + profile.rank * 0.006)
+      const controlX = x + Math.cos(controlAngle) * radius * 1.11
+      const controlY = y + Math.sin(controlAngle) * radius * 1.11
+      const endAngle = angle + direction * 0.21
+      const endX = x + Math.cos(endAngle) * radius * 1.015
+      const endY = y + Math.sin(endAngle) * radius * 1.015
+      const plumeAlpha =
+        (0.24 + profile.rank * 0.025 + pulse * 0.18) *
+        reducedFlashScale
+
+      additiveGraphics
+        .moveTo(startX, startY)
+        .quadraticCurveTo(controlX, controlY, endX, endY)
+        .stroke({
+          color: gold,
+          width: 7 + profile.rank * 0.45,
+          alpha: plumeAlpha * 0.1,
+          cap: 'round',
+        })
+      graphics
+        .moveTo(startX, startY)
+        .quadraticCurveTo(controlX, controlY, endX, endY)
+        .stroke({
+          color: petal % 3 === 0 ? gold : ivory,
+          width: profile.awakened ? 1.45 : 1.05,
+          alpha: plumeAlpha,
+          cap: 'round',
+        })
+    }
+  }
+
   private drawWeaponEffects() {
     this.beginAuthoredSpellMaterialFrame()
     this.weaponVfxAdditiveGraphics.clear()
@@ -6198,6 +6684,7 @@ class NighttraceRuntime {
     const energyScale = this.currentSceneVfxEnergyScale()
     additiveGraphics.alpha = energyScale
     graphics.alpha = energyScale
+    this.drawLightRingAura(graphics, additiveGraphics)
     for (let index = this.weaponEffects.length - 1; index >= 0; index -= 1) {
       const effect = this.weaponEffects[index]
       if (effect.life <= 0) {
@@ -6708,6 +7195,153 @@ class NighttraceRuntime {
         .fill({ color: 0x010206, alpha: cinematicAlpha * 0.96 })
     }
     this.cinematicTitle.alpha = cinematicAlpha
+  }
+
+  private drawPlayerCombatReadability(
+    collisionX: number,
+    collisionY: number,
+    heroX: number,
+    heroY: number,
+  ) {
+    this.hitboxGraphics.clear()
+    this.playerHitGraphics.clear()
+    this.playerDamageVignette.clear()
+    this.hero!.tint = 0xffffff
+
+    if (this.showHitboxOverlay && this.runConfig.mode === 'combat-lab') {
+      this.hitboxGraphics
+        .circle(collisionX, collisionY, HERO_HIT_RADIUS)
+        .fill({ color: 0x7fe9ff, alpha: 0.075 })
+      for (let marker = 0; marker < 10; marker += 1) {
+        const angle = (marker / 10) * Math.PI * 2
+        this.hitboxGraphics
+          .ellipse(
+            collisionX + Math.cos(angle) * HERO_HIT_RADIUS,
+            collisionY + Math.sin(angle) * HERO_HIT_RADIUS,
+            1.45,
+            0.9,
+          )
+          .fill({ color: 0xdffbff, alpha: 0.7 })
+      }
+    }
+
+    const feedback = this.playerHitFeedback
+    if (!feedback || this.playerHitFeedbackRemaining <= 0) return
+
+    const progress = clamp(
+      1 - this.playerHitFeedbackRemaining / feedback.duration,
+      0,
+      1,
+    )
+    const decay = (1 - progress) ** 1.65
+    const reducedFlashScale = this.settings.reducedFlash ? 0.52 : 1
+    const energy = feedback.intensity * decay * reducedFlashScale
+    const sourceX = -feedback.directionX
+    const sourceY = -feedback.directionY
+    const impactX = heroX + sourceX * 17
+    const impactY = heroY - 27 + sourceY * 10
+    const red = (feedback.color >> 16) & 0xff
+    const blue = feedback.color & 0xff
+    const hostileRim = blue > red * 0.82 ? 0xf1e2ff : 0xffe1dc
+    this.hero!.tint = energy > 0.2 ? hostileRim : 0xffffff
+
+    // A localized hostile seep and thrown cinders communicate the side and
+    // character of the hit without drawing a ring, arrow, or solid outline.
+    this.playerHitGraphics
+      .ellipse(
+        heroX + sourceX * 7,
+        heroY - 19 + sourceY * 5,
+        27 + feedback.intensity * 7,
+        34 + feedback.intensity * 8,
+      )
+      .fill({
+        color: feedback.color,
+        alpha: energy * 0.055,
+      })
+
+    const cinderCount = this.visualLod === 'mobile'
+      ? feedback.boss ? 6 : 4
+      : feedback.boss ? 10 : 7
+    const travelAngle = Math.atan2(feedback.directionY, feedback.directionX)
+    for (let cinder = 0; cinder < cinderCount; cinder += 1) {
+      const spread =
+        (cinder - (cinderCount - 1) * 0.5) *
+        (feedback.boss ? 0.13 : 0.17)
+      const angle = travelAngle + spread
+      const distance =
+        4 +
+        progress *
+          (14 + cinder * (feedback.boss ? 2.6 : 2.1))
+      const x = impactX + Math.cos(angle) * distance
+      const y = impactY + Math.sin(angle) * distance
+      const size = 1.15 + (cinder % 3) * 0.62 + feedback.intensity * 0.45
+      const tangentX = Math.cos(angle) * size * 2.8
+      const tangentY = Math.sin(angle) * size * 2.8
+      const normalX = -Math.sin(angle) * size * 0.7
+      const normalY = Math.cos(angle) * size * 0.7
+      this.playerHitGraphics
+        .poly(
+          [
+            x + tangentX,
+            y + tangentY,
+            x + normalX,
+            y + normalY,
+            x - tangentX * 0.72,
+            y - tangentY * 0.72,
+            x - normalX,
+            y - normalY,
+          ],
+          true,
+        )
+        .fill({
+          color: cinder % 3 === 0 ? 0xf3eee4 : feedback.color,
+          alpha: energy * (0.3 + (cinder % 2) * 0.12),
+        })
+    }
+
+    const sparkAngle = travelAngle + Math.PI * 0.5
+    const sparkX = Math.cos(sparkAngle)
+    const sparkY = Math.sin(sparkAngle)
+    this.playerHitGraphics
+      .poly(
+        [
+          impactX + sparkX * 7,
+          impactY + sparkY * 7,
+          impactX + feedback.directionX * 2,
+          impactY + feedback.directionY * 2,
+          impactX - sparkX * 7,
+          impactY - sparkY * 7,
+          impactX - feedback.directionX * 2,
+          impactY - feedback.directionY * 2,
+        ],
+        true,
+      )
+      .fill({ color: 0xf8f4e9, alpha: energy * 0.72 })
+
+    // The vignette is an off-screen organic bloom on the incoming side. It is
+    // intentionally asymmetric and soft, so it reads as direction rather than
+    // a UI arrow or geometric warning.
+    const width = this.app.screen.width
+    const height = this.app.screen.height
+    if (Math.abs(sourceX) >= Math.abs(sourceY)) {
+      const edgeX = sourceX < 0 ? -width * 0.08 : width * 1.08
+      const centerY = height * (0.5 + sourceY * 0.18)
+      this.playerDamageVignette
+        .ellipse(edgeX, centerY, width * 0.25, height * 0.68)
+        .fill({ color: feedback.color, alpha: energy * 0.065 })
+      this.playerDamageVignette
+        .ellipse(edgeX, centerY, width * 0.13, height * 0.48)
+        .fill({ color: 0x18040c, alpha: energy * 0.1 })
+    } else {
+      const edgeY = sourceY < 0 ? -height * 0.1 : height * 1.1
+      const centerX = width * (0.5 + sourceX * 0.2)
+      this.playerDamageVignette
+        .ellipse(centerX, edgeY, width * 0.7, height * 0.28)
+        .fill({ color: feedback.color, alpha: energy * 0.06 })
+      this.playerDamageVignette
+        .ellipse(centerX, edgeY, width * 0.48, height * 0.14)
+        .fill({ color: 0x18040c, alpha: energy * 0.1 })
+    }
   }
 
   private drawJoystick() {
@@ -7522,6 +8156,7 @@ class NighttraceRuntime {
           ? 'MOVE TO DRAW A TRACE · CLOSE THE LINE TO DETONATE · SPACE FIRES THE DAWN PULSE'
           : undefined,
       paused: this.isPaused(),
+      hitboxOverlay: this.showHitboxOverlay,
     }
   }
 
@@ -7612,6 +8247,7 @@ const GameCanvas = forwardRef<GameCanvasHandle, GameCanvasProps>(function GameCa
       selectUpgrade: (optionId) => runtimeRef.current?.selectUpgrade(optionId),
       rerollUpgrade: () => runtimeRef.current?.rerollUpgrade(),
       togglePause: () => runtimeRef.current?.togglePause(),
+      toggleHitboxOverlay: () => runtimeRef.current?.toggleHitboxOverlay(),
       activatePulse: () => runtimeRef.current?.activatePulse(),
       setOrientationPaused: (paused) => runtimeRef.current?.setOrientationPaused(paused),
     }),

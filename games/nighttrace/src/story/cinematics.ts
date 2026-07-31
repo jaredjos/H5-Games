@@ -140,15 +140,8 @@ const NARRATION_REMOTE_REELS = {
     'https://resource2.heygen.ai/text_to_speech/eff3caa328f246b192c5cc03e7f2d48a/054af44a167344d0af2722fdfef08d17/id=96c84639-68a6-4181-a103-ec628a0e985c.wav',
 } as const
 
-const NARRATION_LOCAL_REELS = {
-  star: 'assets/cinematics/audio/last-star.mp3',
-  bearer: 'assets/cinematics/audio/bearer.mp3',
-  sovereign: 'assets/cinematics/audio/sun-eater.mp3',
-} as const
-
 interface NarrationClip {
   readonly audioSrc: string
-  readonly audioFallbackSrc: string
   readonly startMs: number
   readonly endMs: number
 }
@@ -158,16 +151,17 @@ const clip = (
   startMs: number,
   endMs: number,
 ): NarrationClip => ({
-  audioSrc: NARRATION_LOCAL_REELS[reel],
-  audioFallbackSrc: NARRATION_REMOTE_REELS[reel],
+  audioSrc: NARRATION_REMOTE_REELS[reel],
   startMs,
   endMs,
 })
 
 /**
- * Actor reels are deliberately shipped as three cacheable performances rather
- * than dozens of tiny requests. Each story line seeks into its authored take.
- * Captions remain the deterministic fallback when a browser is offline.
+ * Three hosted, cacheable actor performances avoid dozens of tiny requests.
+ * Each story line seeks into its authored take. Captions remain the
+ * deterministic fallback when narration is unavailable or the player is
+ * offline. If local reels are packaged later, they can replace these primaries
+ * without changing line timing.
  */
 const NARRATION_CLIPS: Readonly<Record<string, NarrationClip>> = {
   'intro-star-01': clip('star', 239, 8_099),
@@ -233,7 +227,6 @@ const line = (
     startMs: start,
     endMs: start + duration,
     audioSrc: narration?.audioSrc ?? `assets/cinematics/audio/${id}.mp3`,
-    audioFallbackSrc: narration?.audioFallbackSrc,
     audioStartMs: narration?.startMs,
     audioEndMs: narration?.endMs,
   }

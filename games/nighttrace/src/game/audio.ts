@@ -2,6 +2,7 @@ import { appAssetUrl } from '../assetUrl'
 import type { GameSettings } from '../shared/types'
 import {
   chooseMusicVariant,
+  musicAssetsToPrime,
   musicAssetName,
   musicCrossfadeSeconds,
   musicRouteForLevel,
@@ -60,6 +61,28 @@ const SOUNDS: Record<SoundName, SoundShape> = {
   upgrade: { frequency: 440, endFrequency: 990, duration: 0.36, volume: 0.1, type: 'sine' },
   victory: { frequency: 392, endFrequency: 784, duration: 0.9, volume: 0.14, type: 'triangle' },
   defeat: { frequency: 180, endFrequency: 45, duration: 0.9, volume: 0.15, type: 'sine' },
+}
+
+const primedMusic = new Map<string, HTMLAudioElement>()
+
+/**
+ * Begin downloading the likely encounter and cinematic scores while the
+ * player is still choosing a level. Playback remains gesture-gated.
+ */
+export function primeNighttraceMusic(levelId: number) {
+  if (typeof Audio === 'undefined' || typeof navigator === 'undefined') return
+  const hints = navigator as NavigatorWithAudioHints
+  for (const assetName of musicAssetsToPrime(levelId, {
+    saveData: hints.connection?.saveData,
+    deviceMemory: hints.deviceMemory,
+  })) {
+    const source = appAssetUrl(`assets/audio/${assetName}`)
+    if (primedMusic.has(source)) continue
+    const audio = new Audio(source)
+    audio.preload = 'auto'
+    audio.load()
+    primedMusic.set(source, audio)
+  }
 }
 
 export class NighttraceAudio {

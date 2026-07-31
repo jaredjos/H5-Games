@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  HOSTILE_BOUNDARY_BRIGHTNESS_GAIN,
   HOSTILE_BOUNDARY_PARTICLE_KINDS,
   reserveHostileBoundaryParticleQuota,
   sampleHostileBoundaryParticles,
@@ -22,6 +23,10 @@ const numericValues = (particle: HostileBoundaryParticle) =>
   )
 
 describe('hostile boundary particles', () => {
+  it('applies the approved subtle brightness lift without changing density', () => {
+    expect(HOSTILE_BOUNDARY_BRIGHTNESS_GAIN).toBeCloseTo(1.15)
+  })
+
   it('returns immutable finite particles for every footprint, prominence, stage, and LOD', () => {
     expect(HOSTILE_BOUNDARY_PARTICLE_KINDS).toEqual(['filament', 'mote'])
 

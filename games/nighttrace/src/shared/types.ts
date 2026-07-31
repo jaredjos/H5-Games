@@ -126,6 +126,11 @@ export interface CombatLabConfig {
   encounter: 'boss' | 'sector'
   playerLevel: number
   bossHealthMultiplier: number
+  /**
+   * Experimental Combat Lab-only skill: 0 is disabled, 1-5 are spell ranks,
+   * and 6 is the Awakened state.
+   */
+  lightRingRank: number
   loadout: StartingLoadout
 }
 
@@ -138,6 +143,8 @@ export interface RunConfig {
   fixedLoadout: boolean
   playerLevel: number
   bossHealthMultiplier: number
+  /** Combat Lab-only prototype. Runtime ignores this outside Combat Lab. */
+  lightRingRank?: number
   startingLoadout?: StartingLoadout
 }
 
@@ -191,6 +198,7 @@ export interface GameSnapshot {
   rerollsRemaining?: number
   tutorial?: string
   paused: boolean
+  hitboxOverlay?: boolean
 }
 
 export interface RunResult {

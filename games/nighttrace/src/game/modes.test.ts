@@ -158,6 +158,7 @@ describe('Combat Lab presets and normalization', () => {
       encounter: 'boss',
       playerLevel: 1,
       bossHealthMultiplier: 1,
+      lightRingRank: 0,
       loadout: {
         weapons: [{ id: 'helio-lance', rank: 1 }],
         modules: [],
@@ -174,6 +175,7 @@ describe('Combat Lab presets and normalization', () => {
       encounter: 'invalid',
       playerLevel: 999.8,
       bossHealthMultiplier: 99,
+      lightRingRank: 999,
       loadout: {
         weapons: [{ id: 'null-bell', rank: -8 }],
         modules: [{ id: 'deep-capacitor', rank: 12 }],
@@ -187,6 +189,7 @@ describe('Combat Lab presets and normalization', () => {
       encounter: 'boss',
       playerLevel: COMBAT_LAB_PLAYER_LEVEL_MAX,
       bossHealthMultiplier: COMBAT_LAB_BOSS_HEALTH_MAX,
+      lightRingRank: 6,
       loadout: {
         weapons: [{ id: 'null-bell', rank: 1 }],
         modules: [{ id: 'deep-capacitor', rank: 3 }],
@@ -327,6 +330,7 @@ describe('RunConfig builders', () => {
       encounter: 'sector',
       playerLevel: 14,
       bossHealthMultiplier: 1.75,
+      lightRingRank: 6,
       loadout: getCombatLabPresetLoadout('final', 'rift-seeds'),
     })
 
@@ -339,6 +343,7 @@ describe('RunConfig builders', () => {
       fixedLoadout: true,
       playerLevel: 14,
       bossHealthMultiplier: 1.75,
+      lightRingRank: 6,
       startingLoadout: {
         weapons: [{ id: 'rift-seeds', rank: 5, awakened: true }],
         modules: [{ id: 'grav-anchor', rank: 3 }],

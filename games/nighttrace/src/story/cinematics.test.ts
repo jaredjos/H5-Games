@@ -67,16 +67,14 @@ describe('NIGHTTRACE campaign cinematics', () => {
         expect(line.text.trim().length).toBeGreaterThan(1)
 
         expect(line.audioSrc).toMatch(
-          /^assets\/cinematics\/audio\/(?:last-star|bearer|sun-eater)\.mp3$/,
-        )
-        expect(line.audioFallbackSrc).toMatch(
           /^https:\/\/resource2\.heygen\.ai\/.+\.wav$/,
         )
+        expect(line.audioFallbackSrc).toBeUndefined()
         expect(line.audioStartMs).toBeGreaterThanOrEqual(0)
         expect(line.audioEndMs).toBeGreaterThan(line.audioStartMs ?? 0)
         expect((line.audioEndMs ?? 0) - (line.audioStartMs ?? 0))
           .toBeLessThanOrEqual(line.duration)
-        const segment = `${line.audioFallbackSrc}#${line.audioStartMs}-${line.audioEndMs}`
+        const segment = `${line.audioSrc}#${line.audioStartMs}-${line.audioEndMs}`
         expect(audioSegments.has(segment), `duplicate voice segment ${segment}`).toBe(false)
         audioSegments.add(segment)
         audioPaths.add(line.audioSrc)
@@ -85,6 +83,16 @@ describe('NIGHTTRACE campaign cinematics', () => {
 
     expect(audioPaths.size).toBe(3)
     expect(audioSegments.size).toBe(lineIds.size)
+  })
+
+  it('never points a cinematic line at an absent local narration asset', () => {
+    const localAudioSources = CAMPAIGN_CINEMATICS.flatMap((scene) =>
+      scene.lines
+        .map((line) => line.audioSrc)
+        .filter((source) => !/^https?:\/\//i.test(source)),
+    )
+
+    expect(localAudioSources).toEqual([])
   })
 
   it('uses contiguous beats with no gaps, overlaps, or out-of-bounds frames', () => {

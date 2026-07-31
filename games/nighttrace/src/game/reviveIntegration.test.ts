@@ -17,7 +17,7 @@ const section = (startMarker: string, endMarker: string) => {
 describe('free revive runtime integration', () => {
   it('intercepts only the first lethal hit before defeat completion', () => {
     const damagePlayer = section(
-      '  private damagePlayer(amount: number)',
+      '  private damagePlayer(amount: number, context: PlayerDamageContext)',
       '  private finish(victory: boolean)',
     )
 
@@ -47,7 +47,7 @@ describe('free revive runtime integration', () => {
   it('freezes combat, prevents same-step boss victory, and removes heal chaining', () => {
     const damageEnemy = section(
       '  private damageEnemy(',
-      '  private damagePlayer(amount: number)',
+      '  private damagePlayer(amount: number, context: PlayerDamageContext)',
     )
     const sanctuary = section(
       '  private clearReviveSanctuary()',

@@ -2,7 +2,7 @@
 
 ## Shipping target
 
-NIGHTTRACE v1.19.0 is an installable mobile web app suitable for HTTPS static
+NIGHTTRACE v1.20.0 is an installable mobile web app suitable for HTTPS static
 hosting and Add to Home Screen on current Android and iOS browsers. Menus remain
 usable in portrait; combat is landscape-first and pauses behind an accessible
 rotate gate when required. It supports safe-area insets, 44 px minimum touch
@@ -59,11 +59,25 @@ or remote backend. Campaign progress and settings are stored locally under
   alpha cells with transparent gutters, preventing windup/release bleed
 - Rare support drops: persistent heaven-to-ground beacons and broken landing
   runes remain readable in dense landscape combat
-- Audio: licensed, mastered supplied ambient and sovereign music layers use boss-entry crossfades,
-  lifecycle-safe pause/resume, and procedural fallback
+- Audio and cinematics: licensed, mastered supplied ambient and sovereign music
+  layers use boss-entry crossfades, lifecycle-safe pause/resume, and procedural
+  fallback; cinematic audio is primed by the initiating player gesture and the
+  visual sequence follows the playable audio clock without a startup delay
 - Public modes: Combat Lab validated with arbitrary arena/boss/loadout
-  selection and infinite vitality; Boss Trials validated with sequential
-  locks, curated builds, boss-only start gates, and isolated save progression
+  selection, infinite vitality, all eleven story scenes, and the Lab-only
+  Dawnward Aegis prototype at ranks I–V plus Awakened; Boss Trials validated
+  with sequential locks, curated builds, boss-only start gates, and isolated
+  save progression
+- Dialogue: each story beat supports an expressive speaker portrait beside its
+  caption while preserving mobile-landscape readability and accessible controls
+- Damage readability: source-aware hero hit reactions distinguish hostile
+  contact, projectile, field, lane, and boss damage; compact color-coded damage
+  numbers remain bounded under dense horde load
+- Hero collision: the deliberately forgiving foot-centered hitbox is explicit,
+  smaller than the full hero artwork, and covered by focused tests
+- Hostile boundaries: broken bone-white/silver filaments and drifting motes are
+  brighter while remaining irregular, grounded, budgeted, and mechanically
+  identical
 - Hostile presentation: restrained horde motion accents and ten
   sovereign-specific palettes/motifs, idle and locomotion signatures, normal
   melee choreography, and level-specific specials validated in live PixiJS combat

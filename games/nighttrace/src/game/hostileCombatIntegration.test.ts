@@ -80,8 +80,11 @@ describe('hostile combat runtime integration', () => {
 
     expect(update).toContain('advanceHostileProjectile(')
     expect(update).toContain("if (event.type === 'release')")
-    expect(update).toContain('this.damagePlayer(event.damage)')
-    expect(update.match(/this\.damagePlayer\(event\.damage\)/g)).toHaveLength(1)
+    expect(update).toContain('this.damagePlayer(event.damage, {')
+    expect(update).toContain("kind: 'projectile'")
+    expect(update.match(/this\.damagePlayer\(event\.damage,\s*\{/g)).toHaveLength(
+      1,
+    )
   })
 
   it('keeps telegraph timing, hit geometry, and damage resolution unchanged', () => {
@@ -93,16 +96,17 @@ describe('hostile combat runtime integration', () => {
     expect(update).toMatch(/telegraph\.life\s*-=\s*delta/)
     expect(update).toContain('if (telegraph.life > 0) continue')
     expect(update).toMatch(
-      /playerDeltaX\s*\*\*\s*2\s*\+\s*playerDeltaY\s*\*\*\s*2\s*<=\s*\(telegraph\.radius\s*\+\s*18\)\s*\*\*\s*2/,
+      /playerDeltaX\s*\*\*\s*2\s*\+\s*playerDeltaY\s*\*\*\s*2\s*<=\s*\(telegraph\.radius\s*\+\s*HERO_HIT_RADIUS\)\s*\*\*\s*2/,
     )
     expect(update).toMatch(/localX\s*>=\s*0/)
     expect(update).toMatch(/localX\s*<=\s*telegraph\.length/)
     expect(update).toMatch(
-      /Math\.abs\(localY\)\s*<=\s*telegraph\.width\s*\*\s*0\.5\s*\+\s*18/,
+      /Math\.abs\(localY\)\s*<=\s*telegraph\.width\s*\*\s*0\.5\s*\+\s*HERO_HIT_RADIUS/,
     )
-    expect(update.match(/this\.damagePlayer\(telegraph\.damage\)/g)).toHaveLength(
-      1,
-    )
+    expect(
+      update.match(/this\.damagePlayer\(telegraph\.damage,\s*\{/g),
+    ).toHaveLength(1)
+    expect(update).toContain("kind: 'telegraph'")
     expect(update).not.toContain('sampleHostileBoundaryParticles')
     expect(update).not.toContain('allocateHostileBoundaryParticleQuotas')
   })

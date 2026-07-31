@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   chooseMusicVariant,
+  musicAssetsToPrime,
   musicAssetName,
   musicCrossfadeSeconds,
   musicRouteForLevel,
@@ -80,6 +81,20 @@ describe('music asset selection', () => {
     expect(musicAssetName('boss', 'compact')).toBe(
       'nighttrace-boss-loop-compact.mp3',
     )
+  })
+
+  it('primes the next encounter and frame-zero cinematic scores without duplicates', () => {
+    expect(musicAssetsToPrime(1)).toEqual([
+      'nighttrace-haunted-loop.mp3',
+      'nighttrace-boss-loop.mp3',
+      'nighttrace-haunted-loop-compact.mp3',
+      'nighttrace-boss-loop-compact.mp3',
+    ])
+    expect(musicAssetsToPrime(3, { saveData: true })).toEqual([
+      'nighttrace-retro-loop-compact.mp3',
+      'nighttrace-boss-loop-compact.mp3',
+      'nighttrace-haunted-loop-compact.mp3',
+    ])
   })
 })
 

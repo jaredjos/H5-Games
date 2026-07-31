@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current web release: `v1.19.0`
+- Current web release: `v1.20.0`
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -173,6 +173,27 @@ The v1.16.3 live hostile-boundary gate additionally requires:
 - warning radius, lane width and length, collision, damage, targeting,
   scheduling, and projectile destinations remain unchanged
 
+The v1.20.0 campaign-presentation and combat-readability gate additionally
+requires:
+
+- cinematic score and narration are primed by the initiating player gesture,
+  begin without a delayed visual lead, and remain synchronized through pause,
+  resume, skip, and scene completion
+- the prologue, nine sector interludes, and level-ten climax are all directly
+  replayable from Combat Lab, with expressive speaker portraits accompanying
+  every dialogue beat
+- hero hit feedback retains the source of contact, projectile, field, lane, or
+  boss damage; compact color-coded combat text stays legible under horde load
+- hostile fields, lanes, and projectile destinations keep their broken,
+  grounded material language while brighter filaments and motes improve
+  contrast without changing geometry
+- the deliberately forgiving, foot-centered hero hitbox is explicit and
+  covered by focused tests rather than inferred from the full character art
+- Dawnward Aegis remains hard-gated to Combat Lab and validates ranks I–V plus
+  its Awakened state without entering Campaign or Boss Trial draft pools
+- the isolated v1.18.0 visual experiment retains separate source, storage,
+  cache, service-worker scope, and selector link
+
 ## Release archives
 
 The Windows archive contains:
@@ -220,6 +241,8 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 - `v1.16.2`: revives restore 50% vitality, every Sovereign faces the live bearer with authored-row correction, and the animated hostile-boundary reference is published for final approval.
 - `v1.16.3`: the approved broken bone-white/silver boundary treatment enters live PixiJS combat for every boss and elite field, lane, and projectile destination; deterministic fair-share allocation keeps three-, five-, and eight-footprint signatures readable within dedicated desktop, mobile, and reduced-flash budgets without changing gameplay geometry.
 - `v1.16.4`: Boss Trials now begin independently of media playback, reject pre-encounter pause input, move an overlapping Sovereign outside the one-revive sanctuary, focus the newly unlocked crown after a first clear, and report the defeated Sovereign correctly; all hero-originating direct spells launch from the authored Dawncaster position while remote Graveglass and Eclipse targeting remains unchanged.
+- `v1.19.0`: The Last Light adds a voiced prologue, nine first-clear interludes, a level-ten climax, cinematic controls and settings, and the replayable Dawn Archive without changing combat balance or repeat-clear flow.
+- `v1.20.0`: reliable zero-lag audio/cinematic startup, all eleven scenes in Combat Lab, expressive dialogue portraits, source-aware damage feedback and compact colored combat text, brighter grounded hostile boundaries, an explicit test-covered forgiving hero hitbox, and the Lab-only Dawnward Aegis ranks I–V plus Awakened.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

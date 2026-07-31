@@ -2,6 +2,7 @@ export const HOSTILE_BOUNDARY_PARTICLE_KINDS = Object.freeze([
   'filament',
   'mote',
 ] as const)
+export const HOSTILE_BOUNDARY_BRIGHTNESS_GAIN = 1.15
 
 export type HostileBoundaryParticleKind =
   (typeof HOSTILE_BOUNDARY_PARTICLE_KINDS)[number]

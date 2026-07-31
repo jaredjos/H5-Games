@@ -29,6 +29,13 @@ import {
   WEAPONS,
 } from '../game/content'
 import {
+  LIGHT_RING_AWAKENING_NAME,
+  LIGHT_RING_PROFILES,
+  LIGHT_RING_SKILL_NAME,
+  lightRingDamagePerSecond,
+  lightRingProfile,
+} from '../game/lightRingSkill'
+import {
   BOSS_TRIAL_PLAYER_LEVELS,
   COMBAT_LAB_ARENAS,
   COMBAT_LAB_BOSSES,
@@ -579,22 +586,33 @@ function setWeaponAwakened(loadout: StartingLoadout, id: WeaponId, awakened: boo
 export function CombatLabScreen({
   save,
   config,
+  cinematics,
   onConfigChange,
   onLaunch,
+  onPlayCinematic,
   onNavigate,
 }: {
   save: SaveData
   config: CombatLabConfig
+  cinematics: readonly CampaignCinematic[]
   onConfigChange: (config: CombatLabConfig) => void
   onLaunch: (config: CombatLabConfig) => void
+  onPlayCinematic: (cinematic: CampaignCinematic) => void
   onNavigate: ScreenHeaderProps['onNavigate']
 }) {
   const normalized = useMemo(() => normalizeCombatLabConfig(config), [config])
   const [presetWeaponId, setPresetWeaponId] = useState<WeaponId>(normalized.loadout.weapons[0]?.id ?? 'helio-lance')
   const [activePreset, setActivePreset] = useState<CombatLabPresetId | undefined>()
+  const [selectedCinematicId, setSelectedCinematicId] = useState<string>(
+    cinematics[0]?.id ?? '',
+  )
   const arena = resolveArenaLevel(normalized.arenaLevelId)
   const boss = resolveBossLevel(normalized.bossLevelId)
   const bossCodex = BOSS_CODEX.find((entry) => entry.id === boss.bossId)
+  const lightRing = lightRingProfile(normalized.lightRingRank)
+  const selectedCinematic =
+    cinematics.find((cinematic) => cinematic.id === selectedCinematicId) ??
+    cinematics[0]
 
   const updateConfig = (patch: Partial<CombatLabConfig>) => {
     onConfigChange(normalizeCombatLabConfig({ ...normalized, ...patch }))
@@ -738,6 +756,39 @@ export function CombatLabScreen({
                 ))}
               </div>
             </PanelFrame>
+
+            <PanelFrame title="Cinematic simulator">
+              <div className="combat-lab-cinematics">
+                <label htmlFor="combat-lab-cinematic">
+                  <span><BookOpen size={15} /> Story reel</span>
+                  <select
+                    id="combat-lab-cinematic"
+                    value={selectedCinematic?.id ?? ''}
+                    onChange={(event) =>
+                      setSelectedCinematicId(event.currentTarget.value)}
+                  >
+                    {cinematics.map((cinematic, index) => (
+                      <option key={cinematic.id} value={cinematic.id}>
+                        {String(index + 1).padStart(2, '0')} · {cinematic.chapter} · {cinematic.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <CrestButton
+                  compact
+                  disabled={!selectedCinematic}
+                  onClick={() => {
+                    if (selectedCinematic) onPlayCinematic(selectedCinematic)
+                  }}
+                >
+                  Play Scene
+                </CrestButton>
+              </div>
+              <p className="combat-lab-cinematics__note">
+                All {cinematics.length} campaign scenes are unlocked in the Lab.
+                Playback never changes campaign progress.
+              </p>
+            </PanelFrame>
           </div>
 
           <PanelFrame className="combat-lab-arsenal">
@@ -809,6 +860,84 @@ export function CombatLabScreen({
               })}
             </div>
 
+            <section
+              className={`combat-lab-light-ring${lightRing ? ' is-equipped' : ''}${lightRing?.awakened ? ' is-awakened' : ''}`}
+              aria-label={`${LIGHT_RING_SKILL_NAME} experimental skill`}
+            >
+              <div className="combat-lab-light-ring__identity">
+                <span className="combat-lab-light-ring__sigil" aria-hidden="true">
+                  <Sparkles size={22} />
+                </span>
+                <span>
+                  <small>Experimental pattern · Lab only</small>
+                  <strong>
+                    {lightRing?.awakened
+                      ? LIGHT_RING_AWAKENING_NAME
+                      : LIGHT_RING_SKILL_NAME}
+                  </strong>
+                  <p>
+                    A broken ivory-gold perimeter burns every hostile body that
+                    enters its light.
+                  </p>
+                </span>
+              </div>
+              <div
+                className="combat-lab-light-ring__ranks"
+                role="radiogroup"
+                aria-label="Dawnward Aegis spell rank"
+              >
+                <button
+                  className={normalized.lightRingRank === 0 ? 'is-selected' : ''}
+                  role="radio"
+                  aria-checked={normalized.lightRingRank === 0}
+                  onClick={() => updateConfig({ lightRingRank: 0 })}
+                >
+                  Off
+                </button>
+                {LIGHT_RING_PROFILES.map((profile) => (
+                  <button
+                    key={profile.rank}
+                    className={[
+                      normalized.lightRingRank === profile.rank
+                        ? 'is-selected'
+                        : '',
+                      profile.awakened ? 'is-awakened' : '',
+                    ].filter(Boolean).join(' ')}
+                    role="radio"
+                    aria-checked={normalized.lightRingRank === profile.rank}
+                    onClick={() => updateConfig({ lightRingRank: profile.rank })}
+                  >
+                    {profile.awakened ? 'Awakened' : `Rank ${profile.rank}`}
+                  </button>
+                ))}
+              </div>
+              <div className="combat-lab-light-ring__readout" aria-live="polite">
+                {lightRing ? (
+                  <>
+                    <span>
+                      Diameter <strong>{lightRing.diameter}</strong>
+                    </span>
+                    <span>
+                      Horde DPS{' '}
+                      <strong>{Math.round(lightRingDamagePerSecond(lightRing.rank))}</strong>
+                    </span>
+                    <span>
+                      Boss DPS{' '}
+                      <strong>{Math.round(lightRingDamagePerSecond(lightRing.rank, true))}</strong>
+                    </span>
+                    <span>
+                      Material <strong>{lightRing.awakened ? 'Ascendant' : lightRing.label}</strong>
+                    </span>
+                  </>
+                ) : (
+                  <span>
+                    Select one of five spell ranks or its Awakened state to add
+                    the prototype to this simulation.
+                  </span>
+                )}
+              </div>
+            </section>
+
             <div className="combat-lab-traces">
               <div className="combat-lab-traces__heading">
                 <span><Zap size={16} /> Trace modifications</span>
@@ -853,6 +982,7 @@ export function CombatLabScreen({
               <span><Gauge size={16} /> Level {normalized.playerLevel}</span>
               <span><Shield size={16} /> {normalized.bossHealthMultiplier.toFixed(2)}× boss HP</span>
               <span><Swords size={16} /> {normalized.loadout.weapons.length} active patterns</span>
+              {lightRing ? <span><Sparkles size={16} /> Aegis {lightRing.label}</span> : null}
             </div>
             <CrestButton onClick={() => onLaunch(normalized)}>
               Launch Simulation

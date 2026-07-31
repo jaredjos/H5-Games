@@ -19,7 +19,16 @@ import {
 } from 'lucide-react'
 import { appAssetUrl } from '../assetUrl'
 import type { GameSettings } from '../shared/types'
-import type { CampaignCinematic, CinematicLine } from '../story/cinematics'
+import {
+  pauseInactiveCinematicAudio,
+  seekCinematicAudio,
+} from '../story/cinematicAudio'
+import type {
+  CampaignCinematic,
+  CinematicLine,
+  CinematicSpeaker,
+} from '../story/cinematics'
+import { getCinematicPortrait } from '../story/cinematicPortraits'
 import './CinematicScreen.css'
 
 type PlaybackState = 'probing' | 'awaiting-gesture' | 'playing' | 'paused' | 'finished'
@@ -63,6 +72,13 @@ export interface CinematicScreenProps {
 
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value))
+
+const SPEAKER_THEME: Readonly<Record<CinematicSpeaker, string>> = {
+  Bearer: 'bearer',
+  'Last Star': 'last-star',
+  'Sun-Eater': 'sun-eater',
+  'Cartographer echo': 'cartographer',
+}
 
 function hashString(value: string) {
   let hash = 2166136261
@@ -175,6 +191,9 @@ function CinematicSession({
     cinematic.lines.find(
       (line) => elapsedMs >= line.startMs && elapsedMs < line.endMs,
     ) ?? null
+  const activePortrait = activeLine
+    ? getCinematicPortrait(activeLine)
+    : null
   const activeBeat =
     cinematic.beats?.find(
       (beat) => elapsedMs >= beat.startMs && elapsedMs < beat.endMs,
@@ -189,9 +208,7 @@ function CinematicSession({
     ]
 
   const pauseAllAudio = useCallback(() => {
-    for (const { audio } of audioEntriesRef.current.values()) {
-      audio.pause()
-    }
+    pauseInactiveCinematicAudio(audioEntriesRef.current.values())
     scoreRef.current?.pause()
     activeAudioIdRef.current = null
   }, [])
@@ -222,9 +239,10 @@ function CinematicSession({
         ) ?? null
       const entry = line ? audioEntriesRef.current.get(line.id) : undefined
 
-      for (const [id, candidate] of audioEntriesRef.current) {
-        if (!entry || id !== line?.id) candidate.audio.pause()
-      }
+      pauseInactiveCinematicAudio(
+        audioEntriesRef.current.values(),
+        entry?.audio,
+      )
 
       if (
         !line ||
@@ -252,18 +270,13 @@ function CinematicSession({
         activeAudioIdRef.current = null
         return
       }
-      if (Number.isFinite(entry.audio.duration)) {
-        entry.audio.currentTime = Math.min(
-          sourceTime,
-          Math.max(0, entry.audio.duration - 0.03),
-        )
-      } else {
-        entry.audio.currentTime = sourceTime
+      if (!seekCinematicAudio(entry.audio, sourceTime)) {
+        activeAudioIdRef.current = null
+        return
       }
       activeAudioIdRef.current = line.id
       void entry.audio.play().catch((error: unknown) => {
         if (isAutoplayBlock(error)) {
-          failedAudioIdsRef.current.add(line.id)
           setNarrationUnavailable(true)
         }
         activeAudioIdRef.current = null
@@ -291,18 +304,24 @@ function CinematicSession({
         [...audioEntriesRef.current.values()].map((entry) => entry.audio),
       ),
     ]
-    const unlocks = uniqueAudio.map((audio) => {
+    for (const audio of uniqueAudio) {
       audio.volume = 0
-      audio.currentTime = 0
-      const attempt = audio.play()
-      return attempt.finally(() => {
+      seekCinematicAudio(audio, 0)
+      try {
+        const attempt = audio.play()
         audio.pause()
-        audio.currentTime = 0
+        void attempt.catch(() => undefined).finally(() => {
+          audio.volume = mutedRef.current ? 0 : volumeRef.current
+        })
+      } catch {
+        audio.pause()
         audio.volume = mutedRef.current ? 0 : volumeRef.current
-      })
-    })
+      }
+    }
 
-    void Promise.allSettled(unlocks).then(() => beginClock(0))
+    // Keep this synchronous with the trusted click. Waiting for all three
+    // actor reels to buffer delayed both the score and the scene by seconds.
+    beginClock(0)
   }, [beginClock, playback])
 
   const togglePlayback = useCallback(() => {
@@ -363,6 +382,7 @@ function CinematicSession({
     score.preload = 'auto'
     score.volume = mutedRef.current ? 0 : scoreGain
     scoreRef.current = score
+    score.load()
 
     return () => {
       score.pause()
@@ -375,9 +395,11 @@ function CinematicSession({
   useEffect(() => {
     const generation = lifecycleRef.current + 1
     lifecycleRef.current = generation
+    failedAudioIdsRef.current.clear()
+    endedAudioIdsRef.current.clear()
+    activeAudioIdRef.current = null
 
     const entries = new Map<string, AudioEntry>()
-    const audioBySource = new Map<string, HTMLAudioElement>()
     const linesBySource = new Map<string, CinematicLine[]>()
     for (const line of cinematic.lines) {
       if (!line.audioSrc) continue
@@ -395,7 +417,7 @@ function CinematicSession({
       const fallbackUrl = fallbackSource ? appAssetUrl(fallbackSource) : undefined
       audio.preload = 'auto'
       audio.volume = volumeRef.current
-      audioBySource.set(source, audio)
+      audio.load()
       audio.addEventListener('ended', () => {
         if (lifecycleRef.current !== generation) return
         const activeId = activeAudioIdRef.current
@@ -420,43 +442,34 @@ function CinematicSession({
     }
     audioEntriesRef.current = entries
 
-    const firstNarratedLine = cinematic.lines.find((line) => line.audioSrc)
-    const firstEntry = firstNarratedLine
-      ? entries.get(firstNarratedLine.id)
-      : undefined
+    // The score begins at frame zero, so it is the correct autoplay probe.
+    // Probing the first actor reel previously held the entire timeline until
+    // that much larger file had buffered.
+    const probe = scoreRef.current
 
-    if (!firstNarratedLine || !firstEntry) {
-      queueMicrotask(() => {
-        if (lifecycleRef.current === generation) beginClock(0)
-      })
-    } else {
-      firstEntry.audio.currentTime = (firstNarratedLine.audioStartMs ?? 0) / 1000
-      void firstEntry.audio
-        .play()
-        .then(() => {
-          if (lifecycleRef.current !== generation) {
-            firstEntry.audio.pause()
-            return
-          }
-          if (firstNarratedLine.startMs <= 100) {
-            activeAudioIdRef.current = firstNarratedLine.id
-          } else {
-            firstEntry.audio.pause()
-            firstEntry.audio.currentTime = (firstNarratedLine.audioStartMs ?? 0) / 1000
-          }
-          beginClock(0)
-        })
-        .catch((error: unknown) => {
-          if (lifecycleRef.current !== generation) return
-          firstEntry.audio.pause()
-          firstEntry.audio.currentTime = (firstNarratedLine.audioStartMs ?? 0) / 1000
-          if (isAutoplayBlock(error)) {
-            setPlayback('awaiting-gesture')
-          } else {
-            beginClock(0)
-          }
-        })
+    let autoplayAttempt: Promise<void> | undefined
+    try {
+      autoplayAttempt = probe?.play()
+    } catch {
+      // A media implementation without Promise playback still gets captions.
     }
+    queueMicrotask(() => {
+      if (lifecycleRef.current === generation) beginClock(0)
+    })
+    void autoplayAttempt
+      ?.catch((error: unknown) => {
+        if (
+          lifecycleRef.current !== generation ||
+          !isAutoplayBlock(error)
+        ) {
+          return
+        }
+        pauseAllAudio()
+        offsetRef.current = 0
+        elapsedRef.current = 0
+        setElapsedMs(0)
+        setPlayback('awaiting-gesture')
+      })
 
     return () => {
       lifecycleRef.current += 1
@@ -478,6 +491,7 @@ function CinematicSession({
     beginClock,
     cinematic.id,
     cinematic.lines,
+    pauseAllAudio,
   ])
 
   useEffect(() => {
@@ -680,11 +694,38 @@ function CinematicSession({
           </div>
         </div>
 
-        {captionsVisible && activeLine ? (
-          <div className="nt-cinematic__captions" aria-live="polite">
-            <strong>{activeLine.speaker}</strong>
-            <p>{activeLine.text}</p>
-          </div>
+        {captionsVisible && activeLine && activePortrait ? (
+          <section
+            key={activeLine.id}
+            className={[
+              'nt-cinematic__captions',
+              `nt-cinematic__captions--${SPEAKER_THEME[activeLine.speaker]}`,
+            ].join(' ')}
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <div className="nt-cinematic__portrait" aria-hidden="true">
+              <div className="nt-cinematic__portrait-aura" />
+              <div className="nt-cinematic__portrait-window">
+                <img
+                  className="nt-cinematic__portrait-sheet"
+                  src={appAssetUrl(activePortrait.asset)}
+                  alt=""
+                  draggable={false}
+                  style={{
+                    transform: `translate3d(-${activePortrait.frame * 25}%, 0, 0)`,
+                  }}
+                />
+              </div>
+            </div>
+            <div className="nt-cinematic__dialogue-copy">
+              <strong className="nt-cinematic__speaker">
+                {activeLine.speaker}
+              </strong>
+              <p>{activeLine.text}</p>
+            </div>
+          </section>
         ) : null}
 
         {narrationUnavailable ? (

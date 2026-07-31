@@ -277,12 +277,43 @@ export function UpgradeOverlay({
   )
 }
 
-function VitalityHud({ snapshot }: { snapshot: GameSnapshot }) {
+function VitalityHud({
+  snapshot,
+  reducedMotion,
+}: {
+  snapshot: GameSnapshot
+  reducedMotion: boolean
+}) {
   const hasNoVitalityLimit = snapshot.runMode === 'combat-lab'
+  const previousVitality = useRef({
+    hp: snapshot.hp,
+    shield: snapshot.shield,
+  })
+  const [impactKind, setImpactKind] = useState<
+    'none' | 'health' | 'shield'
+  >('none')
+
+  useEffect(() => {
+    const previous = previousVitality.current
+    const nextImpact =
+      snapshot.hp < previous.hp
+        ? 'health'
+        : snapshot.shield < previous.shield
+          ? 'shield'
+          : 'none'
+    previousVitality.current = {
+      hp: snapshot.hp,
+      shield: snapshot.shield,
+    }
+    if (nextImpact === 'none') return
+    setImpactKind(nextImpact)
+    const timeout = window.setTimeout(() => setImpactKind('none'), 310)
+    return () => window.clearTimeout(timeout)
+  }, [snapshot.hp, snapshot.shield])
 
   return (
     <div
-      className="vitality-hud"
+      className={`vitality-hud${!reducedMotion && impactKind === 'health' ? ' is-health-hit' : !reducedMotion && impactKind === 'shield' ? ' is-shield-hit' : ''}`}
       aria-label={hasNoVitalityLimit ? 'Infinite vitality, no damage limit' : 'Vitality and shield'}
     >
       <div className="vitality-crest">
@@ -489,6 +520,7 @@ export function GameHud({
   formatTime,
   onPause,
   onPulse,
+  onToggleHitbox,
 }: {
   snapshot: GameSnapshot
   level: LevelDefinition
@@ -497,6 +529,7 @@ export function GameHud({
   formatTime: (seconds: number) => string
   onPause: () => void
   onPulse: () => void
+  onToggleHitbox: () => void
 }) {
   const isCampaign = snapshot.runMode === 'campaign'
   const isCombatLab = snapshot.runMode === 'combat-lab'
@@ -526,7 +559,7 @@ export function GameHud({
         <i><b style={{ width: `${isCampaign ? xpPercent : 100}%` }} /></i>
         <strong>{isCampaign ? `Lv. ${snapshot.level}` : isCombatLab ? 'No limits' : 'Sovereign'}</strong>
       </div>
-      <VitalityHud snapshot={snapshot} />
+      <VitalityHud snapshot={snapshot} reducedMotion={settings.reducedShake} />
       <div className="timer-hud">
         <strong>{formatTime(displayTime)}</strong>
         <span>{timerLabel}</span>
@@ -539,6 +572,17 @@ export function GameHud({
       <button className="pause-control" onClick={onPause} aria-label="Pause encounter">
         <Pause size={19} />
       </button>
+      {isCombatLab ? (
+        <button
+          className={`lab-hitbox-control${snapshot.hitboxOverlay ? ' is-active' : ''}`}
+          onClick={onToggleHitbox}
+          aria-pressed={Boolean(snapshot.hitboxOverlay)}
+          aria-label="Toggle the hero collision footprint"
+        >
+          <ScanLine size={15} />
+          <span>Hitbox</span>
+        </button>
+      ) : null}
       <BossHud snapshot={snapshot} />
       <BossIntro
         bossName={snapshot.awaitingStart ? undefined : snapshot.boss?.name}
