@@ -6,8 +6,8 @@ NIGHTTRACE_Combat_Systems_Codex.pdf
   difficulty logic, original music, mobile readiness, and source anchors.
 
 upgrade-states-01.png
-  Real PixiJS gameplay frames for Helio Lance, Crescent Array, Arc Choir, and
-  Rift Seeds at Solo, Combined, Mastered, and Final.
+  Archival v1.4 PixiJS gameplay frames for Helio Lance, Crescent Array,
+  Arc Choir, and Rift Seeds at Solo, Combined, Mastered, and Final.
 
 upgrade-states-02.png
   Real PixiJS gameplay frames for Comet Swarm, Graveglass Spires, Mirror Bow,
