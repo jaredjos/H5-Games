@@ -75,7 +75,7 @@ describe('weapon VFX profiles', () => {
       'Solar Crown',
       'Eclipse Ice',
       'Cathedral Voltage',
-      'Eventide Viridian',
+      'Astral Judgment',
       'Perihelion Ember',
       'Sepulchral Orchard',
       'Infinite Prism',

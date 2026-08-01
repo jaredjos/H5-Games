@@ -42,12 +42,12 @@ const RANK_TITLES: Record<WeaponId, readonly string[]> = {
   ],
   'rift-seeds': [
     'Dormant',
-    'Void Seed',
-    'Twin Reliquary',
-    'Eventide Cluster',
-    'Gravitic Garden',
-    'Abyssal Bloom',
-    'Eventide Garden',
+    'First Judgment',
+    'Forked Omen',
+    'Storm Litany',
+    'Astral Tribunal',
+    'Crownfall',
+    "Heaven's Sentence",
   ],
   'comet-swarm': [
     'Dormant',
@@ -73,7 +73,7 @@ const RANK_TITLES: Record<WeaponId, readonly string[]> = {
 
 const RANK_ROMAN = ['Off', 'I', 'II', 'III', 'IV', 'V'] as const
 
-const SEED_POSITIONS = [
+const VERDICT_POSITIONS = [
   [27, 33],
   [72, 31],
   [31, 71],
@@ -172,22 +172,28 @@ function ArcChoirEffect({ density, awakened }: { density: number; awakened: bool
   )
 }
 
-function RiftSeedsEffect({ density, awakened }: { density: number; awakened: boolean }) {
-  const count = Math.min(SEED_POSITIONS.length, Math.max(1, density + (awakened ? 1 : 0)))
+function AstralVerdictEffect({ density, awakened }: { density: number; awakened: boolean }) {
+  const count = Math.min(VERDICT_POSITIONS.length, Math.max(1, density + (awakened ? 1 : 0)))
   return (
-    <div className="spell-theater-effect spell-theater-effect--rift" aria-hidden="true">
-      <span className="spell-theater-rift-haze" />
-      {SEED_POSITIONS.slice(0, count).map(([left, top], index) => (
+    <div className="spell-theater-effect spell-theater-effect--verdict" aria-hidden="true">
+      <span className="spell-theater-verdict-cloud" />
+      {VERDICT_POSITIONS.slice(0, count).map(([left, top], index) => (
         <span
-          className={`spell-theater-seed${awakened && index === count - 1 ? ' is-sovereign' : ''}`}
+          className={`spell-theater-verdict-strike${awakened && index === count - 1 ? ' is-sovereign' : ''}`}
           key={`${left}-${top}`}
-          style={{ left: `${left}%`, top: `${top}%`, '--seed-index': index } as CSSProperties}
+          style={{
+            left: `${left}%`,
+            top: `${top}%`,
+            '--verdict-index': index,
+            '--verdict-delay': `${-index * 0.16}s`,
+          } as CSSProperties}
         >
-          <i className="spell-theater-seed__lens" />
-          <i className="spell-theater-seed__splinters" />
+          <i className="spell-theater-verdict-strike__bolt" />
+          <i className="spell-theater-verdict-strike__impact" />
+          <i className="spell-theater-verdict-strike__motes" />
         </span>
       ))}
-      {density >= 4 ? <span className="spell-theater-rift-tide" /> : null}
+      {density >= 4 ? <span className="spell-theater-verdict-tempest" /> : null}
     </div>
   )
 }
@@ -251,7 +257,7 @@ function SpellEffect({ weaponId, density, awakened }: {
   if (weaponId === 'helio-lance') return <HelioLanceEffect density={density} awakened={awakened} />
   if (weaponId === 'crescent-array') return <CrescentArrayEffect density={density} awakened={awakened} />
   if (weaponId === 'arc-choir') return <ArcChoirEffect density={density} awakened={awakened} />
-  if (weaponId === 'rift-seeds') return <RiftSeedsEffect density={density} awakened={awakened} />
+  if (weaponId === 'rift-seeds') return <AstralVerdictEffect density={density} awakened={awakened} />
   if (weaponId === 'comet-swarm') return <CometSwarmEffect density={density} awakened={awakened} />
   if (weaponId === 'mirror-bow') return <MirrorBowEffect density={density} awakened={awakened} />
   return null

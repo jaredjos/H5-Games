@@ -65,11 +65,12 @@ export const COMBAT_SFX_PROFILES = Object.freeze({
     ],
   },
   'rift-seeds': {
-    priority: 2,
-    cooldownSeconds: 0.12,
+    priority: 3,
+    cooldownSeconds: 0.1,
     tones: [
-      { frequency: 286, endFrequency: 54, duration: 0.28, volume: 0.027, type: 'sine', filterFrequency: 1600 },
-      { delay: 0.045, frequency: 940, endFrequency: 174, duration: 0.2, volume: 0.013, type: 'triangle', filterFrequency: 3300 },
+      { frequency: 2680, endFrequency: 340, duration: 0.13, volume: 0.028, type: 'sawtooth', filterFrequency: 7200 },
+      { delay: 0.018, frequency: 1640, endFrequency: 118, duration: 0.21, volume: 0.021, type: 'square', filterFrequency: 5200 },
+      { delay: 0.062, frequency: 112, endFrequency: 46, duration: 0.3, volume: 0.026, type: 'sine', filterFrequency: 1400 },
     ],
   },
   'comet-swarm': {
@@ -93,8 +94,9 @@ export const COMBAT_SFX_PROFILES = Object.freeze({
     priority: 2,
     cooldownSeconds: 0.07,
     tones: [
-      { frequency: 1880, endFrequency: 1180, duration: 0.1, volume: 0.021, type: 'sine', filterFrequency: 6200 },
-      { delay: 0.022, frequency: 2820, endFrequency: 1520, duration: 0.09, volume: 0.015, type: 'triangle', filterFrequency: 7200 },
+      { frequency: 2460, endFrequency: 1340, duration: 0.075, volume: 0.02, type: 'triangle', filterFrequency: 7000 },
+      { delay: 0.026, frequency: 1180, endFrequency: 2140, duration: 0.11, volume: 0.017, type: 'sine', filterFrequency: 6800 },
+      { delay: 0.052, frequency: 3340, endFrequency: 1720, duration: 0.07, volume: 0.011, type: 'triangle', filterFrequency: 7600 },
     ],
   },
   'null-bell': {

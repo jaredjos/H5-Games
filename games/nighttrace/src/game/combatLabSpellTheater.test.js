@@ -32,10 +32,10 @@ describe('Combat Lab spell review theater', () => {
     expect(screensSource).toContain('<CombatLabSpellTheater')
   })
 
-  it('provides materially distinct Rift Seeds and Mirror Bow structures', () => {
-    expect(theaterSource).toContain('spell-theater-seed__lens')
-    expect(theaterSource).toContain('spell-theater-seed__splinters')
-    expect(theaterSource).toContain('spell-theater-rift-tide')
+  it('provides materially distinct Astral Verdict and Mirror Bow structures', () => {
+    expect(theaterSource).toContain('spell-theater-verdict-strike__bolt')
+    expect(theaterSource).toContain('spell-theater-verdict-strike__impact')
+    expect(theaterSource).toContain('spell-theater-verdict-tempest')
     expect(theaterSource).toContain('spell-theater-mirror-bow__upper')
     expect(theaterSource).toContain('spell-theater-pale-bolt')
     expect(theaterSource).toContain('spell-theater-infinite-arch')

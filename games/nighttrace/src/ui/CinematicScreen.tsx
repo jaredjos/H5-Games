@@ -196,10 +196,29 @@ function CinematicSession({
     ? getCinematicPortrait(activeLine)
     : null
   const hasNarration = cinematic.lines.some((line) => Boolean(line.audioSrc))
+  const activeBeatIndex = cinematic.beats.findIndex(
+    (beat) => elapsedMs >= beat.startMs && elapsedMs < beat.endMs,
+  )
   const activeBeat =
-    cinematic.beats?.find(
-      (beat) => elapsedMs >= beat.startMs && elapsedMs < beat.endMs,
-    ) ?? null
+    activeBeatIndex >= 0 ? cinematic.beats[activeBeatIndex] : null
+  const desiredPlateAsset = activeBeat?.backgroundAsset ?? cinematic.arenaAsset
+  const desiredPlateTransition = activeBeat?.transition ?? 'fade'
+  const desiredPlateKey = `${cinematic.id}:${desiredPlateAsset}`
+  const previousBeatIndex =
+    activeBeatIndex > 0
+      ? activeBeatIndex - 1
+      : activeBeatIndex < 0
+        ? cinematic.beats.reduce(
+            (latest, beat, index) => (beat.endMs <= elapsedMs ? index : latest),
+            -1,
+          )
+        : -1
+  const previousPlateAsset =
+    previousBeatIndex >= 0
+      ? (cinematic.beats[previousBeatIndex]?.backgroundAsset ?? cinematic.arenaAsset)
+      : cinematic.arenaAsset
+  const outgoingPlateAsset =
+    previousPlateAsset === desiredPlateAsset ? null : previousPlateAsset
   const progressLabels =
     scene.progressLabels?.slice(0, 3) ??
     [
@@ -207,6 +226,20 @@ function CinematicSession({
       cinematic.title,
       cinematic.kind === 'finale' ? 'Dawn' : 'The Wake',
     ]
+
+  useEffect(() => {
+    const assets = new Set([
+      cinematic.arenaAsset,
+      ...cinematic.beats.flatMap((beat) =>
+        beat.backgroundAsset ? [beat.backgroundAsset] : [],
+      ),
+    ])
+    assets.forEach((asset) => {
+      const image = new Image()
+      image.decoding = 'async'
+      image.src = appAssetUrl(asset)
+    })
+  }, [cinematic.arenaAsset, cinematic.beats])
 
   const pauseAllAudio = useCallback(() => {
     pauseInactiveCinematicAudio(audioEntriesRef.current.values())
@@ -644,13 +677,23 @@ function CinematicSession({
       aria-label={`${cinematic.chapterLabel}: ${cinematic.title}`}
     >
       <section className="nt-cinematic__viewport" aria-live="off">
-        <div
-          className="nt-cinematic__arena"
-          style={{
-            backgroundImage: `url("${appAssetUrl(cinematic.arenaAsset)}")`,
-          }}
-          aria-hidden="true"
-        />
+        <div className="nt-cinematic__arena" aria-hidden="true">
+          {outgoingPlateAsset ? (
+            <div
+              className="nt-cinematic__plate nt-cinematic__plate--previous"
+              style={{
+                backgroundImage: `url("${appAssetUrl(outgoingPlateAsset)}")`,
+              }}
+            />
+          ) : null}
+          <div
+            key={desiredPlateKey}
+            className={`nt-cinematic__plate nt-cinematic__plate--current nt-cinematic__plate--transition-${desiredPlateTransition}`}
+            style={{
+              backgroundImage: `url("${appAssetUrl(desiredPlateAsset)}")`,
+            }}
+          />
+        </div>
         <div className="nt-cinematic__depth-shadow" aria-hidden="true" />
         <div className="nt-cinematic__atmosphere" aria-hidden="true" />
 

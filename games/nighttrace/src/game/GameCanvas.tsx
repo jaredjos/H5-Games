@@ -495,8 +495,7 @@ type WeaponEffectKind =
   | 'crescent-orbit'
   | 'crescent-impact'
   | 'arc-chain'
-  | 'rift-cast'
-  | 'rift-impact'
+  | 'astral-verdict'
   | 'comet-launch'
   | 'comet-impact'
   | 'graveglass-eruption'
@@ -520,6 +519,12 @@ interface WeaponEffectEntity {
   pattern?: ReplacementWeaponPattern<number>
   hitPulseLife?: number
   hitPulseTotal?: number
+  strikeHits?: Array<{
+    targetUid: number
+    strikeIndex: number
+    damage: number
+  }>
+  triggeredStrikeCount?: number
 }
 
 const canvasHostStyle: CSSProperties = {
@@ -3002,19 +3007,14 @@ class NighttraceRuntime {
         )
         break
       case 'rift-seeds':
-        this.emitWeaponCastVfx(owned.id, visualState, angle, 74, visualSeed)
-        this.spawnProjectile(
-          owned.id,
-          angle,
-          235,
+        this.castAstralVerdict(
+          target,
           damage,
-          0,
-          0.4,
-          definition.color,
-          1.25 + moduleRank * 0.12,
+          rank,
+          moduleRank,
+          Boolean(owned.awakened),
           visualState,
           visualSeed,
-          damage,
         )
         break
       case 'comet-swarm': {
@@ -3117,7 +3117,17 @@ class NighttraceRuntime {
     }
 
     if (this.traceMods.includes('crossfire') && this.attackVolley % 4 === 0) {
-      if (owned.id === 'ash-halo' || owned.id === 'null-bell') {
+      if (owned.id === 'rift-seeds') {
+        this.castAstralVerdict(
+          target,
+          damage * 0.72,
+          rank,
+          moduleRank,
+          Boolean(owned.awakened),
+          visualState,
+          visualSeed + 41,
+        )
+      } else if (owned.id === 'ash-halo' || owned.id === 'null-bell') {
         const echo = this.castReplacementWeapon(
           owned.id,
           visualState,
@@ -3184,13 +3194,25 @@ class NighttraceRuntime {
 
   private pushWeaponEffect(effect: WeaponEffectEntity) {
     if (this.weaponEffects.length >= 72) {
-      let shortestIndex = 0
-      for (let index = 1; index < this.weaponEffects.length; index += 1) {
-        if (this.weaponEffects[index].life < this.weaponEffects[shortestIndex].life) {
+      let shortestIndex = -1
+      for (let index = 0; index < this.weaponEffects.length; index += 1) {
+        const candidate = this.weaponEffects[index]
+        const pendingAstralStrikes =
+          candidate.kind === 'astral-verdict' &&
+          (candidate.triggeredStrikeCount ?? 0) < (candidate.points?.length ?? 0)
+        if (pendingAstralStrikes) continue
+        if (
+          shortestIndex < 0 ||
+          candidate.life < this.weaponEffects[shortestIndex].life
+        ) {
           shortestIndex = index
         }
       }
-      this.weaponEffects.splice(shortestIndex, 1)
+      if (shortestIndex >= 0) {
+        this.weaponEffects.splice(shortestIndex, 1)
+      } else if (effect.kind !== 'astral-verdict') {
+        return
+      }
     }
     this.weaponEffects.push(effect)
   }
@@ -3208,7 +3230,7 @@ class NighttraceRuntime {
       'helio-lance': 'helio-gate',
       'crescent-array': 'crescent-orbit',
       'arc-choir': undefined,
-      'rift-seeds': 'rift-cast',
+      'rift-seeds': undefined,
       'comet-swarm': 'comet-launch',
       'ash-halo': 'graveglass-eruption',
       'mirror-bow': 'mirror-gate',
@@ -3220,7 +3242,7 @@ class NighttraceRuntime {
       'helio-lance': 0.46,
       'crescent-array': 0.62,
       'arc-choir': 0.5,
-      'rift-seeds': 0.58,
+      'rift-seeds': 0.76,
       'comet-swarm': 0.42,
       'ash-halo': visualState.stage === 'final' ? 1.04 : 0.86,
       'mirror-bow': 0.5,
@@ -3264,13 +3286,11 @@ class NighttraceRuntime {
     projectile: ProjectileEntity,
     x: number,
     y: number,
-    expired = false,
   ) {
     if (projectile.hitIds.length > 2 && projectile.visualState.stage !== 'final') return
     const kind: Partial<Record<WeaponId, WeaponEffectKind>> = {
       'helio-lance': 'helio-impact',
       'crescent-array': 'crescent-impact',
-      'rift-seeds': 'rift-impact',
       'comet-swarm': 'comet-impact',
       'mirror-bow': 'mirror-impact',
     }
@@ -3281,17 +3301,13 @@ class NighttraceRuntime {
       projectile.visualState,
     )
     const radius =
-      projectile.weaponId === 'rift-seeds'
-        ? expired ? 118 : 88
-        : projectile.weaponId === 'helio-lance'
+      projectile.weaponId === 'helio-lance'
           ? 56
           : projectile.weaponId === 'mirror-bow'
             ? 66
             : 48
     const duration =
-      projectile.weaponId === 'rift-seeds'
-        ? 0.66
-        : projectile.visualState.stage === 'final'
+      projectile.visualState.stage === 'final'
           ? 0.46
           : 0.34
     this.pushWeaponEffect({
@@ -3429,17 +3445,6 @@ class NighttraceRuntime {
         projectile.x > WORLD_WIDTH + 80 ||
         projectile.y > WORLD_HEIGHT + 80
       ) {
-        if (projectile.weaponId === 'rift-seeds' && projectile.life <= 0) {
-          this.areaDamage(
-            projectile.x,
-            projectile.y,
-            92,
-            projectile.damage * 0.45,
-            projectile.weaponId,
-            projectile.bossDamage,
-          )
-          this.emitProjectileImpactVfx(projectile, projectile.x, projectile.y, true)
-        }
         this.deactivateProjectile(projectile)
         continue
       }
@@ -3927,6 +3932,24 @@ class NighttraceRuntime {
     for (const effect of this.loopEffects) effect.life -= delta
     for (const effect of this.weaponEffects) {
       effect.life -= delta
+      if (effect.kind === 'astral-verdict') {
+        const elapsed = effect.total - Math.max(0, effect.life)
+        const strikeTotal = effect.points?.length ?? 0
+        let triggered = effect.triggeredStrikeCount ?? 0
+        while (triggered < strikeTotal) {
+          const releaseAt = 0.07 + Math.min(0.28, triggered * 0.045)
+          if (elapsed < releaseAt) break
+          for (const hit of effect.strikeHits ?? []) {
+            if (hit.strikeIndex !== triggered) continue
+            const enemy = this.enemies.find(
+              (candidate) => candidate.active && candidate.uid === hit.targetUid,
+            )
+            if (enemy) this.damageEnemy(enemy, hit.damage, 'rift-seeds')
+          }
+          triggered += 1
+        }
+        effect.triggeredStrikeCount = triggered
+      }
       if (effect.hitPulseLife !== undefined) {
         effect.hitPulseLife = Math.max(0, effect.hitPulseLife - delta)
       }
@@ -4617,6 +4640,111 @@ class NighttraceRuntime {
       if (impacts.length < 12) impacts.push({ x: enemy.x, y: enemy.y })
     }
     return impacts
+  }
+
+  private astralVerdictTargets(
+    primary: EnemyEntity,
+    count: number,
+    seed: number,
+  ): Vec2[] {
+    const candidates = this.enemies
+      .filter((enemy) => enemy.active)
+      .map((enemy) => ({
+        enemy,
+        score:
+          this.nearbyEnemyCount(enemy.x, enemy.y, 116) * 120 -
+          Math.sqrt(distanceSquared(enemy, this.player)) * 0.16 +
+          (enemy.isBoss ? 1_000 : 0),
+      }))
+      .sort((left, right) => right.score - left.score)
+
+    const points: Vec2[] = []
+    for (const { enemy } of candidates) {
+      if (points.length >= count) break
+      if (
+        points.some(
+          (point) => distanceSquared(point, enemy) < 72 ** 2,
+        )
+      ) {
+        continue
+      }
+      points.push({ x: enemy.x, y: enemy.y })
+    }
+
+    if (points.length === 0) points.push({ x: primary.x, y: primary.y })
+    while (points.length < count) {
+      const index = points.length
+      const angle =
+        replacementCosmeticUnit(seed, index, 347) * Math.PI * 2
+      const distance = 7 + (index % 3) * 5
+      points.push({
+        x: clamp(primary.x + Math.cos(angle) * distance, 42, WORLD_WIDTH - 42),
+        y: clamp(primary.y + Math.sin(angle) * distance, 42, WORLD_HEIGHT - 42),
+      })
+    }
+    return points.slice(0, count)
+  }
+
+  private castAstralVerdict(
+    target: EnemyEntity,
+    castDamageBudget: number,
+    rank: number,
+    moduleRank: number,
+    awakened: boolean,
+    visualState: WeaponVfxState,
+    visualSeed: number,
+  ) {
+    const strikeCount = Math.min(
+      8,
+      1 + Math.floor((rank - 1) / 2) + moduleRank + (awakened ? 2 : 0),
+    )
+    const strikeRadius =
+      72 + rank * 7 + moduleRank * 7 + (awakened ? 12 : 0)
+    const points = this.astralVerdictTargets(target, strikeCount, visualSeed)
+    const strikeRadiusSquared = strikeRadius ** 2
+    const covered = this.enemies
+      .filter((enemy) => enemy.active)
+      .map((enemy) => {
+        let strikeIndex = -1
+        let nearest = Number.POSITIVE_INFINITY
+        for (let index = 0; index < points.length; index += 1) {
+          const distance = distanceSquared(enemy, points[index])
+          if (distance > strikeRadiusSquared || distance >= nearest) continue
+          nearest = distance
+          strikeIndex = index
+        }
+        return { enemy, strikeIndex }
+      })
+      .filter(({ strikeIndex }) => strikeIndex >= 0)
+    const ordinaryHitCount = covered.reduce(
+      (count, { enemy }) => count + (enemy.isBoss ? 0 : 1),
+      0,
+    )
+    const strikeHits = covered.map(({ enemy, strikeIndex }) => ({
+      targetUid: enemy.uid,
+      strikeIndex,
+      damage: enemy.isBoss
+        ? castDamageBudget
+        : castDamageBudget / Math.max(1, ordinaryHitCount),
+    }))
+
+    const duration = 0.72 + Math.min(0.24, points.length * 0.035)
+    this.pushWeaponEffect({
+      kind: 'astral-verdict',
+      weaponId: 'rift-seeds',
+      visualState,
+      x: points[0].x,
+      y: points[0].y,
+      angle: -Math.PI * 0.5,
+      radius: strikeRadius * 0.28,
+      maxRadius: strikeRadius,
+      life: duration,
+      total: duration,
+      seed: visualSeed,
+      points,
+      strikeHits,
+      triggeredStrikeCount: 0,
+    })
   }
 
   private chainLightning(
@@ -7372,50 +7500,37 @@ class NighttraceRuntime {
         }
         break
       }
-      case 'event-horizon-seeds': {
-        const mawRadius = Math.max(12, radius * (0.22 + rank * 0.016)) * pulse
-        graphics
-          .ellipse(effect.x, effect.y, mawRadius * 1.12, mawRadius * 0.62)
-          .fill({ color: 0x000405, alpha: energy * 0.68 })
-        for (const side of [-1, 1] as const) {
-          const sweep = mawRadius * (2.4 + rank * 0.16)
-          additiveGraphics
-            .moveTo(effect.x - sweep, effect.y + side * mawRadius * 0.12)
-            .quadraticCurveTo(
-              effect.x - sweep * 0.1,
-              effect.y + side * mawRadius * 1.8,
-              effect.x + sweep * 0.72,
-              effect.y - side * mawRadius * 0.32,
-            )
-            .stroke({
-              color: side > 0 ? profile.glowColor : profile.secondaryColor,
-              width: 1.5 + rank * 0.4,
-              alpha: energy * 0.58,
-              cap: 'round',
-            })
-        }
-        const seedCount = Math.min(7, presentation.ornamentCount)
-        for (let seed = 0; seed < seedCount; seed += 1) {
-          const angle = -rotation * 0.7 + (Math.PI * 2 * seed) / seedCount
-          const distance = mawRadius * (1.45 + (seed % 3) * 0.34)
-          const seedX = effect.x + Math.cos(angle) * distance
-          const seedY = effect.y + Math.sin(angle) * distance * 0.56
-          const size = 1.7 + rank * 0.3
-          graphics
-            .poly([
-              seedX,
-              seedY - size * 1.8,
-              seedX + size,
-              seedY,
-              seedX,
-              seedY + size * 1.8,
-              seedX - size,
-              seedY,
-            ], true)
-            .fill({
-              color: seed % 2 ? profile.secondaryColor : profile.accentColor,
-              alpha: energy * 0.54,
-            })
+      case 'astral-verdict': {
+        const points = effect.points ?? [{ x: effect.x, y: effect.y }]
+        for (let pointIndex = 0; pointIndex < points.length; pointIndex += 1) {
+          const point = points[pointIndex]
+          const moteCount = Math.min(5, 2 + Math.ceil(rank / 2))
+          for (let mote = 0; mote < moteCount; mote += 1) {
+            const drift =
+              this.motionClock * (12 + mote * 1.7) +
+              replacementCosmeticUnit(effect.seed + pointIndex * 83, mote, 353) * 42
+            const side =
+              (replacementCosmeticUnit(effect.seed + pointIndex * 89, mote, 359) - 0.5) *
+              (34 + rank * 5)
+            const moteX = point.x + side + Math.sin(drift * 0.09) * 4
+            const moteY = point.y - 10 - (drift % (52 + rank * 7))
+            const size = 1.2 + rank * 0.16 + (mote % 2) * 0.5
+            graphics
+              .poly([
+                moteX,
+                moteY - size * 2.2,
+                moteX + size,
+                moteY,
+                moteX,
+                moteY + size * 2.2,
+                moteX - size,
+                moteY,
+              ], true)
+              .fill({
+                color: mote % 2 ? profile.secondaryColor : profile.coreColor,
+                alpha: energy * (0.34 + pulse * 0.16),
+              })
+          }
         }
         break
       }
@@ -7635,9 +7750,12 @@ class NighttraceRuntime {
         }
         case 'arc-chain': {
           const lightning = this.buildLightningPoints(effect.points ?? [], effect.seed, progress)
-          this.drawPolyline(graphics, lightning, profile.glowColor, 17 + stage * 3, motionAlpha * 0.1)
-          this.drawPolyline(graphics, lightning, profile.accentColor, 6 + stage * 0.8, motionAlpha * 0.64)
-          this.drawPolyline(graphics, lightning, profile.coreColor, 1.7 + stage * 0.28, motionAlpha)
+          // A restrained deep-violet bloom and saturated lavender body carry
+          // the spell identity. The narrow white core supplies voltage without
+          // washing the chain into a pale or yellow-looking line at high ranks.
+          this.drawPolyline(graphics, lightning, profile.glowColor, 20 + stage * 4, motionAlpha * 0.16)
+          this.drawPolyline(graphics, lightning, profile.accentColor, 6.6 + stage * 0.9, motionAlpha * 0.76)
+          this.drawPolyline(graphics, lightning, profile.coreColor, 1.15 + stage * 0.18, motionAlpha * 0.94)
           for (let nodeIndex = 1; nodeIndex < (effect.points?.length ?? 0); nodeIndex += 1) {
             const node = effect.points?.[nodeIndex]
             if (!node) continue
@@ -7672,46 +7790,120 @@ class NighttraceRuntime {
           }
           break
         }
-        case 'rift-cast':
-        case 'rift-impact': {
-          const impact = effect.kind === 'rift-impact'
-          const centerX = impact ? effect.x : effect.x + Math.cos(effect.angle) * (34 + stage * 5)
-          const centerY = impact ? effect.y : effect.y + Math.sin(effect.angle) * (34 + stage * 5)
-          const coreRadius = impact ? radius * (0.19 + stage * 0.018) : 10 + stage * 2.5
-          this.drawHeroPowerMaterialEvent({
-            x: centerX,
-            y: centerY,
-            radius: coreRadius * (impact ? 4.2 : 3.3),
-            progress,
-            stage: state.stage,
-            seed: effect.seed,
-            tint: profile.accentColor,
-            frame: impact
-              ? HERO_MATERIAL_FRAME.fracture
-              : HERO_MATERIAL_FRAME.driftB,
-            angle: -rotation * 0.4,
-            materialOpacity: impact ? 0.27 : 0.18,
-          })
-          for (let seedIndex = 0; seedIndex < stage; seedIndex += 1) {
-            const seedAngle =
-              -rotation * 0.36 +
-              replacementCosmeticUnit(effect.seed, seedIndex, 83) * Math.PI * 2
-            const seedDistance =
-              coreRadius *
-              (1.9 + replacementCosmeticUnit(effect.seed, seedIndex, 89) * 1.8)
+        case 'astral-verdict': {
+          const strikePoints = effect.points ?? [{ x: effect.x, y: effect.y }]
+          const sceneTime = progress * effect.total
+          for (let strikeIndex = 0; strikeIndex < strikePoints.length; strikeIndex += 1) {
+            const point = strikePoints[strikeIndex]
+            const strikeDelay = Math.min(0.28, strikeIndex * 0.045)
+            const localTime = sceneTime - strikeDelay
+            if (localTime < 0) continue
+            const gather = clamp(localTime / 0.11, 0, 1)
+            const release = clamp((localTime - 0.07) / 0.08, 0, 1)
+            const fade = 1 - clamp((localTime - 0.34) / 0.3, 0, 1)
+            const strikeAlpha = gather * fade * (this.settings.reducedFlash ? 0.7 : 1)
+            const cloudY = point.y - 246 - stage * 16
+            const sourceX =
+              point.x +
+              (replacementCosmeticUnit(effect.seed, strikeIndex, 367) - 0.5) *
+                (36 + stage * 8)
+            const bolt = this.buildLightningPoints(
+              [
+                { x: sourceX, y: cloudY },
+                { x: point.x, y: point.y },
+              ],
+              effect.seed + strikeIndex * 109,
+              clamp(localTime / 0.42, 0, 1),
+            )
+
             this.drawHeroPowerMaterialEvent({
-              x: centerX + Math.cos(seedAngle) * seedDistance,
-              y: centerY + Math.sin(seedAngle) * seedDistance * 0.66,
-              radius: coreRadius * (0.7 + stage * 0.08),
-              progress,
+              x: sourceX,
+              y: cloudY + 18,
+              radius: 52 + stage * 13,
+              progress: clamp(localTime / 0.56, 0, 1),
               stage: state.stage,
-              seed: effect.seed + seedIndex * 101,
-              tint:
-                seedIndex % 2 ? profile.secondaryColor : profile.coreColor,
-              frame: HERO_MATERIAL_FRAME.fragments,
-              angle: seedAngle,
-              materialOpacity: 0.16,
+              seed: effect.seed + strikeIndex * 113,
+              tint: profile.glowColor,
+              frame: HERO_MATERIAL_FRAME.driftB,
+              angle: -rotation * 0.16,
+              materialOpacity: 0.16 + stage * 0.025,
+              stretchX: 1.46,
+              stretchY: 0.62,
             })
+            this.drawHeroPowerMaterialEvent({
+              x: point.x,
+              y: point.y,
+              radius: effect.maxRadius * (0.72 + release * 0.24),
+              progress: clamp(localTime / 0.58, 0, 1),
+              stage: state.stage,
+              seed: effect.seed + strikeIndex * 127,
+              tint: strikeIndex % 2 ? profile.secondaryColor : profile.accentColor,
+              frame: HERO_MATERIAL_FRAME.fracture,
+              angle: rotation + strikeIndex * 0.73,
+              materialOpacity: 0.22 + stage * 0.025,
+              stretchX: 1.16,
+              stretchY: 0.78,
+            })
+
+            if (release > 0) {
+              this.drawPolyline(
+                additiveGraphics,
+                bolt,
+                profile.glowColor,
+                24 + stage * 4.5,
+                strikeAlpha * 0.2,
+              )
+              this.drawPolyline(
+                graphics,
+                bolt,
+                profile.accentColor,
+                6.8 + stage * 1.05,
+                strikeAlpha * 0.84,
+              )
+              this.drawPolyline(
+                graphics,
+                bolt,
+                profile.coreColor,
+                1.25 + stage * 0.28,
+                strikeAlpha,
+              )
+
+              const branchCount = 2 + stage
+              for (let branchIndex = 0; branchIndex < branchCount; branchIndex += 1) {
+                const branchY = lerp(
+                  cloudY,
+                  point.y,
+                  0.26 + branchIndex * (0.5 / Math.max(1, branchCount - 1)),
+                )
+                const branchX = lerp(sourceX, point.x, (branchY - cloudY) / Math.max(1, point.y - cloudY))
+                const side = branchIndex % 2 ? 1 : -1
+                const fork = this.buildLightningPoints(
+                  [
+                    { x: branchX, y: branchY },
+                    {
+                      x: branchX + side * (18 + stage * 6 + branchIndex * 4),
+                      y: branchY + 17 + branchIndex * 4,
+                    },
+                  ],
+                  effect.seed + strikeIndex * 139 + branchIndex * 17,
+                  clamp(localTime / 0.42, 0, 1),
+                )
+                this.drawPolyline(
+                  additiveGraphics,
+                  fork,
+                  profile.glowColor,
+                  4.2 + stage * 0.6,
+                  strikeAlpha * 0.2,
+                )
+                this.drawPolyline(
+                  graphics,
+                  fork,
+                  branchIndex % 2 ? profile.secondaryColor : profile.glowColor,
+                  1.2 + stage * 0.24,
+                  strikeAlpha * 0.78,
+                )
+              }
+            }
           }
           break
         }
@@ -8712,7 +8904,7 @@ class NighttraceRuntime {
       'rift-seeds': [31, 31],
       'comet-swarm': [38, 22],
       'ash-halo': [34, 20],
-      'mirror-bow': [54, 21],
+      'mirror-bow': [42, 29],
       'null-bell': [30, 32],
     }[weaponId] as [number, number]
   }
@@ -8824,45 +9016,26 @@ class NighttraceRuntime {
         }
         break
       }
-      case 'event-horizon-seeds': {
-        const coreRadius = 8.4 + presentation.rank * 1.65
-        const curl = 18 + presentation.rank * 4
-        for (const side of [-1, 1] as const) {
-          graphics
-            .moveTo(x - dx * curl + normalX * side * coreRadius * 0.22, y - dy * curl + normalY * side * coreRadius * 0.22)
-            .quadraticCurveTo(
-              x - dx * curl * 0.42 + normalX * side * coreRadius * 1.9,
-              y - dy * curl * 0.42 + normalY * side * coreRadius * 1.9,
-              x + dx * coreRadius * 0.38,
-              y + dy * coreRadius * 0.38,
-            )
-            .stroke({
-              color: side > 0 ? profile.glowColor : profile.secondaryColor,
-              width: 1.4 + presentation.rank * 0.34,
-              alpha: 0.44 * energy,
-              cap: 'round',
-            })
-        }
-        for (let seed = 0; seed < Math.min(6, presentation.ornamentCount); seed += 1) {
-          const angle = phase * 0.54 + (Math.PI * 2 * seed) / presentation.ornamentCount
-          const distance = coreRadius * (1.55 + (seed % 2) * 0.44)
-          const seedX = x + Math.cos(angle) * distance
-          const seedY = y + Math.sin(angle) * distance * 0.62
-          graphics
-            .poly([
-              seedX,
-              seedY - 2.4,
-              seedX + 1.5,
-              seedY,
-              seedX,
-              seedY + 2.4,
-              seedX - 1.5,
-              seedY,
-            ], true)
-            .fill({
-              color: seed % 2 ? profile.secondaryColor : profile.accentColor,
-              alpha: 0.48 * energy,
-            })
+      case 'astral-verdict': {
+        const branchCount = Math.min(5, presentation.laneCount + 1)
+        for (let branch = 0; branch < branchCount; branch += 1) {
+          const side = branch % 2 ? 1 : -1
+          const t = 0.2 + branch * 0.14
+          const branchX = lerp(startX, x, Math.min(0.82, t))
+          const branchY = lerp(startY, y, Math.min(0.82, t))
+          this.drawPolyline(
+            graphics,
+            [
+              { x: branchX, y: branchY },
+              {
+                x: branchX - dx * (8 + presentation.rank * 2) + normalX * side * 10,
+                y: branchY - dy * (8 + presentation.rank * 2) + normalY * side * 10,
+              },
+            ],
+            branch % 2 ? profile.secondaryColor : profile.glowColor,
+            0.8 + presentation.rank * 0.16,
+            0.4 * energy,
+          )
         }
         break
       }
@@ -8949,7 +9122,7 @@ class NighttraceRuntime {
       'rift-seeds': [13, 5.4],
       'comet-swarm': [48, 4],
       'ash-halo': [16, 4],
-      'mirror-bow': [58, 3],
+      'mirror-bow': [38, 5.4],
       'null-bell': [20, 5],
     }[projectile.weaponId]
     const profile = this.weaponPresentationProfile(
@@ -9001,6 +9174,68 @@ class NighttraceRuntime {
           .fill({
             color: debris % 2 ? profile.secondaryColor : profile.accentColor,
             alpha: 0.34,
+          })
+      }
+      return
+    }
+
+    if (projectile.weaponId === 'mirror-bow') {
+      const shardCount = 5 + stage
+      const refractedPath: Vec2[] = []
+      for (let index = 0; index < 7; index += 1) {
+        const t = index / 6
+        const taper = Math.sin(t * Math.PI)
+        const facet =
+          (index % 2 ? 1 : -1) *
+          taper *
+          (3.4 + stage * 0.85)
+        refractedPath.push({
+          x: lerp(startX, x, t) + normalX * facet,
+          y: lerp(startY, y, t) + normalY * facet,
+        })
+      }
+      this.drawPolyline(
+        graphics,
+        refractedPath,
+        profile.secondaryColor,
+        width * 4.2,
+        0.09,
+      )
+      this.drawPolyline(
+        graphics,
+        refractedPath,
+        profile.accentColor,
+        width * 1.55,
+        0.5,
+      )
+      this.drawPolyline(
+        graphics,
+        refractedPath,
+        profile.coreColor,
+        Math.max(0.8, width * 0.3),
+        0.9,
+      )
+      for (let shard = 0; shard < shardCount; shard += 1) {
+        const t = (shard + 1) / (shardCount + 1)
+        const side = shard % 2 ? 1 : -1
+        const offset = side * (5 + stage * 1.4 + Math.sin(t * Math.PI) * 4)
+        const shardX = lerp(startX, x, t) + normalX * offset
+        const shardY = lerp(startY, y, t) + normalY * offset
+        const size = 1.6 + stage * 0.35
+        graphics
+          .poly([
+            shardX + dx * size * 1.7,
+            shardY + dy * size * 1.7,
+            shardX + normalX * size,
+            shardY + normalY * size,
+            shardX - dx * size * 1.7,
+            shardY - dy * size * 1.7,
+            shardX - normalX * size,
+            shardY - normalY * size,
+          ], true)
+          .fill({
+            color: shard % 3 === 0 ? profile.secondaryColor : profile.coreColor,
+            alpha: 0.48,
           })
       }
       return
@@ -9062,10 +9297,6 @@ class NighttraceRuntime {
             alpha: 0.52 - t * 0.22,
           })
       }
-      return
-    }
-
-    if (projectile.weaponId === 'mirror-bow') {
       return
     }
 
@@ -9143,9 +9374,21 @@ class NighttraceRuntime {
         .fill({ color: 0xfff2c9, alpha: 0.98 })
     })
     create('mirror-bow', (graphics, color) => {
-      graphics.poly([0, 16, 20, 1, 65, 8, 82, 16, 65, 24, 20, 31], true).fill({ color, alpha: 0.24 })
-      graphics.poly([9, 16, 30, 7, 70, 13, 79, 16, 70, 19, 30, 25], true).fill({ color: 0xffffff, alpha: 0.92 })
-      graphics.poly([34, 5, 42, 16, 34, 27, 28, 16], true).fill({ color: 0xc196ff, alpha: 0.62 })
+      graphics
+        .poly([1, 18, 15, 3, 29, 18, 15, 33], true)
+        .fill({ color, alpha: 0.22 })
+      graphics
+        .poly([14, 18, 31, 6, 50, 18, 31, 30], true)
+        .fill({ color: 0xb178eb, alpha: 0.48 })
+      graphics
+        .poly([7, 18, 16, 9, 25, 18, 16, 27], true)
+        .fill({ color: 0x75dff2, alpha: 0.84 })
+      graphics
+        .poly([22, 18, 33, 11, 46, 18, 33, 25], true)
+        .fill({ color: 0xf7feff, alpha: 0.96 })
+      graphics
+        .poly([13, 6, 18, 18, 13, 30, 9, 18], true)
+        .fill({ color: 0x8f6be8, alpha: 0.58 })
     })
     create('null-bell', (graphics, color) => {
       graphics

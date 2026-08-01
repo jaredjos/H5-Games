@@ -5,9 +5,10 @@ import {
   CINEMATIC_DIALOGUE_GAP_MS,
   CINEMATIC_LEAD_IN_MS,
   CINEMATIC_OUTRO_MS,
+  CINEMATIC_VOICE_HEADROOM_MS,
+  CINEMATIC_VOICE_PLAN,
   FINALE_CINEMATIC_ID,
   INTRO_CINEMATIC_ID,
-  MEMORY_VOICE_PLAN,
   cinematicForFirstClear,
   cinematicIdsForCompletedLevels,
   getCinematic,
@@ -70,19 +71,9 @@ describe('NIGHTTRACE campaign cinematics', () => {
         expect(line.endMs).toBeLessThanOrEqual(scene.duration)
         expect(line.text.trim().length).toBeGreaterThan(1)
 
-        if (scene.kind === 'interlude') {
-          expect(line.audioSrc).toBe(
-            `assets/cinematics/audio/memories/${line.id}.wav`,
-          )
-        } else if (line.speaker === 'Last Star') {
-          expect(line.audioSrc).toMatch(
-            /^assets\/cinematics\/audio\/last-star\/.+\.wav$/,
-          )
-        } else {
-          expect(line.audioSrc).toMatch(
-            /^https:\/\/resource2\.heygen\.ai\/.+\.wav$/,
-          )
-        }
+        expect(line.audioSrc).toBe(
+          `assets/cinematics/audio/campaign/${line.id}.wav`,
+        )
 
         expect(line.audioFallbackSrc).toBeUndefined()
         expect(line.audioStartMs).toBeGreaterThanOrEqual(0)
@@ -97,38 +88,39 @@ describe('NIGHTTRACE campaign cinematics', () => {
       }
     }
 
-    expect(audioPaths.size).toBe(31)
+    expect(audioPaths.size).toBe(CINEMATIC_VOICE_PLAN.length)
     expect(audioSegments.size).toBe(voicedLineIds.size)
-    expect(voicedLineIds.size).toBe(35)
-    expect(lineIds.size).toBe(35)
+    expect(voicedLineIds.size).toBe(CINEMATIC_VOICE_PLAN.length)
+    expect(lineIds.size).toBe(CINEMATIC_VOICE_PLAN.length)
   })
 
-  it('maps Memories I-IX to independent local takes with exact speaker attribution', () => {
-    const memories = CAMPAIGN_CINEMATICS.filter(
-      (scene) => scene.kind === 'interlude',
-    )
-    const memoryLines = memories.flatMap((scene) => scene.lines)
-    const planById = new Map(MEMORY_VOICE_PLAN.map((entry) => [entry.id, entry]))
+  it('maps all eleven scenes to independent local takes with exact attribution', () => {
+    const campaignLines = CAMPAIGN_CINEMATICS.flatMap((scene) => scene.lines)
+    const planById = new Map(CINEMATIC_VOICE_PLAN.map((entry) => [entry.id, entry]))
 
-    expect(memories).toHaveLength(9)
-    expect(memoryLines).toHaveLength(22)
-    expect(planById.size).toBe(22)
-    expect(new Set(memoryLines.map((line) => line.text)).size).toBe(22)
+    expect(CAMPAIGN_CINEMATICS.filter((scene) => scene.kind === 'interlude'))
+      .toHaveLength(9)
+    expect(campaignLines).toHaveLength(CINEMATIC_VOICE_PLAN.length)
+    expect(planById.size).toBe(CINEMATIC_VOICE_PLAN.length)
+    expect(new Set(campaignLines.map((line) => line.text)).size)
+      .toBe(CINEMATIC_VOICE_PLAN.length)
 
-    for (const line of memoryLines) {
+    for (const line of campaignLines) {
       const plan = planById.get(line.id)
       expect(plan, `missing plan entry for ${line.id}`).toBeDefined()
       expect(plan?.speaker).toBe(line.speaker)
       expect(plan?.text).toBe(line.text)
-      expect(plan?.maximumMs).toBe(line.audioEndMs)
-      expect(plan?.maximumMs).toBe(line.duration)
+      expect((plan?.maximumMs ?? 0) + CINEMATIC_VOICE_HEADROOM_MS)
+        .toBe(line.audioEndMs)
+      expect((plan?.maximumMs ?? 0) + CINEMATIC_VOICE_HEADROOM_MS)
+        .toBeLessThan(line.duration)
       expect(line.audioStartMs).toBe(0)
       expect(line.audioSrc).toBe(
-        `assets/cinematics/audio/memories/${line.id}.wav`,
+        `assets/cinematics/audio/campaign/${line.id}.wav`,
       )
     }
 
-    const cartographer = memoryLines
+    const cartographer = campaignLines
       .find((line) => line.id === 'interlude-09-cartographer-01')
     const cartographerPlan = planById.get('interlude-09-cartographer-01')
     const sunEaterPlan = planById.get('interlude-09-sun-eater-01')
@@ -136,26 +128,26 @@ describe('NIGHTTRACE campaign cinematics', () => {
     expect(cartographerPlan?.voiceName).not.toBe(sunEaterPlan?.voiceName)
   })
 
-  it('maps every Last Star line to a unique same-origin narration asset', () => {
+  it('maps every campaign line to a unique same-origin narration asset', () => {
     const localAudioSources = CAMPAIGN_CINEMATICS.flatMap((scene) =>
       scene.lines.flatMap((line) =>
-        line.audioSrc?.startsWith('assets/cinematics/audio/last-star/')
+        line.audioSrc?.startsWith('assets/cinematics/audio/campaign/')
           ? [line.audioSrc]
           : [],
       ),
     )
 
-    expect(localAudioSources).toHaveLength(7)
-    expect(new Set(localAudioSources).size).toBe(7)
+    expect(localAudioSources).toHaveLength(CINEMATIC_VOICE_PLAN.length)
+    expect(new Set(localAudioSources).size).toBe(CINEMATIC_VOICE_PLAN.length)
     expect(localAudioSources.every((source) =>
-      /^assets\/cinematics\/audio\/last-star\/.+\.wav$/.test(source),
+      /^assets\/cinematics\/audio\/campaign\/.+\.wav$/.test(source),
     )).toBe(true)
   })
 
   it('uses contiguous beats with no gaps, overlaps, or out-of-bounds frames', () => {
     for (const scene of CAMPAIGN_CINEMATICS) {
       expect(scene.lines[0].startMs).toBe(CINEMATIC_LEAD_IN_MS)
-      expect(scene.duration - (scene.lines.at(-1)?.endMs ?? 0)).toBe(
+      expect(scene.duration - (scene.lines.at(-1)?.endMs ?? 0)).toBeGreaterThanOrEqual(
         CINEMATIC_OUTRO_MS,
       )
 
@@ -209,8 +201,8 @@ describe('NIGHTTRACE campaign cinematics', () => {
       scene.lines.map((line) => line.text),
     ).join(' ')
 
-    expect(allDialogue).toContain('Ten Sovereigns keep the morning chained.')
-    expect(allDialogue).toContain('The map… was bait.')
+    expect(allDialogue).toContain('buried each beneath a Sovereign crown')
+    expect(allDialogue).toContain('The map was bait.')
     expect(allDialogue).toContain('taught us where to close the line')
     expect(allDialogue).toContain('I was never the last light. I was the first.')
     expect(allDialogue).toContain('Then let morning belong to everyone.')

@@ -92,8 +92,8 @@ describe('all eight hero-power renderers', () => {
     ['Helio impact', "        case 'helio-impact':", "        case 'crescent-orbit':"],
     ['Crescent orbit', "        case 'crescent-orbit':", "        case 'crescent-impact':"],
     ['Crescent impact', "        case 'crescent-impact':", "        case 'arc-chain':"],
-    ['Arc Choir', "        case 'arc-chain':", "        case 'rift-cast':"],
-    ['Rift Seeds', "        case 'rift-cast':", "        case 'comet-launch':"],
+    ['Arc Choir', "        case 'arc-chain':", "        case 'astral-verdict':"],
+    ['Astral Verdict', "        case 'astral-verdict':", "        case 'comet-launch':"],
     ['Comet launch', "        case 'comet-launch':", "        case 'comet-impact':"],
     ['Comet impact', "        case 'comet-impact':", "        case 'graveglass-eruption':"],
     ['Graveglass', "        case 'graveglass-eruption':", "        case 'mirror-gate':"],
@@ -115,8 +115,13 @@ describe('all eight hero-power renderers', () => {
 
   const projectileScopes = [
     [
-      'Rift Seeds projectile',
+      'Astral Verdict legacy projectile fallback',
       "    if (projectile.weaponId === 'rift-seeds')",
+      "    if (projectile.weaponId === 'mirror-bow')",
+    ],
+    [
+      'Mirror projectile',
+      "    if (projectile.weaponId === 'mirror-bow')",
       '    const trailPoints: Vec2[] = []',
     ],
     [
@@ -137,11 +142,6 @@ describe('all eight hero-power renderers', () => {
     [
       'Comet projectile',
       "    if (projectile.weaponId === 'comet-swarm')",
-      "    if (projectile.weaponId === 'mirror-bow')",
-    ],
-    [
-      'Mirror projectile',
-      "    if (projectile.weaponId === 'mirror-bow')",
       "    if (projectile.weaponId === 'ash-halo')",
     ],
     [
@@ -175,7 +175,7 @@ describe('all eight hero-power renderers', () => {
     ['Helio texture', "    create('helio-lance'", "    create('crescent-array'"],
     ['Crescent texture', "    create('crescent-array'", "    create('arc-choir'"],
     ['Arc Choir texture', "    create('arc-choir'", "    create('rift-seeds'"],
-    ['Rift Seeds texture', "    create('rift-seeds'", "    create('comet-swarm'"],
+    ['Astral Verdict legacy texture', "    create('rift-seeds'", "    create('comet-swarm'"],
     ['Comet texture', "    create('comet-swarm'", "    create('ash-halo'"],
     ['Graveglass texture', "    create('ash-halo'", "    create('mirror-bow'"],
     ['Mirror texture', "    create('mirror-bow'", "    create('null-bell'"],

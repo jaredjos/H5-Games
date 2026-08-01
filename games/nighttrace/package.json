@@ -1,12 +1,14 @@
 {
   "name": "nighttrace",
   "private": true,
-  "version": "1.21.0",
+  "version": "1.22.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "node scripts/verify-cinematic-audio.mjs && tsc -b && vite build && node scripts/verify-subpath-build.mjs",
     "audio:render": "node scripts/render-original-music.mjs",
+    "voice:campaign": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-cinematic-voices.ps1",
+    "voice:campaign:dry-run": "node scripts/render-cinematic-voices.mjs --dry-run",
     "voice:last-star": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-last-star-voice.ps1",
     "voice:memories": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-memory-voices.ps1",
     "lint": "eslint .",

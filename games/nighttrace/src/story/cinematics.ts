@@ -1,4 +1,4 @@
-import memoryVoicePlanJson from './memoryVoicePlan.json'
+import cinematicVoicePlanJson from './cinematicVoicePlan.json'
 
 /**
  * NIGHTTRACE campaign cinema bible.
@@ -85,6 +85,8 @@ export interface CinematicBeat {
   readonly startMs: number
   readonly endMs: number
   readonly visual: CinematicVisual
+  /** Optional shot plate used only for this beat. */
+  readonly backgroundAsset?: string
   readonly focus: CinematicFocus
   readonly heroAction: CinematicHeroAction
   readonly transition: CinematicTransition
@@ -124,27 +126,25 @@ export const INTRO_CINEMATIC_ID: CinematicId = 'intro-a-world-without-dawn'
 export const FINALE_CINEMATIC_ID: CinematicId = 'finale-the-first-light'
 
 const BOSS_ATLAS = 'assets/nighttrace-boss-atlas.webp'
-const LAST_STAR_AUDIO_ROOT = 'assets/cinematics/audio/last-star'
-const MEMORY_AUDIO_ROOT = 'assets/cinematics/audio/memories'
+const CAMPAIGN_AUDIO_ROOT = 'assets/cinematics/audio/campaign'
+export const CINEMATIC_VOICE_HEADROOM_MS = 1_600
 
-interface MemoryVoicePlanEntry {
+const cinematicVoiceWindowMs = (maximumMs: number) =>
+  maximumMs + CINEMATIC_VOICE_HEADROOM_MS
+
+export interface CinematicVoicePlanEntry {
   readonly id: string
+  readonly sceneId: CinematicId
   readonly speaker: CinematicSpeaker
   readonly text: string
   readonly voiceName: string
   readonly maximumMs: number
+  readonly direction: string
 }
 
-export const MEMORY_VOICE_PLAN = Object.freeze(
-  memoryVoicePlanJson as readonly MemoryVoicePlanEntry[],
+export const CINEMATIC_VOICE_PLAN = Object.freeze(
+  cinematicVoicePlanJson as readonly CinematicVoicePlanEntry[],
 )
-
-const NARRATION_REMOTE_REELS = {
-  bearer:
-    'https://resource2.heygen.ai/text_to_speech/eff3caa328f246b192c5cc03e7f2d48a/0a0b38624ac64ec6afcd5842a977ca10/id=9aa06026-f195-4240-ac7f-662c321d8792.wav',
-  sovereign:
-    'https://resource2.heygen.ai/text_to_speech/eff3caa328f246b192c5cc03e7f2d48a/054af44a167344d0af2722fdfef08d17/id=96c84639-68a6-4181-a103-ec628a0e985c.wav',
-} as const
 
 interface NarrationClip {
   readonly audioSrc: string
@@ -152,62 +152,32 @@ interface NarrationClip {
   readonly endMs: number
 }
 
-const clip = (
-  reel: keyof typeof NARRATION_REMOTE_REELS,
-  startMs: number,
-  endMs: number,
-): NarrationClip => ({
-  audioSrc: NARRATION_REMOTE_REELS[reel],
-  startMs,
-  endMs,
-})
-
-const localLastStarClip = (id: string, endMs: number): NarrationClip => ({
-  audioSrc: `${LAST_STAR_AUDIO_ROOT}/${id}.wav`,
-  startMs: 0,
-  endMs,
-})
-
-const localMemoryClip = (
+const localCampaignClip = (
   id: string,
   maximumMs: number,
 ): NarrationClip => ({
-  audioSrc: `${MEMORY_AUDIO_ROOT}/${id}.wav`,
+  audioSrc: `${CAMPAIGN_AUDIO_ROOT}/${id}.wav`,
   startMs: 0,
-  // Generated takes are rejected when they exceed this authored window.
   endMs: maximumMs,
 })
 
 /**
- * The Last Star uses independent same-origin takes so every scene begins at
- * sample zero without remote buffering or reel seeking. The existing Bearer
- * and Sovereign performances remain hosted reels. Captions are the
- * deterministic fallback whenever narration is unavailable.
+ * Every campaign line is an independent same-origin Google take. No scene
+ * depends on a remote reel, CORS, buffering, or seek offsets.
  */
-const NARRATION_CLIPS: Readonly<Record<string, NarrationClip>> = {
-  'intro-star-01': localLastStarClip('intro-star-01', 6_502),
-  'intro-star-02': localLastStarClip('intro-star-02', 5_733),
-  'intro-star-03': localLastStarClip('intro-star-03', 3_246),
-  'intro-star-04': localLastStarClip('intro-star-04', 3_664),
-  'finale-star-01': localLastStarClip('finale-star-01', 2_735),
-  'finale-star-02': localLastStarClip('finale-star-02', 3_638),
-  'finale-star-03': localLastStarClip('finale-star-03', 5_011),
+const NARRATION_CLIPS: Readonly<Record<string, NarrationClip>> =
+  Object.freeze(
+    Object.fromEntries(
+      CINEMATIC_VOICE_PLAN.map((entry) => [
+        entry.id,
+        localCampaignClip(entry.id, cinematicVoiceWindowMs(entry.maximumMs)),
+      ]),
+    ),
+  )
 
-  'intro-bearer-01': clip('bearer', 140, 1_620),
-  'finale-bearer-01': clip('bearer', 20_760, 21_540),
-  'finale-bearer-02': clip('bearer', 22_139, 22_459),
-  'finale-bearer-03': clip('bearer', 23_039, 24_879),
-
-  'finale-sun-eater-01': clip('sovereign', 10_760, 13_840),
-  'finale-sun-eater-02': clip('sovereign', 14_839, 15_679),
-
-  ...Object.fromEntries(
-    MEMORY_VOICE_PLAN.map((entry) => [
-      entry.id,
-      localMemoryClip(entry.id, entry.maximumMs),
-    ]),
-  ),
-}
+const VOICE_PLAN_BY_ID = new Map(
+  CINEMATIC_VOICE_PLAN.map((entry) => [entry.id, entry] as const),
+)
 
 const frame = (index: number): CinematicAtlasFrame => ({
   column: index % 3,
@@ -223,11 +193,12 @@ const line = (
   start: number,
   duration: number,
 ): CinematicLine => {
+  const authored = VOICE_PLAN_BY_ID.get(id)
   const narration = NARRATION_CLIPS[id]
   return {
     id,
-    speaker,
-    text,
+    speaker: authored?.speaker ?? speaker,
+    text: authored?.text ?? text,
     start,
     duration,
     startMs: start,
@@ -242,6 +213,24 @@ const line = (
   }
 }
 
+const dialogue = (ids: readonly string[]): readonly CinematicLine[] => {
+  let cursor = CINEMATIC_LEAD_IN_MS
+  return ids.map((id) => {
+    const authored = VOICE_PLAN_BY_ID.get(id)
+    if (!authored) throw new Error(`Missing cinematic voice plan entry: ${id}`)
+    const duration = cinematicVoiceWindowMs(authored.maximumMs) + 220
+    const entry = line(
+      id,
+      authored.speaker,
+      authored.text,
+      cursor,
+      duration,
+    )
+    cursor = entry.endMs + CINEMATIC_DIALOGUE_GAP_MS
+    return entry
+  })
+}
+
 const beat = (
   id: string,
   start: number,
@@ -250,6 +239,7 @@ const beat = (
   focus: CinematicFocus,
   heroAction: CinematicHeroAction,
   transition: CinematicTransition,
+  backgroundAsset?: string,
 ): CinematicBeat => ({
   id,
   start,
@@ -260,25 +250,12 @@ const beat = (
   focus,
   heroAction,
   transition,
+  ...(backgroundAsset ? { backgroundAsset } : {}),
 })
 
-export const CINEMATIC_LEAD_IN_MS = 700
-export const CINEMATIC_DIALOGUE_GAP_MS = 450
+export const CINEMATIC_LEAD_IN_MS = 1_100
+export const CINEMATIC_DIALOGUE_GAP_MS = 560
 export const CINEMATIC_OUTRO_MS = 850
-
-function compactDialogueTimeline(lines: readonly CinematicLine[]) {
-  let cursor = CINEMATIC_LEAD_IN_MS
-  return lines.map((entry) => {
-    const compacted = {
-      ...entry,
-      start: cursor,
-      startMs: cursor,
-      endMs: cursor + entry.duration,
-    }
-    cursor = compacted.endMs + CINEMATIC_DIALOGUE_GAP_MS
-    return compacted
-  })
-}
 
 function scaleVisualBeats(
   beats: readonly CinematicBeat[],
@@ -310,10 +287,9 @@ const cinema = (
     'chapterLabel' | 'durationMs'
   >,
 ): CampaignCinematic => {
-  const lines = compactDialogueTimeline(cinematic.lines)
-  const lastLine = lines.at(-1)
+  const lastLine = cinematic.lines.at(-1)
   const duration = Math.max(
-    CINEMATIC_LEAD_IN_MS + CINEMATIC_OUTRO_MS,
+    cinematic.duration,
     (lastLine?.endMs ?? CINEMATIC_LEAD_IN_MS) + CINEMATIC_OUTRO_MS,
   )
 
@@ -321,7 +297,7 @@ const cinema = (
     ...cinematic,
     duration,
     durationMs: duration,
-    lines,
+    lines: cinematic.lines,
     beats: scaleVisualBeats(cinematic.beats, cinematic.duration, duration),
     chapterLabel: cinematic.chapter,
   }
@@ -336,49 +312,23 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     eyebrow: 'Before the First Beacon',
     summary:
       'The Last Star wakes the unnamed Bearer and reveals ten Sovereigns holding ten severed memories of daylight.',
-    duration: 36_000,
+    duration: 50_000,
     nextLevelId: 1,
     arenaAsset: 'assets/cinematics/intro-a-world-without-dawn.webp',
     heroPose: 'walk',
     tone: 'mythic',
     accent: '#f5d98a',
-    lines: [
-      line(
-        'intro-star-01',
-        'Last Star',
-        'Once, dawn crossed this world in a single breath. Then the horizon learned to close.',
-        1_200,
-        7_900,
-      ),
-      line(
-        'intro-star-02',
-        'Last Star',
-        'I survived as a spark. Not enough to become day. Enough to remember it.',
-        10_000,
-        6_900,
-      ),
-      line(
-        'intro-star-03',
-        'Last Star',
-        'Ten Sovereigns keep the morning chained.',
-        18_000,
-        3_400,
-      ),
-      line(
-        'intro-bearer-01',
-        'Bearer',
-        'Then we break ten crowns.',
-        22_200,
-        2_500,
-      ),
-      line(
-        'intro-star-04',
-        'Last Star',
-        'Walk, Bearer. I will burn in every step.',
-        28_400,
-        3_900,
-      ),
-    ],
+    lines: dialogue([
+      'intro-star-01',
+      'intro-star-02',
+      'intro-star-03',
+      'intro-bearer-01',
+      'intro-star-04',
+      'intro-bearer-02',
+      'intro-star-05',
+      'intro-bearer-03',
+      'intro-star-06',
+    ]),
     beats: [
       beat('intro-01', 0, 7_200, 'sealed-horizon', 'world', 'idle', 'fade'),
       beat('intro-02', 7_200, 7_200, 'last-star-ember', 'relic', 'idle', 'dissolve'),
@@ -395,7 +345,7 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     eyebrow: 'First Beacon Restored',
     summary:
       'The first recovered memory is not a place but a direction: daylight once connected every road.',
-    duration: 15_000,
+    duration: 28_000,
     afterLevelId: 1,
     nextLevelId: 2,
     arenaAsset: 'assets/first-beacon-arena.webp',
@@ -405,16 +355,13 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     bossFrameIndex: 0,
     tone: 'hopeful',
     accent: '#7cf7d4',
-    lines: [
-      line(
-        'interlude-01-star-01',
-        'Last Star',
-        'The first fire remembers where the roads once led.',
-        1_100,
-        3_700,
-      ),
-      line('interlude-01-bearer-01', 'Bearer', 'Then let it lead us.', 6_100, 2_100),
-    ],
+    lines: dialogue([
+      'interlude-01-star-01',
+      'interlude-01-bearer-01',
+      'interlude-01-star-02',
+      'interlude-01-bearer-02',
+      'interlude-01-star-03',
+    ]),
     beats: [
       beat('interlude-01-01', 0, 5_000, 'memory-road', 'world', 'idle', 'fade'),
       beat('interlude-01-02', 5_000, 5_000, 'bearer-vow', 'hero', 'walk', 'cut'),
@@ -429,7 +376,7 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     eyebrow: 'Glassreed Mire Silenced',
     summary:
       'The Mire releases the voices it consumed; the Bearer chooses remembrance over vengeance.',
-    duration: 17_000,
+    duration: 32_000,
     afterLevelId: 2,
     nextLevelId: 3,
     arenaAsset: 'assets/glassreed-mire-arena.webp',
@@ -439,22 +386,14 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     bossFrameIndex: 1,
     tone: 'haunted',
     accent: '#65d9b0',
-    lines: [
-      line(
-        'interlude-02-star-01',
-        'Last Star',
-        'Six voices. None of them were the monster.',
-        1_200,
-        3_400,
-      ),
-      line(
-        'interlude-02-bearer-01',
-        'Bearer',
-        'We carry the voices. Leave the monster here.',
-        6_800,
-        3_600,
-      ),
-    ],
+    lines: dialogue([
+      'interlude-02-star-01',
+      'interlude-02-bearer-01',
+      'interlude-02-star-02',
+      'interlude-02-bearer-02',
+      'interlude-02-star-03',
+      'interlude-02-bearer-03',
+    ]),
     beats: [
       beat('interlude-02-01', 0, 5_500, 'voice-reeds', 'boss', 'idle', 'fade'),
       beat('interlude-02-02', 5_500, 6_000, 'bearer-vow', 'hero', 'idle', 'dissolve'),
@@ -469,36 +408,37 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     eyebrow: 'Shattered Arcade Reclaimed',
     summary:
       'A memory of laughter survives the ruined district, becoming an act of defiance instead of nostalgia.',
-    duration: 16_000,
+    duration: 32_000,
     afterLevelId: 3,
     nextLevelId: 4,
-    arenaAsset: 'assets/campaign-disk-background.webp',
+    arenaAsset: 'assets/cinematics/interlude-03-shattered-arcade.webp',
     heroPose: 'walk',
     bossAsset: BOSS_ATLAS,
     bossFrame: frame(2),
     bossFrameIndex: 2,
     tone: 'defiant',
     accent: '#ffcf63',
-    lines: [
-      line(
-        'interlude-03-star-01',
-        'Last Star',
-        'They laughed here, even while the sky was failing.',
-        1_200,
-        3_900,
-      ),
-      line(
-        'interlude-03-bearer-01',
-        'Bearer',
-        'Good. Let the night hear them.',
-        6_500,
-        2_800,
-      ),
-    ],
+    lines: dialogue([
+      'interlude-03-star-01',
+      'interlude-03-bearer-01',
+      'interlude-03-star-02',
+      'interlude-03-bearer-02',
+      'interlude-03-star-03',
+      'interlude-03-bearer-03',
+    ]),
     beats: [
       beat('interlude-03-01', 0, 5_500, 'lost-laughter', 'world', 'idle', 'fade'),
       beat('interlude-03-02', 5_500, 5_000, 'bearer-vow', 'hero', 'walk', 'cut'),
-      beat('interlude-03-03', 10_500, 5_500, 'memory-road', 'world', 'walk', 'dissolve'),
+      beat(
+        'interlude-03-03',
+        10_500,
+        5_500,
+        'memory-road',
+        'world',
+        'walk',
+        'dissolve',
+        'assets/campaign-disk-background.webp',
+      ),
     ],
   }),
   cinema({
@@ -509,33 +449,25 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     eyebrow: 'Prism Garden Broken',
     summary:
       'The Sun-Eater speaks through the shattered mirrors, but the Bearer finds a reflection beyond its control.',
-    duration: 18_000,
+    duration: 36_000,
     afterLevelId: 4,
     nextLevelId: 5,
-    arenaAsset: 'assets/campaign-disk-background.webp',
+    arenaAsset: 'assets/cinematics/interlude-04-prism-garden.webp',
     heroPose: 'charge',
     bossAsset: BOSS_ATLAS,
     bossFrame: frame(3),
     bossFrameIndex: 3,
     tone: 'uncanny',
     accent: '#d4a5ff',
-    lines: [
-      line(
-        'interlude-04-sun-eater-01',
-        'Sun-Eater',
-        'Every reflection ends inside me.',
-        1_100,
-        3_200,
-      ),
-      line('interlude-04-star-01', 'Last Star', 'Don’t look.', 5_700, 1_500),
-      line(
-        'interlude-04-bearer-01',
-        'Bearer',
-        'I saw the one that doesn’t.',
-        9_000,
-        2_800,
-      ),
-    ],
+    lines: dialogue([
+      'interlude-04-sun-eater-01',
+      'interlude-04-star-01',
+      'interlude-04-bearer-01',
+      'interlude-04-sun-eater-02',
+      'interlude-04-star-02',
+      'interlude-04-bearer-02',
+      'interlude-04-bearer-03',
+    ]),
     beats: [
       beat('interlude-04-01', 0, 5_000, 'false-reflection', 'boss', 'idle', 'fade'),
       beat('interlude-04-02', 5_000, 4_000, 'last-star-ember', 'relic', 'idle', 'cut'),
@@ -551,26 +483,24 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     eyebrow: 'Drowned Docks Raised',
     summary:
       'Beneath the black tide, the next causeway remains intact—proof that burial is not erasure.',
-    duration: 15_000,
+    duration: 34_000,
     afterLevelId: 5,
     nextLevelId: 6,
-    arenaAsset: 'assets/glassreed-mire-arena.webp',
+    arenaAsset: 'assets/cinematics/interlude-05-drowned-causeway.webp',
     heroPose: 'walk',
     bossAsset: BOSS_ATLAS,
     bossFrame: frame(1),
     bossFrameIndex: 1,
     tone: 'resolute',
     accent: '#57b7ff',
-    lines: [
-      line(
-        'interlude-05-star-01',
-        'Last Star',
-        'The sea buried the final road.',
-        1_200,
-        2_900,
-      ),
-      line('interlude-05-bearer-01', 'Bearer', 'Buried isn’t gone.', 6_000, 2_100),
-    ],
+    lines: dialogue([
+      'interlude-05-star-01',
+      'interlude-05-bearer-01',
+      'interlude-05-star-02',
+      'interlude-05-bearer-02',
+      'interlude-05-star-03',
+      'interlude-05-bearer-03',
+    ]),
     beats: [
       beat('interlude-05-01', 0, 5_000, 'drowned-causeway', 'world', 'idle', 'fade'),
       beat('interlude-05-02', 5_000, 5_000, 'bearer-vow', 'hero', 'walk', 'cut'),
@@ -585,26 +515,24 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     eyebrow: 'Stormrail Conducted',
     summary:
       'The last current becomes a key, opening a door erased from every surviving map.',
-    duration: 15_000,
+    duration: 34_000,
     afterLevelId: 6,
     nextLevelId: 7,
-    arenaAsset: 'assets/campaign-disk-background.webp',
+    arenaAsset: 'assets/cinematics/interlude-06-stormrail-vault.webp',
     heroPose: 'fire',
     bossAsset: BOSS_ATLAS,
     bossFrame: frame(4),
     bossFrameIndex: 4,
     tone: 'electric',
     accent: '#9ca7ff',
-    lines: [
-      line(
-        'interlude-06-star-01',
-        'Last Star',
-        'The Engine guarded a door no map remembers.',
-        1_100,
-        3_600,
-      ),
-      line('interlude-06-bearer-01', 'Bearer', 'The thunder remembered.', 6_300, 2_400),
-    ],
+    lines: dialogue([
+      'interlude-06-star-01',
+      'interlude-06-bearer-01',
+      'interlude-06-star-02',
+      'interlude-06-bearer-02',
+      'interlude-06-star-03',
+      'interlude-06-bearer-03',
+    ]),
     beats: [
       beat('interlude-06-01', 0, 5_000, 'storm-door', 'boss', 'charge', 'fade'),
       beat('interlude-06-02', 5_000, 5_000, 'bearer-vow', 'hero', 'fire', 'cut'),
@@ -619,33 +547,26 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     eyebrow: 'Hourglass Vault Unsealed',
     summary:
       'The Sun-Eater mistakes observation for victory; beyond the broken hours, the Foundry answers.',
-    duration: 20_000,
+    duration: 40_000,
     afterLevelId: 7,
     nextLevelId: 8,
-    arenaAsset: 'assets/campaign-disk-background.webp',
+    arenaAsset: 'assets/cinematics/interlude-07-hourglass-vault.webp',
     heroPose: 'walk',
     bossAsset: BOSS_ATLAS,
     bossFrame: frame(4),
     bossFrameIndex: 4,
     tone: 'foreboding',
     accent: '#8de9ff',
-    lines: [
-      line(
-        'interlude-07-sun-eater-01',
-        'Sun-Eater',
-        'I have watched you fail in every hour.',
-        1_100,
-        3_400,
-      ),
-      line('interlude-07-bearer-01', 'Bearer', 'You only watched.', 6_200, 2_000),
-      line(
-        'interlude-07-star-01',
-        'Last Star',
-        'The Foundry still burns beneath us.',
-        10_000,
-        3_100,
-      ),
-    ],
+    lines: dialogue([
+      'interlude-07-sun-eater-01',
+      'interlude-07-bearer-01',
+      'interlude-07-star-01',
+      'interlude-07-bearer-02',
+      'interlude-07-sun-eater-02',
+      'interlude-07-bearer-03',
+      'interlude-07-star-02',
+      'interlude-07-bearer-04',
+    ]),
     beats: [
       beat('interlude-07-01', 0, 5_500, 'fractured-hours', 'boss', 'idle', 'fade'),
       beat('interlude-07-02', 5_500, 4_000, 'bearer-vow', 'hero', 'idle', 'cut'),
@@ -661,7 +582,7 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     eyebrow: 'Cinder Foundry Extinguished',
     summary:
       'The Foundry reveals the Bearer was made as a vessel; the Bearer claims the right to become something else.',
-    duration: 17_000,
+    duration: 42_000,
     afterLevelId: 8,
     nextLevelId: 9,
     arenaAsset: 'assets/cinder-foundry-arena.webp',
@@ -671,22 +592,16 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     bossFrameIndex: 2,
     tone: 'revelatory',
     accent: '#ff784f',
-    lines: [
-      line(
-        'interlude-08-star-01',
-        'Last Star',
-        'They made you to carry me.',
-        1_200,
-        2_800,
-      ),
-      line(
-        'interlude-08-bearer-01',
-        'Bearer',
-        'They don’t choose what I become.',
-        6_200,
-        3_000,
-      ),
-    ],
+    lines: dialogue([
+      'interlude-08-star-01',
+      'interlude-08-bearer-01',
+      'interlude-08-star-02',
+      'interlude-08-bearer-02',
+      'interlude-08-star-03',
+      'interlude-08-bearer-03',
+      'interlude-08-star-04',
+      'interlude-08-bearer-04',
+    ]),
     beats: [
       beat('interlude-08-01', 0, 5_000, 'foundry-origin', 'relic', 'idle', 'fade'),
       beat('interlude-08-02', 5_000, 6_000, 'bearer-vow', 'hero', 'charge', 'cut'),
@@ -701,40 +616,27 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     eyebrow: 'Void Observatory Aligned',
     summary:
       'The recovered sectors reveal a world-scale Trace. It was the Sun-Eater’s bait—and is now the Bearer’s weapon.',
-    duration: 23_000,
+    duration: 46_000,
     afterLevelId: 9,
     nextLevelId: 10,
-    arenaAsset: 'assets/campaign-disk-background.webp',
+    arenaAsset: 'assets/cinematics/interlude-09-void-observatory.webp',
     heroPose: 'charge',
     bossAsset: BOSS_ATLAS,
     bossFrame: frame(3),
     bossFrameIndex: 3,
     tone: 'apocalyptic',
     accent: '#6d74ff',
-    lines: [
-      line(
-        'interlude-09-cartographer-01',
-        'Cartographer echo',
-        'The map… was bait.',
-        1_000,
-        2_500,
-      ),
-      line(
-        'interlude-09-sun-eater-01',
-        'Sun-Eater',
-        'Complete the circuit. Bring me the star.',
-        5_000,
-        3_400,
-      ),
-      line('interlude-09-star-01', 'Last Star', 'It used our wake.', 10_000, 2_200),
-      line(
-        'interlude-09-bearer-01',
-        'Bearer',
-        'Yes—and taught us where to close the line.',
-        13_800,
-        3_500,
-      ),
-    ],
+    lines: dialogue([
+      'interlude-09-cartographer-01',
+      'interlude-09-bearer-01',
+      'interlude-09-cartographer-02',
+      'interlude-09-sun-eater-01',
+      'interlude-09-star-01',
+      'interlude-09-bearer-02',
+      'interlude-09-cartographer-03',
+      'interlude-09-star-02',
+      'interlude-09-bearer-03',
+    ]),
     beats: [
       beat('interlude-09-01', 0, 4_500, 'false-reflection', 'boss', 'idle', 'fade'),
       beat('interlude-09-02', 4_500, 5_000, 'eclipse-maw', 'boss', 'idle', 'cut'),
@@ -751,61 +653,28 @@ export const CAMPAIGN_CINEMATICS = Object.freeze([
     eyebrow: 'The Crown of Dawn',
     summary:
       'The Sun-Eater springs its trap. The Bearer closes the ten-sector Trace, releasing the Last Star as a dawn shared by everyone.',
-    duration: 42_000,
+    duration: 62_000,
     afterLevelId: 10,
     arenaAsset: 'assets/cinematics/finale-the-first-light.webp',
     heroPose: 'fire',
-    bossAsset: BOSS_ATLAS,
-    bossFrame: frame(5),
-    bossFrameIndex: 5,
     tone: 'radiant',
     accent: '#ffd979',
-    lines: [
-      line(
-        'finale-star-01',
-        'Last Star',
-        'It isn’t dying. It’s opening.',
-        1_100,
-        2_900,
-      ),
-      line(
-        'finale-sun-eater-01',
-        'Sun-Eater',
-        'At last. The final light.',
-        5_000,
-        3_200,
-      ),
-      line(
-        'finale-star-02',
-        'Last Star',
-        'If it takes me, the world goes dark.',
-        9_200,
-        3_900,
-      ),
-      line('finale-bearer-01', 'Bearer', 'Trust the path.', 14_200, 2_000),
-      line('finale-bearer-02', 'Bearer', 'Now.', 18_000, 1_100),
-      line(
-        'finale-sun-eater-02',
-        'Sun-Eater',
-        'What have you—',
-        20_600,
-        2_000,
-      ),
-      line(
-        'finale-star-03',
-        'Last Star',
-        'I was never the last light. I was the first.',
-        24_300,
-        5_300,
-      ),
-      line(
-        'finale-bearer-03',
-        'Bearer',
-        'Then let morning belong to everyone.',
-        30_200,
-        3_400,
-      ),
-    ],
+    lines: dialogue([
+      'finale-star-01',
+      'finale-bearer-01',
+      'finale-star-02',
+      'finale-bearer-02',
+      'finale-star-03',
+      'finale-sun-eater-01',
+      'finale-star-04',
+      'finale-sun-eater-02',
+      'finale-star-05',
+      'finale-bearer-03',
+      'finale-bearer-04',
+      'finale-sun-eater-03',
+      'finale-star-06',
+      'finale-bearer-05',
+    ]),
     beats: [
       beat('finale-01', 0, 4_500, 'eclipse-maw', 'boss', 'idle', 'fade'),
       beat('finale-02', 4_500, 4_500, 'last-star-ember', 'relic', 'charge', 'cut'),

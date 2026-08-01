@@ -1,13 +1,13 @@
-const CACHE_VERSION = 'v1.21.0'
-const MEMORY_VOICE_REVISION = '7960f319e5c12459'
+const CACHE_VERSION = 'v1.22.0'
+const CINEMATIC_VOICE_REVISION = '68e1ec02d45c3356'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
 const ASSET_CACHE = `${CACHE_PREFIX}assets-${CACHE_VERSION}`
 const SCOPE_URL = new URL(self.registration.scope)
 const INDEX_URL = new URL('index.html', SCOPE_URL).href
 const BUILD_MANIFEST_URL = new URL('.vite/manifest.json', SCOPE_URL).href
-const MEMORY_VOICE_MANIFEST_URL = new URL(
-  'assets/cinematics/audio/memories/manifest.json',
+const CINEMATIC_VOICE_MANIFEST_URL = new URL(
+  'assets/cinematics/audio/campaign/manifest.json',
   SCOPE_URL,
 ).href
 const SHELL_URLS = [
@@ -22,13 +22,12 @@ const SHELL_URLS = [
   new URL('assets/campaign-disk-background.webp', SCOPE_URL).href,
   new URL('assets/cinematics/intro-a-world-without-dawn.webp', SCOPE_URL).href,
   new URL('assets/cinematics/finale-the-first-light.webp', SCOPE_URL).href,
-  new URL('assets/cinematics/audio/last-star/intro-star-01.wav', SCOPE_URL).href,
-  new URL('assets/cinematics/audio/last-star/intro-star-02.wav', SCOPE_URL).href,
-  new URL('assets/cinematics/audio/last-star/intro-star-03.wav', SCOPE_URL).href,
-  new URL('assets/cinematics/audio/last-star/intro-star-04.wav', SCOPE_URL).href,
-  new URL('assets/cinematics/audio/last-star/finale-star-01.wav', SCOPE_URL).href,
-  new URL('assets/cinematics/audio/last-star/finale-star-02.wav', SCOPE_URL).href,
-  new URL('assets/cinematics/audio/last-star/finale-star-03.wav', SCOPE_URL).href,
+  new URL('assets/cinematics/interlude-03-shattered-arcade.webp', SCOPE_URL).href,
+  new URL('assets/cinematics/interlude-04-prism-garden.webp', SCOPE_URL).href,
+  new URL('assets/cinematics/interlude-05-drowned-causeway.webp', SCOPE_URL).href,
+  new URL('assets/cinematics/interlude-06-stormrail-vault.webp', SCOPE_URL).href,
+  new URL('assets/cinematics/interlude-07-hourglass-vault.webp', SCOPE_URL).href,
+  new URL('assets/cinematics/interlude-09-void-observatory.webp', SCOPE_URL).href,
   new URL('assets/cinder-foundry-arena.webp', SCOPE_URL).href,
   new URL('assets/first-beacon-arena.webp', SCOPE_URL).href,
   new URL('assets/glassreed-mire-arena.webp', SCOPE_URL).href,
@@ -73,15 +72,25 @@ function collectBuildFiles(manifest) {
   return [...files]
 }
 
-function collectMemoryVoiceFiles(manifest) {
-  if (manifest?.status === 'pending-generation') return []
+function collectCinematicVoiceFiles(manifest) {
+  const allowedStatuses = new Set(['pending-generation', 'partial', 'ready'])
   if (
-    manifest?.status !== 'ready' ||
-    manifest.expectedClipCount !== 22 ||
+    !allowedStatuses.has(manifest?.status) ||
+    manifest.provider !== 'Google Gemini API' ||
+    manifest.model !== 'gemini-3.1-flash-tts-preview' ||
+    manifest.promptRevision !== 'nighttrace-campaign-v1' ||
+    manifest.set !== 'campaign' ||
+    !Number.isInteger(manifest.expectedClipCount) ||
+    manifest.expectedClipCount <= 0 ||
     !Array.isArray(manifest.clips) ||
-    manifest.clips.length !== 22
+    (manifest.status === 'pending-generation' && manifest.clips.length !== 0) ||
+    (manifest.status === 'partial' &&
+      (manifest.clips.length === 0 ||
+        manifest.clips.length >= manifest.expectedClipCount)) ||
+    (manifest.status === 'ready' &&
+      manifest.clips.length !== manifest.expectedClipCount)
   ) {
-    throw new Error('Invalid Memory narration manifest')
+    throw new Error('Invalid cinematic narration manifest')
   }
 
   const ids = new Set()
@@ -92,39 +101,39 @@ function collectMemoryVoiceFiles(manifest) {
       !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(clip.id) ||
       ids.has(clip.id)
     ) {
-      throw new Error('Invalid or duplicate Memory narration clip id')
+      throw new Error('Invalid or duplicate cinematic narration clip id')
     }
     ids.add(clip.id)
     return new URL(
-      `assets/cinematics/audio/memories/${clip.id}.wav`,
+      `assets/cinematics/audio/campaign/${clip.id}.wav`,
       SCOPE_URL,
     ).href
   })
 }
 
-async function precacheMemoryVoices(cache) {
-  const response = await fetch(MEMORY_VOICE_MANIFEST_URL, { cache: 'reload' })
+async function precacheCinematicVoices(cache) {
+  const response = await fetch(CINEMATIC_VOICE_MANIFEST_URL, { cache: 'reload' })
   if (!isCacheable(response)) {
-    throw new Error('Unable to load the Memory narration manifest')
+    throw new Error('Unable to load the cinematic narration manifest')
   }
-  await cache.put(MEMORY_VOICE_MANIFEST_URL, response.clone())
+  await cache.put(CINEMATIC_VOICE_MANIFEST_URL, response.clone())
   const manifest = await response.clone().json()
-  const memoryVoiceFiles = collectMemoryVoiceFiles(manifest)
+  const cinematicVoiceFiles = collectCinematicVoiceFiles(manifest)
 
-  if (memoryVoiceFiles.length === 0) {
+  if (cinematicVoiceFiles.length === 0) {
     console.info(
-      `[NIGHTTRACE] Memory narration ${MEMORY_VOICE_REVISION}; subtitles remain the explicit fallback.`,
+      `[NIGHTTRACE] Cinematic narration ${CINEMATIC_VOICE_REVISION}; subtitles remain the explicit fallback.`,
     )
     return
   }
 
-  await Promise.all(memoryVoiceFiles.map((url) => cache.add(url)))
+  await Promise.all(cinematicVoiceFiles.map((url) => cache.add(url)))
 }
 
 async function precacheShell() {
   const cache = await caches.open(SHELL_CACHE)
   await cache.addAll(SHELL_URLS)
-  await precacheMemoryVoices(cache)
+  await precacheCinematicVoices(cache)
 
   const manifestResponse = await fetch(BUILD_MANIFEST_URL, { cache: 'reload' })
   if (!isCacheable(manifestResponse)) {

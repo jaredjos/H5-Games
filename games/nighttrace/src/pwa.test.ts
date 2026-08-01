@@ -24,8 +24,8 @@ describe('Nighttrace PWA delivery', () => {
     expect(navigationSource).not.toContain('if (installedIndex) return installedIndex')
   })
 
-  it('uses the v1.21.0 cache namespace and precaches title and cinematic art', () => {
-    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.21.0'")
+  it('uses the v1.22.0 cache namespace and precaches title and cinematic art', () => {
+    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.22.0'")
     expect(serviceWorkerSource).toContain(
       "new URL('assets/nighttrace-title-hero-v2.png', SCOPE_URL).href",
     )
@@ -35,13 +35,30 @@ describe('Nighttrace PWA delivery', () => {
     expect(serviceWorkerSource).toContain(
       "new URL('assets/cinematics/finale-the-first-light.webp', SCOPE_URL).href",
     )
-    expect(serviceWorkerSource.match(/assets\/cinematics\/audio\/last-star\/.+\.wav/g))
-      .toHaveLength(7)
+    for (const plate of [
+      'interlude-03-shattered-arcade',
+      'interlude-04-prism-garden',
+      'interlude-05-drowned-causeway',
+      'interlude-06-stormrail-vault',
+      'interlude-07-hourglass-vault',
+      'interlude-09-void-observatory',
+    ]) {
+      expect(serviceWorkerSource).toContain(
+        `new URL('assets/cinematics/${plate}.webp', SCOPE_URL).href`,
+      )
+    }
     expect(serviceWorkerSource).toContain(
-      "'assets/cinematics/audio/memories/manifest.json'",
+      "'assets/cinematics/audio/campaign/manifest.json'",
     )
-    expect(serviceWorkerSource).toContain('collectMemoryVoiceFiles(manifest)')
-    expect(serviceWorkerSource).toContain('await precacheMemoryVoices(cache)')
+    expect(serviceWorkerSource).toContain('collectCinematicVoiceFiles(manifest)')
+    expect(serviceWorkerSource).toContain('manifest.expectedClipCount')
+    expect(serviceWorkerSource).toContain('await precacheCinematicVoices(cache)')
+    expect(serviceWorkerSource).not.toContain(
+      'assets/cinematics/audio/last-star/',
+    )
+    expect(serviceWorkerSource).not.toContain(
+      'assets/cinematics/audio/memories/',
+    )
   })
 
   it('streams range media without caching partial MP3 responses', () => {
@@ -87,7 +104,7 @@ describe('Nighttrace PWA delivery', () => {
 
     expect(reload).toHaveBeenCalledTimes(1)
     expect(storage.setItem).toHaveBeenCalledWith(
-      'nighttrace:pwa-controller-reload:v1.21.0',
+      'nighttrace:pwa-controller-reload:v1.22.0',
       '1',
     )
   })

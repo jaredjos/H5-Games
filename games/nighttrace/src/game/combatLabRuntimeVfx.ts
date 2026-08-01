@@ -17,7 +17,7 @@ export type CombatLabRuntimeMotif =
   | 'solar-filaments'
   | 'lunar-petals'
   | 'cathedral-branches'
-  | 'event-horizon-seeds'
+  | 'astral-verdict'
   | 'plasma-embers'
   | 'prismatic-fletching'
 
@@ -41,11 +41,19 @@ interface RankPalette {
 
 const TARGET_IDS = new Set<WeaponId>(COMBAT_LAB_RUNTIME_VFX_IDS)
 
+// These authored Lab treatments have graduated into the shipped modes. The
+// internal weapon ids stay stable so existing saves remain compatible.
+const LIVE_AUTHORED_IDS = new Set<WeaponId>([
+  'arc-choir',
+  'rift-seeds',
+  'mirror-bow',
+])
+
 const MOTIFS = Object.freeze({
   'helio-lance': 'solar-filaments',
   'crescent-array': 'lunar-petals',
   'arc-choir': 'cathedral-branches',
-  'rift-seeds': 'event-horizon-seeds',
+  'rift-seeds': 'astral-verdict',
   'comet-swarm': 'plasma-embers',
   'mirror-bow': 'prismatic-fletching',
 } as const satisfies Readonly<Record<CombatLabRuntimeVfxId, CombatLabRuntimeMotif>>)
@@ -66,18 +74,18 @@ const RANK_PALETTES = Object.freeze({
     { core: 0xffffff, glow: 0xd3fbff, accent: 0x94edff, secondary: 0xd2bdff },
   ]),
   'arc-choir': Object.freeze([
-    { core: 0xefe8ff, glow: 0x8a66d7, accent: 0x5c3cae, secondary: 0x4bbacb },
-    { core: 0xf5edff, glow: 0x9c75e8, accent: 0x6d4ac5, secondary: 0x59cbdb },
-    { core: 0xfaf4ff, glow: 0xaf86fa, accent: 0x805bd9, secondary: 0x69ddeb },
-    { core: 0xffffff, glow: 0xc7a1ff, accent: 0x9470ed, secondary: 0x82eff7 },
-    { core: 0xffffff, glow: 0xe0c6ff, accent: 0xb295ff, secondary: 0xb5ffff },
+    { core: 0xf7f2ff, glow: 0x5b2aa6, accent: 0x7c3aed, secondary: 0xb794f4 },
+    { core: 0xf8f5ff, glow: 0x642eb8, accent: 0x8b4cf0, secondary: 0xc09aff },
+    { core: 0xfcf8ff, glow: 0x6d33ca, accent: 0x9957f5, secondary: 0xccaaff },
+    { core: 0xfffaff, glow: 0x753ad8, accent: 0xa766f8, secondary: 0xd8bfff },
+    { core: 0xfffcff, glow: 0x8045e5, accent: 0xb77cff, secondary: 0xe4d0ff },
   ]),
   'rift-seeds': Object.freeze([
-    { core: 0xccf5e7, glow: 0x3eaa87, accent: 0x126950, secondary: 0x5c4596 },
-    { core: 0xddfff1, glow: 0x4fc49a, accent: 0x168066, secondary: 0x7055b1 },
-    { core: 0xeafff7, glow: 0x63dbaa, accent: 0x199878, secondary: 0x8568cd },
-    { core: 0xf4fffb, glow: 0x7cebc0, accent: 0x21ae8b, secondary: 0xa083e6 },
-    { core: 0xffffff, glow: 0xa2ffdc, accent: 0x39c9a4, secondary: 0xc0a5ff },
+    { core: 0xf4efff, glow: 0x311568, accent: 0x6330cf, secondary: 0x2fbde8 },
+    { core: 0xf8f2ff, glow: 0x381879, accent: 0x6d35dc, secondary: 0x38c8ef },
+    { core: 0xfcf7ff, glow: 0x401b88, accent: 0x773de8, secondary: 0x45d5f5 },
+    { core: 0xfffbff, glow: 0x481e96, accent: 0x8248f2, secondary: 0x55e0fa },
+    { core: 0xffffff, glow: 0x5122a5, accent: 0x8e56ff, secondary: 0x6ceaff },
   ]),
   'comet-swarm': Object.freeze([
     { core: 0xffe8cf, glow: 0xd7624f, accent: 0xa83640, secondary: 0xd7a33c },
@@ -87,11 +95,11 @@ const RANK_PALETTES = Object.freeze({
     { core: 0xffffff, glow: 0xffb18d, accent: 0xff7567, secondary: 0xffe79a },
   ]),
   'mirror-bow': Object.freeze([
-    { core: 0xe5f1f6, glow: 0x7297aa, accent: 0x497384, secondary: 0x735c9d },
-    { core: 0xf0f8fb, glow: 0x82aec1, accent: 0x558b9e, secondary: 0x866db4 },
-    { core: 0xf9fdff, glow: 0x95c6d9, accent: 0x61a4b7, secondary: 0x9b7dca },
-    { core: 0xffffff, glow: 0xadddec, accent: 0x72bfd0, secondary: 0xb092df },
-    { core: 0xffffff, glow: 0xd2f4ff, accent: 0x91dce9, secondary: 0xd0b8ff },
+    { core: 0xe9fbff, glow: 0x58b8d8, accent: 0x276eaa, secondary: 0x8b52cd },
+    { core: 0xf0fdff, glow: 0x67cae7, accent: 0x3186c1, secondary: 0x9c63dc },
+    { core: 0xf7feff, glow: 0x79dcef, accent: 0x3c9dd4, secondary: 0xaf75ea },
+    { core: 0xffffff, glow: 0x91ecf7, accent: 0x54b7e5, secondary: 0xc18df5 },
+    { core: 0xffffff, glow: 0xb8f7ff, accent: 0x76d0f1, secondary: 0xdcb8ff },
   ]),
 } as const satisfies Readonly<Record<CombatLabRuntimeVfxId, readonly RankPalette[]>>)
 
@@ -105,9 +113,9 @@ export function isCombatLabRuntimeVfxId(
 }
 
 /**
- * Gives the launched Combat Lab its own authored presentation layer. Campaign,
- * Boss Trials and the three approved spells deliberately receive the exact
- * original profile object so their presentation cannot drift through this lab.
+ * Gives the launched Combat Lab its authored presentation layer. Arc Choir,
+ * Astral Verdict and Mirror Bow have also graduated into Campaign and Boss
+ * Trials; the remaining Lab experiments still cannot leak into shipped modes.
  */
 export function resolveCombatLabRuntimeVfx(
   mode: RunMode,
@@ -115,7 +123,9 @@ export function resolveCombatLabRuntimeVfx(
   state: WeaponVfxState,
   baseProfile: WeaponVfxProfile,
 ): CombatLabRuntimeVfxPresentation {
-  if (mode !== 'combat-lab' || !isCombatLabRuntimeVfxId(weaponId)) {
+  const authoredInMode =
+    mode === 'combat-lab' || LIVE_AUTHORED_IDS.has(weaponId)
+  if (!authoredInMode || !isCombatLabRuntimeVfxId(weaponId)) {
     return Object.freeze({
       enabled: false,
       rank: clampRank(state.rank),
@@ -132,11 +142,19 @@ export function resolveCombatLabRuntimeVfx(
   const awakened = Boolean(state.awakened)
   const palette = RANK_PALETTES[weaponId][rank - 1]
   const awakeningLift = awakened ? 1 : 0
+  // Arc Choir's saturated violet body is its authored identity. The generic
+  // awakening remap intentionally inverts other spell palettes, but that made
+  // Cathedral Storm read as a white/cyan (and occasionally warm) beam in the
+  // arena. Keep its violet hierarchy intact and lift only the white-hot core.
+  const preservesAwakenedPalette = weaponId === 'arc-choir'
   const profile = Object.freeze({
     coreColor: awakened ? 0xffffff : palette.core,
-    glowColor: awakened ? palette.secondary : palette.glow,
-    accentColor: awakened ? palette.core : palette.accent,
-    secondaryColor: awakened ? palette.glow : palette.secondary,
+    glowColor:
+      awakened && !preservesAwakenedPalette ? palette.secondary : palette.glow,
+    accentColor:
+      awakened && !preservesAwakenedPalette ? palette.core : palette.accent,
+    secondaryColor:
+      awakened && !preservesAwakenedPalette ? palette.glow : palette.secondary,
     trailLengthScale: baseProfile.trailLengthScale * (1 + rank * 0.055 + awakeningLift * 0.18),
     trailWidthScale: baseProfile.trailWidthScale * (1 + rank * 0.04 + awakeningLift * 0.14),
     projectileScale: baseProfile.projectileScale * (1 + rank * 0.025 + awakeningLift * 0.09),

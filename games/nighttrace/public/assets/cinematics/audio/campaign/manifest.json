@@ -1,0 +1,852 @@
+{
+  "status": "ready",
+  "provider": "Google Gemini API",
+  "model": "gemini-3.1-flash-tts-preview",
+  "promptRevision": "nighttrace-campaign-v1",
+  "set": "campaign",
+  "expectedClipCount": 84,
+  "planSha256": "b091faa8efe76ad62c629838673af918f995d7c93112db981fd3e15d7eb294a3",
+  "generatedAt": "2026-08-01T11:54:59.871Z",
+  "clips": [
+    {
+      "id": "intro-star-01",
+      "sceneId": "intro-a-world-without-dawn",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "024b5567c75780307ec2d1713535e4be30b1a8eba73aa64ca2c73d07ce90867d",
+      "durationMs": 4009,
+      "bytes": 192490,
+      "sha256": "fe8ad4dd9b184b5d4127f40dc5d18cda76abb8a23b35d8956ba413e1f9947d1d"
+    },
+    {
+      "id": "intro-star-02",
+      "sceneId": "intro-a-world-without-dawn",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "d7221d064bdf1f1802b8d4739f110cccb8b78f47fc5abbb49e2a9fc630c125ec",
+      "durationMs": 5241,
+      "bytes": 251594,
+      "sha256": "20881e4e8e7e5820c315691c98900d17e2959e7638a8cbc7cabda85c3781acc5"
+    },
+    {
+      "id": "intro-star-03",
+      "sceneId": "intro-a-world-without-dawn",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "daa507618faf3061196be00b653de56b17b2682dafa5d76481ec79c9332af948",
+      "durationMs": 5794,
+      "bytes": 278160,
+      "sha256": "4555c481aea43b03c9a6c9e1bbc93daef170d861b958d19c556bf42236a6d2f5"
+    },
+    {
+      "id": "intro-bearer-01",
+      "sceneId": "intro-a-world-without-dawn",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "1e5aa7795a567e8a57473b2c856be67b6c54ea46b619067d0ebbc1db25df037e",
+      "durationMs": 3776,
+      "bytes": 181306,
+      "sha256": "942acdb79d5443dc61fc20f195b904c9e56a488f6ae7cb1d79554e0c27785901"
+    },
+    {
+      "id": "intro-star-04",
+      "sceneId": "intro-a-world-without-dawn",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "ca2ed465841d5715036aa8632706e5c9e0f681805ab121f9be4d9a0fd1c31d6e",
+      "durationMs": 4781,
+      "bytes": 229538,
+      "sha256": "4eedaefdea0fe2f4c43e181727a7a97cf4b9f97c2cab5ee14ae0e5b8f0d7797f"
+    },
+    {
+      "id": "intro-bearer-02",
+      "sceneId": "intro-a-world-without-dawn",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "d4076cded1b95eacd63f5f8d9e74dd6c450a1d5709d361f96436a9841ab26ef1",
+      "durationMs": 2526,
+      "bytes": 121284,
+      "sha256": "66f2fbeb603031da9b0f8e255b8cddb7c3ef6e134be49bd7308129a7ca98c0fc"
+    },
+    {
+      "id": "intro-star-05",
+      "sceneId": "intro-a-world-without-dawn",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "d9467c0f66fc82c7cba0ac0ba25102361fda60e3ebe8c506d95a0ef655672817",
+      "durationMs": 5434,
+      "bytes": 260854,
+      "sha256": "48f457bb891b30a2823781bd73611b64d6d2c5e8928ffdca5ba2bcb4c52081e0"
+    },
+    {
+      "id": "intro-bearer-03",
+      "sceneId": "intro-a-world-without-dawn",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "ea67448299a60c11e8c70d53d4e80bd306d1275b99ad4a74da4c4da876953111",
+      "durationMs": 1953,
+      "bytes": 93810,
+      "sha256": "d0bea33af289cb3ccc892b5fe8ff20443e68e687da69f0d551930e818321c863"
+    },
+    {
+      "id": "intro-star-06",
+      "sceneId": "intro-a-world-without-dawn",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "3c89db814c07ee8a2954b5048735ab45ea6092d501dc680d3698299678e66a7f",
+      "durationMs": 4127,
+      "bytes": 198146,
+      "sha256": "af77f38297497781fe6e4286eefbf89b9d141fe2fd75bd07cc016fcd8947b687"
+    },
+    {
+      "id": "interlude-01-star-01",
+      "sceneId": "interlude-01-the-road-remembers",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "c920de6a5d49ca2681760c01f37ab418f11ff459302815458ab9359c765a30f9",
+      "durationMs": 3390,
+      "bytes": 162740,
+      "sha256": "c556f5db13edb8c7edcce05ba0fe036e44091932c49dc9b925fd8a5222931fa0"
+    },
+    {
+      "id": "interlude-01-bearer-01",
+      "sceneId": "interlude-01-the-road-remembers",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "969e02b2b04eecfe859b07f421b92177c46add73ffeb7762bf2f28fa24cedeb3",
+      "durationMs": 3586,
+      "bytes": 172174,
+      "sha256": "90e8b48a59172f4455faa7437e64bc65cef399aa4e68a373cf4cf63667bc490d"
+    },
+    {
+      "id": "interlude-01-star-02",
+      "sceneId": "interlude-01-the-road-remembers",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "71a8ce2483926e563344f96369da6f05ca542c617ac0a4cba77667419455a552",
+      "durationMs": 6166,
+      "bytes": 296010,
+      "sha256": "f45c8f450bec4b2a3d99064bcaad28b26900bf99da4c729d55cea3b701a76f7a"
+    },
+    {
+      "id": "interlude-01-bearer-02",
+      "sceneId": "interlude-01-the-road-remembers",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "b9a6156a333a1ca1a3ced726294eea34b751f9a72a46dfc7ce3f34dec1d59e34",
+      "durationMs": 3994,
+      "bytes": 191760,
+      "sha256": "1eb0e5f0e5f5092107732320ebec97b455177cd2a33a6cfa273e98be13ea1f70"
+    },
+    {
+      "id": "interlude-01-star-03",
+      "sceneId": "interlude-01-the-road-remembers",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "a768fc5135fc9f8488b418f622b645c2754a378ea8d740f540e5597dc9c2f3d6",
+      "durationMs": 3492,
+      "bytes": 167654,
+      "sha256": "5ce26c04fc6096760b798f93c2d43bc8674eefdbd70b2e62f0a218f2fd47391a"
+    },
+    {
+      "id": "interlude-02-star-01",
+      "sceneId": "interlude-02-six-voices",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "a672992eaa974e377ff61b591f58752ab1fda67a2b811d948ad4675ad77db6db",
+      "durationMs": 4174,
+      "bytes": 200374,
+      "sha256": "b9cb0e77e97f566133f25369071e008504d8d6150d86513c0e687529f0142739"
+    },
+    {
+      "id": "interlude-02-bearer-01",
+      "sceneId": "interlude-02-six-voices",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "b02ece2d1cc6729e4e5155211c33d7ab6d2e79eaa34d9f071ac3b1718ab0d8ee",
+      "durationMs": 3124,
+      "bytes": 149974,
+      "sha256": "073fa27a908d2f8e52101f713cf2ce57af959fbabddf3937643433dee72e046f"
+    },
+    {
+      "id": "interlude-02-star-02",
+      "sceneId": "interlude-02-six-voices",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "337a2987114bb5ae61277a8c6dd908419d561f83842f4c9de1b2e1667afaf3af",
+      "durationMs": 4871,
+      "bytes": 233846,
+      "sha256": "6887ad6960cc1781f03250238f5d863ecd8f7d0f7748b097605fc192b3bf7314"
+    },
+    {
+      "id": "interlude-02-bearer-02",
+      "sceneId": "interlude-02-six-voices",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "ea3055e3039ace07940e4834fb6a8a58ae44aafa147a127a5d792cbbef74e421",
+      "durationMs": 1067,
+      "bytes": 51270,
+      "sha256": "e59c85a5a5045311befeef88fb8e4a3df8a1e8c248daad1bf15275ed973901db"
+    },
+    {
+      "id": "interlude-02-star-03",
+      "sceneId": "interlude-02-six-voices",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "4766a38386006403360282cb082be83b1c83b4a9b072c807737dd9654964140c",
+      "durationMs": 5152,
+      "bytes": 247358,
+      "sha256": "66bc899d0591718cebe2748d7667b7db3d62a643c9958f331b2e4642c5fcb514"
+    },
+    {
+      "id": "interlude-02-bearer-03",
+      "sceneId": "interlude-02-six-voices",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "0eaf7cbad055c8923f0cf6960dbccf2b34c247afdeff60d114adba578abb941f",
+      "durationMs": 3413,
+      "bytes": 163882,
+      "sha256": "135b96a0124f331c57ad73cb4f5306418a80c7aacfed1cc1e2fd8d34d9d310e3"
+    },
+    {
+      "id": "interlude-03-star-01",
+      "sceneId": "interlude-03-what-night-couldnt-kill",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "0a1e2afb749118e64e3b2bacdf99d724d0f70b7e165728cd928b2954899a6b44",
+      "durationMs": 4082,
+      "bytes": 195996,
+      "sha256": "1b06a7eb71c323cc55461c3801e21209e3e5b6337fda416d862a0339d7175321"
+    },
+    {
+      "id": "interlude-03-bearer-01",
+      "sceneId": "interlude-03-what-night-couldnt-kill",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "666b8c338783ae57664c17cbb8471a3fbf34a8d1818d5642c84598d8c3b0f1f0",
+      "durationMs": 2183,
+      "bytes": 104832,
+      "sha256": "f9cd35a43b295194161647f51342f5492721b4558a39c7634da9b4ca205d499c"
+    },
+    {
+      "id": "interlude-03-star-02",
+      "sceneId": "interlude-03-what-night-couldnt-kill",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "176ebdb1f6ebf35675da191142bc10c55c47530d01b9e34dd2fdec568ed23303",
+      "durationMs": 5096,
+      "bytes": 244636,
+      "sha256": "93f6bdcd4e940dab05cc3e0bc2be0d2268dc5ed839d538622fdfb74ab304a4c3"
+    },
+    {
+      "id": "interlude-03-bearer-02",
+      "sceneId": "interlude-03-what-night-couldnt-kill",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "d0f1dd173cffed10de0cadbdf654ffcd3fb76126f64a4d3ba036a03e1f292efb",
+      "durationMs": 3149,
+      "bytes": 151196,
+      "sha256": "64db1afb82a859266387eaf033252f8dbcaba8392e9f7bd025ee94e1f3818b5f"
+    },
+    {
+      "id": "interlude-03-star-03",
+      "sceneId": "interlude-03-what-night-couldnt-kill",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "699569c4d7b9c586ecffd8a05b414a9d2e69d088d2b51259c7cceacfaca25f47",
+      "durationMs": 4260,
+      "bytes": 204504,
+      "sha256": "742c232b3362c710d27641f1f13673b195a9175901d475d2a910d435f65b1136"
+    },
+    {
+      "id": "interlude-03-bearer-03",
+      "sceneId": "interlude-03-what-night-couldnt-kill",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "016a84ee7740258bd9a46382e31edea482b9cdf371be31d493dfa49cabe0da3e",
+      "durationMs": 2565,
+      "bytes": 123168,
+      "sha256": "36ae6c6c22176e237444f0aec5cbebcad5f550c5fa2ab2ff1e4bb999aaa9179a"
+    },
+    {
+      "id": "interlude-04-sun-eater-01",
+      "sceneId": "interlude-04-the-reflection-that-waits",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "contentSha256": "d4210bd5ca8f635b3f472c7f49b507de89c8b9a1eecf694939662eb86a3a2d47",
+      "durationMs": 3091,
+      "bytes": 148430,
+      "sha256": "c694eb998d05b854b0d62f3d312c08436e92cb4e97a50b8aac787a1764502648"
+    },
+    {
+      "id": "interlude-04-star-01",
+      "sceneId": "interlude-04-the-reflection-that-waits",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "1eb150762ee6e92160aec1582aa861516cb21507f1dd187e1a1b7f1fff7f3909",
+      "durationMs": 3742,
+      "bytes": 179646,
+      "sha256": "d3c94faaea2e87c78cb58e8dfd8f771ceedaa4d2596961f1be9448f2cf42e149"
+    },
+    {
+      "id": "interlude-04-bearer-01",
+      "sceneId": "interlude-04-the-reflection-that-waits",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "c5e0a5837b43fca4e7a65dd377308082955898da3be98ed1bba26c759d763206",
+      "durationMs": 2864,
+      "bytes": 137530,
+      "sha256": "cd77ba6dce8a0c0371a99d637fdbacd53b4dfed03a545d60cfe95478768da597"
+    },
+    {
+      "id": "interlude-04-sun-eater-02",
+      "sceneId": "interlude-04-the-reflection-that-waits",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "contentSha256": "a8c1fa8454dcb64b61276a7689bdb495e6a6d2898fd95f7465679f5019783fbe",
+      "durationMs": 4521,
+      "bytes": 217074,
+      "sha256": "bffd159c097f55b9a7315b2264e94cef93c401624b2795bfe73ea129db6ee644"
+    },
+    {
+      "id": "interlude-04-star-02",
+      "sceneId": "interlude-04-the-reflection-that-waits",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "9fd3bb214f737dd6c6c4b06f9b42796e8b633b3b84897e741e05e92cf5d6ad9e",
+      "durationMs": 1701,
+      "bytes": 81684,
+      "sha256": "6988aae7fa97fb4b4f7e279396d4b3bc468245eb206dff47db1b76620ccd56bc"
+    },
+    {
+      "id": "interlude-04-bearer-02",
+      "sceneId": "interlude-04-the-reflection-that-waits",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "61ff12be95e3a06df4570d120cf73e1e3ac2fbf9d93001ca4d2f29146ee9c8ec",
+      "durationMs": 2689,
+      "bytes": 129120,
+      "sha256": "4351e4bdaae888d74fe77ea0a7060454af8fd4bf949a7a09d7b52cb2b024930f"
+    },
+    {
+      "id": "interlude-04-bearer-03",
+      "sceneId": "interlude-04-the-reflection-that-waits",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "2b3ea72247be5f325b2a913ac80c0545c7d97547ae5dee169da395e5b8c60664",
+      "durationMs": 3179,
+      "bytes": 152658,
+      "sha256": "7e4bacd50d9ab9af4e1b3f9dcd535dd7b9a20c70949b3ebb5189abc6a557985f"
+    },
+    {
+      "id": "interlude-05-star-01",
+      "sceneId": "interlude-05-the-road-beneath-the-tide",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "4c9a02cc7982ed6168d3efcec7ed8822372b31013d52db0fa32ffe5f3d732cc7",
+      "durationMs": 3274,
+      "bytes": 157174,
+      "sha256": "510c255596a1bbc68d37a51bcc4e40d6eb71475a059de5e01be6d3a798ab4607"
+    },
+    {
+      "id": "interlude-05-bearer-01",
+      "sceneId": "interlude-05-the-road-beneath-the-tide",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "b863faea06892ca9efb672b4cc6a7b2776c7a06b0d5fe21aa2cba550ba2b62e8",
+      "durationMs": 4395,
+      "bytes": 211022,
+      "sha256": "baa308d06807342167c494f3b9c9da8f2be71b2491abaa184c1456c38a0fb032"
+    },
+    {
+      "id": "interlude-05-star-02",
+      "sceneId": "interlude-05-the-road-beneath-the-tide",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "272b5fa2f10feb8696b4f689ae8b48f862c784ea520d04b9fc3bf31acf126208",
+      "durationMs": 2904,
+      "bytes": 139440,
+      "sha256": "a893d3af949494d888159a158f7df4c90a126c4c543e281e1d4a44e05415c46f"
+    },
+    {
+      "id": "interlude-05-bearer-02",
+      "sceneId": "interlude-05-the-road-beneath-the-tide",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "bc57da443959ef91cdbd33a4a4eae33bbe11c077c1e5c3ec9376857f8807ee54",
+      "durationMs": 3075,
+      "bytes": 147652,
+      "sha256": "b8e82e1e3854d3df7d702c155440d27c4590bc0af27e1f6b5675e20143626236"
+    },
+    {
+      "id": "interlude-05-star-03",
+      "sceneId": "interlude-05-the-road-beneath-the-tide",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "c48f6fb59ec9e7b8ab05315055b91166c6efca9359645fa73941ca72252caab4",
+      "durationMs": 5345,
+      "bytes": 256606,
+      "sha256": "a560cbab4a33ceb90da5cb5bc28d54565f9a4387c355bcfda61bd7d45366bb8d"
+    },
+    {
+      "id": "interlude-05-bearer-03",
+      "sceneId": "interlude-05-the-road-beneath-the-tide",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "af70673bc6659b68dac0402d45261f92a2d9872c75eacdb4d89dd1924e41da4b",
+      "durationMs": 3305,
+      "bytes": 158706,
+      "sha256": "05d0d0e402f9d05e79ef7d45b198a26293469a05acc97625ab8bc6e1524d58e2"
+    },
+    {
+      "id": "interlude-06-star-01",
+      "sceneId": "interlude-06-thunder-opens-the-vault",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "1c920c9dfe0aba9804fb3eaa47ba6689d5b8a87a8656ce7b83100300fc56e0a3",
+      "durationMs": 4146,
+      "bytes": 199036,
+      "sha256": "bf12a74a1154acc47120ed0cb1ff93826f79a988f4d418f278a64cd80162a55d"
+    },
+    {
+      "id": "interlude-06-bearer-01",
+      "sceneId": "interlude-06-thunder-opens-the-vault",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "35923bbd8a96805de5d599ea353c9acace4a3a77328f257052a97b4aea716500",
+      "durationMs": 1908,
+      "bytes": 91608,
+      "sha256": "cbe044dbbbcb754bff25494f512f65557c171e20e6072b022149f805fabd7e01"
+    },
+    {
+      "id": "interlude-06-star-02",
+      "sceneId": "interlude-06-thunder-opens-the-vault",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "b1ea502460f55a0716e507a71fa875ad682f8dac6fee788a5c503cba800d8f5c",
+      "durationMs": 3664,
+      "bytes": 175908,
+      "sha256": "af99a4f542a7f51d7d1f511a9382c472d09676847e7297a6e547a2e7a2978405"
+    },
+    {
+      "id": "interlude-06-bearer-02",
+      "sceneId": "interlude-06-thunder-opens-the-vault",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "246ffed34d85ed87c4cba31dd35f3702f9d10e2247d4a79fa8b72e8542e88f47",
+      "durationMs": 1744,
+      "bytes": 83776,
+      "sha256": "6ccbeab78fe1bbd30a510c803c147f66cf908736b35a0091be186ff8a6eaa429"
+    },
+    {
+      "id": "interlude-06-star-03",
+      "sceneId": "interlude-06-thunder-opens-the-vault",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "242c46ab73a323789e3380b5f1305ddea63e50feb65ca07af03505fd66a8e733",
+      "durationMs": 5309,
+      "bytes": 254884,
+      "sha256": "c0bfa585feea087f74bb7136773bd1d02bb10c66464cb5b3f5c6f5aa60d69a92"
+    },
+    {
+      "id": "interlude-06-bearer-03",
+      "sceneId": "interlude-06-thunder-opens-the-vault",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "e104c7858e75f1a500bab5c9d77efcbf0b8c31a9455dba358bbf744c61639d12",
+      "durationMs": 3600,
+      "bytes": 172858,
+      "sha256": "68146872831dc082ad37413e28ff5f90c756656ec9b755329a5d07dfd13221b4"
+    },
+    {
+      "id": "interlude-07-sun-eater-01",
+      "sceneId": "interlude-07-every-ending",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "contentSha256": "e190d3220a321ddb93aaedbd0dd929fc341dad4eae632a2cd3dc213b80641b09",
+      "durationMs": 4233,
+      "bytes": 203204,
+      "sha256": "063d515cf3ed9d1f4b58b5757c67aaa864ebf2681f584f1d0f845d81878f0d60"
+    },
+    {
+      "id": "interlude-07-bearer-01",
+      "sceneId": "interlude-07-every-ending",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "73cdb22e5ab56839a0c765064b3d5a9ab6917d3ee85f44c65822358b998478e3",
+      "durationMs": 2440,
+      "bytes": 117164,
+      "sha256": "2a9aac80e0ef7a85910c8c2ee393652d563478a6b953b69baab48d6bd70e1425"
+    },
+    {
+      "id": "interlude-07-star-01",
+      "sceneId": "interlude-07-every-ending",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "eb36de92400a2a2e143945fa147fea5187154b86546d2bda2df7c8f6fde72b6c",
+      "durationMs": 4464,
+      "bytes": 214328,
+      "sha256": "3ccf967293fec9d96e89b1b3260dc7f0dd6a3ab6eaae4ef70f6f68dbebc3febf"
+    },
+    {
+      "id": "interlude-07-bearer-02",
+      "sceneId": "interlude-07-every-ending",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "4549a79b36285fada5a611437fd0b3fd56e4784727e228ed46fc1463d65f344e",
+      "durationMs": 3308,
+      "bytes": 158810,
+      "sha256": "dc7be8b2cbff37884984c81bb9feeec557d5ca37231b3f538750926662244e0f"
+    },
+    {
+      "id": "interlude-07-sun-eater-02",
+      "sceneId": "interlude-07-every-ending",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "contentSha256": "e8292a079ee77e7630d34a136ae7d1807eb2f0e7ba34617e41709fbf59453639",
+      "durationMs": 3101,
+      "bytes": 148878,
+      "sha256": "e8584251225bacec5780542cdeba5b836ea86ed5f0cf7cc44a50f1e887142535"
+    },
+    {
+      "id": "interlude-07-bearer-03",
+      "sceneId": "interlude-07-every-ending",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "926550ef39289883a9f6a435a460fc26206520dd4e28be17983159867adb7fff",
+      "durationMs": 2045,
+      "bytes": 98194,
+      "sha256": "516f5942192489f15ceb3e964fe774474913fcfa4b01efd7d1c85e869f76ea70"
+    },
+    {
+      "id": "interlude-07-star-02",
+      "sceneId": "interlude-07-every-ending",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "0ced4d127765a141873111143097c3371d075a4d8be1e250062fec359c855acd",
+      "durationMs": 5336,
+      "bytes": 256188,
+      "sha256": "a374a902699f69e27159c7919aba65199d4e8549b18bed209631eda47ee2dd64"
+    },
+    {
+      "id": "interlude-07-bearer-04",
+      "sceneId": "interlude-07-every-ending",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "f871803805677ae88df6d63417b25a0de231cee11e08a55c8ba8e241ed4f92cf",
+      "durationMs": 3069,
+      "bytes": 147334,
+      "sha256": "df999e7c70e93659a78bef6643440f95652a000d92f173ce965d1b189aece021"
+    },
+    {
+      "id": "interlude-08-star-01",
+      "sceneId": "interlude-08-a-vessel-reforged",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "fb6c1b0cdd3c307b8d01b3fe42956bd2512d61344d191881f9b1ae199fe7c129",
+      "durationMs": 2942,
+      "bytes": 141252,
+      "sha256": "ebff3fc92041d43d4c0d14614faa635f6515a0fc03212ad2c5ecb1b2d0de6ea1"
+    },
+    {
+      "id": "interlude-08-bearer-01",
+      "sceneId": "interlude-08-a-vessel-reforged",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "eacde980188e2bdc0b82626cdc31855b975d2aac7eb534d0584808114d6fce0b",
+      "durationMs": 3111,
+      "bytes": 149350,
+      "sha256": "5c251d7f5e33285b8ab45ddacfd46317957d802bda04d41142f4292c0c392c5d"
+    },
+    {
+      "id": "interlude-08-star-02",
+      "sceneId": "interlude-08-a-vessel-reforged",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "940b8670f81d6249a19cde9938cdd26c44ac91ea25652cf40992e86e07293598",
+      "durationMs": 4366,
+      "bytes": 209596,
+      "sha256": "7136301d7cf72b54e57d79b4a27ee8ffd7a5134d6dad37d16160ee909c01a9e2"
+    },
+    {
+      "id": "interlude-08-bearer-02",
+      "sceneId": "interlude-08-a-vessel-reforged",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "719edaf88f7e23f0a77289d86b9ad8dda5098a890aa3e291f91e06106c77e179",
+      "durationMs": 3099,
+      "bytes": 148802,
+      "sha256": "aa3ab4439d7aedddaed79c9e560ec0cd6b76f41055d21ba3ea159edd869b7fed"
+    },
+    {
+      "id": "interlude-08-star-03",
+      "sceneId": "interlude-08-a-vessel-reforged",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "debdb81fe2c6c437cf3416131ef6d0d36aa94121482cc4e42d57611a5de7ac4b",
+      "durationMs": 4000,
+      "bytes": 192044,
+      "sha256": "6ce739e420098ce817e168d620d95187d8b3ba7b234f9dab59205c7c46858de7"
+    },
+    {
+      "id": "interlude-08-bearer-03",
+      "sceneId": "interlude-08-a-vessel-reforged",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "91a92e8c3c0f3fece6641073a3cb5ecd72293fd8445ba970040c33d6bd6ae2a4",
+      "durationMs": 4038,
+      "bytes": 193878,
+      "sha256": "576964649c8963b05208b0853ee1b8a4899399386cd264e5f64caf9407acf9b8"
+    },
+    {
+      "id": "interlude-08-star-04",
+      "sceneId": "interlude-08-a-vessel-reforged",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "dd410f690f5ec246385683bf70abfd3071689411ca34d9a9f69d8cca8d7fe6bc",
+      "durationMs": 4651,
+      "bytes": 223314,
+      "sha256": "02af9e0260018f96f48f125dd5d7de60cf635a30dd30acecf7de8afc826b12aa"
+    },
+    {
+      "id": "interlude-08-bearer-04",
+      "sceneId": "interlude-08-a-vessel-reforged",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "4e65a728cb2dd25e523c9dd1649eecb9453362254f6529ae7aa86b6aa182bf1d",
+      "durationMs": 5585,
+      "bytes": 268106,
+      "sha256": "dce398184cc8e97ec1f7d8d0bf66edbe089bb9cf952c4e9ddbab146c519fbadc"
+    },
+    {
+      "id": "interlude-09-cartographer-01",
+      "sceneId": "interlude-09-the-shape-of-the-wake",
+      "speaker": "Cartographer echo",
+      "voiceName": "Rasalgethi",
+      "contentSha256": "f4f0716dab066843d99f958e550ae639619951cd973f6fd55301bf96de2c93e6",
+      "durationMs": 2132,
+      "bytes": 102360,
+      "sha256": "d6eed67248502de5006491b98bb62c2c2680a0db3b9c676ec91d164bd704fe99"
+    },
+    {
+      "id": "interlude-09-bearer-01",
+      "sceneId": "interlude-09-the-shape-of-the-wake",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "fdded75f21211773634ffc818ba3896b95b01ae6c25a1b898fda5d4fa0cd89d8",
+      "durationMs": 1452,
+      "bytes": 69728,
+      "sha256": "84a55de60c22f02523e81946a98378e227078143ba6fc1829faf0e99c0aa1e75"
+    },
+    {
+      "id": "interlude-09-cartographer-02",
+      "sceneId": "interlude-09-the-shape-of-the-wake",
+      "speaker": "Cartographer echo",
+      "voiceName": "Rasalgethi",
+      "contentSha256": "00cb5c8424ce29724673b4e07a6ac106c10d5b9711345841614cc3729f645a38",
+      "durationMs": 3969,
+      "bytes": 190574,
+      "sha256": "cfd177c7fe972fd4fa2a4072a5d03bca7e490f53119955e7fc4f540a13c78598"
+    },
+    {
+      "id": "interlude-09-sun-eater-01",
+      "sceneId": "interlude-09-the-shape-of-the-wake",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "contentSha256": "d7a28cdf685f971b0d8a67f6dfcfe800d70c1a9dad1bc28a218df2fc3a36f5d9",
+      "durationMs": 4289,
+      "bytes": 205926,
+      "sha256": "90c6422d3176c8ea0d31098882078de23a27ab1c0fbd35225ef1db6dc30cdff3"
+    },
+    {
+      "id": "interlude-09-star-01",
+      "sceneId": "interlude-09-the-shape-of-the-wake",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "a9118d15d34d77254a6f90186a250bc22e5daa7f8210171322c20d7f79b2833a",
+      "durationMs": 4278,
+      "bytes": 205408,
+      "sha256": "8d2630294e94ac7544f715d8b8e69eaf81c29ed3a13b35455b22910688652ee1"
+    },
+    {
+      "id": "interlude-09-bearer-02",
+      "sceneId": "interlude-09-the-shape-of-the-wake",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "0a37b07440de4aafaa72972523f01cacb6f596487cb51f6599f44cc279f958a3",
+      "durationMs": 2969,
+      "bytes": 142576,
+      "sha256": "b90b373ca4b03e7cd4cb0b5cb5d7915bcc977517c62f151ebf8a97243adae717"
+    },
+    {
+      "id": "interlude-09-cartographer-03",
+      "sceneId": "interlude-09-the-shape-of-the-wake",
+      "speaker": "Cartographer echo",
+      "voiceName": "Rasalgethi",
+      "contentSha256": "aabc26a2524bf0a1d43932d8ec691d53d0100f8a45e490628b6bb3d48cc6ecc5",
+      "durationMs": 2853,
+      "bytes": 137000,
+      "sha256": "4e3ffacf2552619727b27207e348ca129d8cec52896b75df66f00d21999f836d"
+    },
+    {
+      "id": "interlude-09-star-02",
+      "sceneId": "interlude-09-the-shape-of-the-wake",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "0f830fc87dfb53531689f462f05b1305bd11cc79a52d82023e21138b4bd23a0b",
+      "durationMs": 4998,
+      "bytes": 239944,
+      "sha256": "2d48dbaea727e1ddd2869477deb26ae8330dd2d7cc31f6468c09ba1d73478805"
+    },
+    {
+      "id": "interlude-09-bearer-03",
+      "sceneId": "interlude-09-the-shape-of-the-wake",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "b0f8d5dc5f7b2b6a61085b68932f320f55aac01963bbb01fe859cbe61c6b1121",
+      "durationMs": 5762,
+      "bytes": 276602,
+      "sha256": "4e19489552670e8b3ca3af1bac828189b61891a96ed1c2c9089ecb17fea51644"
+    },
+    {
+      "id": "finale-star-01",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "aa14fc4f55615eb9bb67e1915d5d166239110965848b63346881fafccf38f333",
+      "durationMs": 4969,
+      "bytes": 238550,
+      "sha256": "25c4808cc38a46c59b967ae0d679b0d4a5a83f16097c8befcfaa283166451182"
+    },
+    {
+      "id": "finale-bearer-01",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "dbfdb111a3dcc7724238940bd53333cabe2d8343a5d174afac90f64159ae821f",
+      "durationMs": 2052,
+      "bytes": 98518,
+      "sha256": "ed4fb230956009e05da7def04e42da5261ea93a6d35c301828997b226af54a37"
+    },
+    {
+      "id": "finale-star-02",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "6b6d5528b340c8822572dc1f4ce31736b76e9071c84e98620c14e813a4caa064",
+      "durationMs": 5612,
+      "bytes": 269428,
+      "sha256": "7448c752c75399dab91318ec391d07cb06e88a77683c549272f103c690041df8"
+    },
+    {
+      "id": "finale-bearer-02",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "e47b469b839c4a960c38724ac2cbddf6ac618b800264b6a517eaa8d6a67c4e2b",
+      "durationMs": 2801,
+      "bytes": 134514,
+      "sha256": "ead3d9ee2fddb9ac631a33606f29ebf896150da83f6c0a9bb0079676422dbc6c"
+    },
+    {
+      "id": "finale-star-03",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "6e4f476dff3544ae971e3055ecfe0726927e20cea512e8664a3b51451447b5d0",
+      "durationMs": 2255,
+      "bytes": 108272,
+      "sha256": "e0a904889293c04eb5c5bbeac852630a4747b0281cb19f58ffd2ff2ce8bb6dab"
+    },
+    {
+      "id": "finale-sun-eater-01",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "contentSha256": "5ddcf4836b87e5dbdc0264d15db94237c334c71e95a232f784f53f7545a7d02d",
+      "durationMs": 3433,
+      "bytes": 164804,
+      "sha256": "4e525128ec3dfea6b8e8fc1e04dfd5af93252f0523cae055aff86d9db325a9ba"
+    },
+    {
+      "id": "finale-star-04",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "a474d75ef4e3dfc3a26d8b6deaa18456c1c9cdc6af75a8d0098d8b374828fdb5",
+      "durationMs": 4235,
+      "bytes": 203346,
+      "sha256": "2d5626731d3078f53682bad1513092d0ffaaa1a63c50140033434e58ca3e12eb"
+    },
+    {
+      "id": "finale-sun-eater-02",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "contentSha256": "1303e3fb6bcac450dfc8e19f584ec66054909c4cab8bd4c8753ad8b96345a00e",
+      "durationMs": 3407,
+      "bytes": 163590,
+      "sha256": "74c2eff5aa9dee43ec35a7fc6c47f28306398cf684ef9998233d72e5af0a690e"
+    },
+    {
+      "id": "finale-star-05",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "1e367ddca17974697f09ce6a08d906882939ceb3ccf87d5e9dc77fe9e2b25b86",
+      "durationMs": 3743,
+      "bytes": 179698,
+      "sha256": "08b36bdd462a18efc4f57e09ec929f3168e75282a8b34633daff21bfb52ff77f"
+    },
+    {
+      "id": "finale-bearer-03",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "481c3cb1cbc885d9c427074a05986a6bb914c037b026cc320d3e219f7a1cc962",
+      "durationMs": 1012,
+      "bytes": 48614,
+      "sha256": "08578c66df45cd64ea0ef81aeeb867d662f1a6da5541594cad1bfbcf66b38f65"
+    },
+    {
+      "id": "finale-bearer-04",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "edc25170b6220f9906de3701f3a285456fb148ed48e0f9c44f0c9176df9ae422",
+      "durationMs": 3469,
+      "bytes": 166550,
+      "sha256": "b622081d25e64b18922331126cb7df5cff53848fdffb6de9388c1330f2ca58cc"
+    },
+    {
+      "id": "finale-sun-eater-03",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "contentSha256": "f7df8470275bf8fc1fb1c30bcaa54f6562a3b0d6e17ff28e46ae246cc112a827",
+      "durationMs": 1917,
+      "bytes": 92048,
+      "sha256": "37db54303edfde97a3d1ba3b95d7cdc4e03ef5f20a0ea75bfabab09b50c6f40b"
+    },
+    {
+      "id": "finale-star-06",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "668cb708992a75060aaa923646a9ed0d522fd48747a7e889a0dc4d985cf6a1bf",
+      "durationMs": 3582,
+      "bytes": 171998,
+      "sha256": "da23469beddf43fa40894f8ee5876bd27eca3689665b8d1833645856769abd10"
+    },
+    {
+      "id": "finale-bearer-05",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "68f7eef4f8769bd81ba41a0deae15694b7152af74f6cafcedb0b24030d410b35",
+      "durationMs": 2576,
+      "bytes": 123706,
+      "sha256": "79254cd696fbc9f1e1d92db4e9a21919e72ce8e4ca234c5bbe48c8266cbfbbbb"
+    }
+  ]
+}

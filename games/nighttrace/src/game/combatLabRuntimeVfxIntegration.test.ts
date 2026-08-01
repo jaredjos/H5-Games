@@ -11,7 +11,7 @@ describe('Combat Lab Pixi runtime VFX integration', () => {
     expect(runtimeSource).toContain('this.drawCombatLabWeaponEffectAccent(')
   })
 
-  it('ships materially separate live Rift and Mirror signatures', () => {
+  it('ships materially separate live Verdict and Mirror signatures', () => {
     const projectileStart = runtimeSource.indexOf(
       '  private drawCombatLabProjectileSignature(',
     )
@@ -33,9 +33,19 @@ describe('Combat Lab Pixi runtime VFX integration', () => {
     const effectPresentation = runtimeSource.slice(effectStart, effectEnd)
 
     for (const section of [projectilePresentation, effectPresentation]) {
-      expect(section).toContain("case 'event-horizon-seeds'")
+      expect(section).toContain("case 'astral-verdict'")
       expect(section).toContain("case 'prismatic-fletching'")
-      expect(section).toContain('.quadraticCurveTo(')
+      expect(section).toContain('this.drawPolyline(')
     }
+  })
+
+  it('renders Arc Choir as violet bloom, lavender body and a narrow white core', () => {
+    const arcStart = runtimeSource.indexOf("        case 'arc-chain': {")
+    const arcEnd = runtimeSource.indexOf("        case 'astral-verdict': {", arcStart)
+    const arcPresentation = runtimeSource.slice(arcStart, arcEnd)
+
+    expect(arcPresentation).toContain('profile.glowColor, 20 + stage * 4')
+    expect(arcPresentation).toContain('profile.accentColor, 6.6 + stage * 0.9')
+    expect(arcPresentation).toContain('profile.coreColor, 1.15 + stage * 0.18')
   })
 })

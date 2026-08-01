@@ -58,12 +58,12 @@ export const WEAPONS = {
   },
   'rift-seeds': {
     id: 'rift-seeds',
-    name: 'Rift Seeds',
-    shortName: 'Seeds',
-    description: 'Plants unstable wells that bloom into short-lived singularities.',
+    name: 'Astral Verdict',
+    shortName: 'Verdict',
+    description: 'Calls violet star-lightning down upon the densest enemy clusters.',
     moduleId: 'grav-anchor',
-    awakening: 'Eventide Garden',
-    color: 0x70f0b5,
+    awakening: "Heaven's Sentence",
+    color: 0x9d86ff,
     cooldown: 1.72,
     damage: 89.44,
   },
@@ -93,7 +93,7 @@ export const WEAPONS = {
     id: 'mirror-bow',
     name: 'Mirror Bow',
     shortName: 'Mirror',
-    description: 'Paired hard-light bolts pierce forward and along the mirrored heading.',
+    description: 'Prismatic paleglass shards split forward and through the mirrored heading.',
     moduleId: 'flux-mirror',
     awakening: 'Infinite Refrain',
     color: 0xe6f3ff,
@@ -135,8 +135,8 @@ export const MODULES = {
   },
   'grav-anchor': {
     id: 'grav-anchor',
-    name: 'Grav Anchor',
-    description: 'Lengthens Rift Seed life, boosts impact damage, and widens pickup attraction.',
+    name: 'Storm Conduit',
+    description: 'Adds another heavenly strike, widens each impact, and amplifies the verdict.',
   },
   'guidance-filament': {
     id: 'guidance-filament',
@@ -151,7 +151,7 @@ export const MODULES = {
   'flux-mirror': {
     id: 'flux-mirror',
     name: 'Flux Mirror',
-    description: 'Adds forward-bolt piercing and amplifies Mirror Bow impact damage.',
+    description: 'Adds paleglass piercing and amplifies every reflected shard impact.',
   },
   'deep-capacitor': {
     id: 'deep-capacitor',

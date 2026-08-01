@@ -44,12 +44,14 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 
 - `v1.21.0` — combat-feedback and laboratory-control milestone: all cinematic runtime actor duplicates are retired, discontinuous trace seams are discarded, accepted damage flashes the Bearer crimson, every Sovereign receives a staged death before **Level Complete**, hostile specials expose an extra 0.20-second reaction window with stronger crimson/violet energy, and a priority-managed SFX suite differentiates every hero spell, Sovereign release, and elite release. Combat Lab adds a true invincibility toggle, Rank 0/empty-arena testing, universal **Spell Rank** language, and six laboratory-only Rank I–V/Awakened visual signatures while preserving campaign spell art. The Memory narration pipeline is independently timed, resumable, hash-verified, and subtitle-safe until its 22 local takes are generated.
 
+- `v1.22.0` — story-and-arsenal milestone: the Prologue, nine Memories, and Finale expand to 84 clearly attributed exchanges with expressive portraits, richer beat-level environments, and a resumable same-origin Google narration set with natural-delivery timing headroom and complete caption fallback. Arc Choir now keeps its authored violet/lavender identity in every mode, Mirror Bow becomes refracted cyan-violet paleglass, and Rift Seeds is replaced in name and presentation by **Astral Verdict**, a multi-target storm judgment cast remotely from the sky.
+
 ## Runtime guide and visual evidence
 
 - [Animated Graveglass + Eclipse material review](https://jaredjos.github.io/H5-Games/nighttrace/review/spell-choreography/) — the authored structural choreography remains in live combat, now joined by the v1.10.0 all-power material-floor pass
 - [Hostile boundary material reference](https://jaredjos.github.io/H5-Games/nighttrace/review/hostile-boundary/) — animated reference for the broken filaments and drifting motes now used by live boss and elite-horde fields, lanes, and projectile destinations
 - [Combat Systems Codex (PDF)](https://jaredjos.github.io/H5-Games/nighttrace/docs/NIGHTTRACE_Combat_Systems_Codex.pdf) — the v1.6.0 combat, upgrade, pickup, boss, difficulty, music, and mobile reference
-- [Upgrade states: Helio Lance through Rift Seeds](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-01.png)
+- [Archival v1.4 upgrade states: Helio Lance through Rift Seeds](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-01.png)
 - [Upgrade states: Comet Swarm through Eclipse Harrow](https://jaredjos.github.io/H5-Games/nighttrace/docs/upgrade-states-02.png)
 - [Capture manifest](https://jaredjos.github.io/H5-Games/nighttrace/docs/capture-manifest.json) — deterministic loadouts, local-only routes, viewport, file hashes, and capture method for all 32 real gameplay frames
 
