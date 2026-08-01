@@ -1,0 +1,186 @@
+{
+  "status": "ready",
+  "provider": "Google Gemini API",
+  "model": "gemini-3.1-flash-tts-preview",
+  "set": "memories-i-ix",
+  "expectedClipCount": 22,
+  "generatedAt": "2026-08-01T04:01:56.356Z",
+  "clips": [
+    {
+      "id": "interlude-01-star-01",
+      "speaker": "Last Star",
+      "voiceName": "Leda",
+      "durationMs": 2952,
+      "bytes": 141740,
+      "sha256": "bd8299bb081dfa9f0758f9bcc31a9fb6696ef5d8f9457d0b0140a13336ae8562"
+    },
+    {
+      "id": "interlude-01-bearer-01",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "durationMs": 1347,
+      "bytes": 64702,
+      "sha256": "53b61e619f7abfd47360c838c13e595dcbae681bea1fc147b68f9d49253b3e93"
+    },
+    {
+      "id": "interlude-02-star-01",
+      "speaker": "Last Star",
+      "voiceName": "Leda",
+      "durationMs": 2995,
+      "bytes": 143812,
+      "sha256": "4e97bf6fb461c4eefb38fbc9ef94d78ec21abdfa13a5c52d61f40e532e8fe5c4"
+    },
+    {
+      "id": "interlude-02-bearer-01",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "durationMs": 3145,
+      "bytes": 151006,
+      "sha256": "bca6f87479cb6d6a6cb58164dd2b40d711ba40711d1f8e9741f286a574c8c397"
+    },
+    {
+      "id": "interlude-03-star-01",
+      "speaker": "Last Star",
+      "voiceName": "Leda",
+      "durationMs": 3056,
+      "bytes": 146752,
+      "sha256": "26b8ab3dee2a301ddedf978b5a552b3d78679acbe9a4f7bcbe46606ca22dd9a6"
+    },
+    {
+      "id": "interlude-03-bearer-01",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "durationMs": 2130,
+      "bytes": 102280,
+      "sha256": "9151ce9da089aed6936268e7da81d28f3dce4a98c39d3e7c04487b9ae2b290cf"
+    },
+    {
+      "id": "interlude-04-sun-eater-01",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "durationMs": 3072,
+      "bytes": 147486,
+      "sha256": "8f14c76dfa7d930feba53d2d20b669a1a564f32863cb750a8293e2ec97afe7f3"
+    },
+    {
+      "id": "interlude-04-star-01",
+      "speaker": "Last Star",
+      "voiceName": "Leda",
+      "durationMs": 630,
+      "bytes": 30278,
+      "sha256": "0623119fcf2447bf185a36903140516758c39e94fc503889ee8d7a215aece795"
+    },
+    {
+      "id": "interlude-04-bearer-01",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "durationMs": 1645,
+      "bytes": 79008,
+      "sha256": "2be0b7f8b38018ff907e6684e0a08f2d8db3c0cab47700e6421f31828ea1d067"
+    },
+    {
+      "id": "interlude-05-star-01",
+      "speaker": "Last Star",
+      "voiceName": "Leda",
+      "durationMs": 2630,
+      "bytes": 126290,
+      "sha256": "2ba723c284fb94924134ec151c250a26d24b6a5598423b063ed5000301319c2e"
+    },
+    {
+      "id": "interlude-05-bearer-01",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "durationMs": 1676,
+      "bytes": 80492,
+      "sha256": "42e97ab22235ab1c28b95a1466b2ba5870864e8f1bb037502ab91be1208c8618"
+    },
+    {
+      "id": "interlude-06-star-01",
+      "speaker": "Last Star",
+      "voiceName": "Leda",
+      "durationMs": 3103,
+      "bytes": 148992,
+      "sha256": "c575aa425196ea4f36fc4b404acc65a10cdcf02c2ac31b965a58176016226211"
+    },
+    {
+      "id": "interlude-06-bearer-01",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "durationMs": 1820,
+      "bytes": 87380,
+      "sha256": "f5f820f3bcc23fc7e3d8d090e3c4ee5ccef7201ee49245e80890e387a796a5cb"
+    },
+    {
+      "id": "interlude-07-sun-eater-01",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "durationMs": 3188,
+      "bytes": 153056,
+      "sha256": "5c7edabefc6d6690021a1c532463cd599770d6c7e7fffd1ec9c51b928943aa4c"
+    },
+    {
+      "id": "interlude-07-bearer-01",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "durationMs": 1352,
+      "bytes": 64954,
+      "sha256": "6d128e02057b3bfd71d7e9817ab27f1417d37af9c801bda63e5f9b81bd70d723"
+    },
+    {
+      "id": "interlude-07-star-01",
+      "speaker": "Last Star",
+      "voiceName": "Leda",
+      "durationMs": 2886,
+      "bytes": 138594,
+      "sha256": "74cc96edfca18e507afa1743c95d6d64817bf6e41377f4adb2d973e35a84d765"
+    },
+    {
+      "id": "interlude-08-star-01",
+      "speaker": "Last Star",
+      "voiceName": "Leda",
+      "durationMs": 2001,
+      "bytes": 96082,
+      "sha256": "c151ff834557d38d7f101ada90b8fbf0bc2de5516ac54d58c8a5ce281484fcb7"
+    },
+    {
+      "id": "interlude-08-bearer-01",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "durationMs": 1888,
+      "bytes": 90654,
+      "sha256": "dcacedffbabc2136139774e415adda0a1bb06ee746bdba371be384cf1917afbd"
+    },
+    {
+      "id": "interlude-09-cartographer-01",
+      "speaker": "Cartographer echo",
+      "voiceName": "Rasalgethi",
+      "durationMs": 2369,
+      "bytes": 113758,
+      "sha256": "0c1df7146d2d21fa2b8d0b7b91f12bb69b9ee74d7e1cd3e81528ec8d628613c7"
+    },
+    {
+      "id": "interlude-09-sun-eater-01",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "durationMs": 3357,
+      "bytes": 161176,
+      "sha256": "369719b942fb046ff5f1c5fe68c7d81f0b019c6057867512a19ca532c278fdba"
+    },
+    {
+      "id": "interlude-09-star-01",
+      "speaker": "Last Star",
+      "voiceName": "Leda",
+      "durationMs": 1920,
+      "bytes": 92204,
+      "sha256": "62b0ba74328629b6f2373f2d9c12aa6045d77577fc35cf5e38d7868c15dda219"
+    },
+    {
+      "id": "interlude-09-bearer-01",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "durationMs": 3482,
+      "bytes": 167170,
+      "sha256": "10024ebc6d2c4227b1170cad26653cce4fa776579abe1981c2c0b4332d661b3c"
+    }
+  ]
+}

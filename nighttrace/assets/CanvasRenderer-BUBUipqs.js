@@ -1,0 +1,1 @@
+import{i as e}from"./GameCanvas-BaMG42KS.js";export{e as CanvasRenderer};
