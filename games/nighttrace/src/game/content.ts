@@ -518,7 +518,7 @@ function weaponRankOption(weapon: WeaponDefinition, nextRank: number): UpgradeOp
     id: `weapon:${weapon.id}:${nextRank}`,
     type: 'weapon',
     title: `${weapon.name} ${romanRank(nextRank)}`,
-    category: reachesMastery ? 'Master weapon' : 'Weapon calibration',
+    category: reachesMastery ? 'Master spell' : 'Spell calibration',
     description: reachesMastery
       ? `Master ${weapon.shortName}; pair it with ${MODULES[weapon.moduleId].name} to awaken ${weapon.awakening}.`
       : `Increase ${weapon.shortName} damage and improve its firing pattern.`,

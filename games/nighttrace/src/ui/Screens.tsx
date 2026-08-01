@@ -49,8 +49,8 @@ import {
   getBossTrialUnlockedLevel,
   getCombatLabPresetLoadout,
   isBossTrialUnlocked,
+  normalizeCombatLabLoadout,
   normalizeCombatLabConfig,
-  normalizeStartingLoadout,
   resolveArenaLevel,
   resolveBossLevel,
   type CombatLabPresetId,
@@ -90,6 +90,7 @@ import {
   StarMark,
   WeaponGlyph,
 } from './Primitives'
+import { CombatLabSpellTheater } from './CombatLabSpellTheater'
 
 type ShellScreenId = Exclude<ScreenId, 'title' | 'game' | 'cinematic' | 'results'>
 
@@ -300,7 +301,7 @@ export function CampaignScreen({
                 </span>
               ))}
               {save.unlockedWeapons.length > 4 ? (
-                <span className="loadout-overflow" aria-label={`${save.unlockedWeapons.length - 4} more weapons recovered`}>
+                <span className="loadout-overflow" aria-label={`${save.unlockedWeapons.length - 4} more spells recovered`}>
                   +{save.unlockedWeapons.length - 4}
                 </span>
               ) : null}
@@ -494,7 +495,7 @@ export function BossTrialsScreen({
                   <small>Curated loadout</small>
                   <strong>Power chosen for this duel</strong>
                 </div>
-                <span>{loadout.weapons.length} weapons · {loadout.modules.length} modules</span>
+                <span>{loadout.weapons.length} spells · {loadout.modules.length} modules</span>
               </div>
               <div className="boss-trial-loadout__weapons">
                 {loadout.weapons.map((weapon) => {
@@ -504,7 +505,7 @@ export function BossTrialsScreen({
                       <WeaponGlyph id={weapon.id} size={22} />
                       <span>
                         <strong>{weapon.awakened ? definition.awakening : definition.name}</strong>
-                        <small>{weapon.awakened ? 'Awakened' : `Rank ${weapon.rank}`}</small>
+                        <small>{weapon.awakened ? 'Awakened' : `Spell Rank ${weapon.rank}`}</small>
                       </span>
                       <RankPips rank={weapon.rank} max={5} />
                     </div>
@@ -565,17 +566,17 @@ function setLoadoutWeaponRank(loadout: StartingLoadout, id: WeaponId, rank: numb
       awakened: rank === 5 ? existing?.awakened : undefined,
     })
   }
-  return normalizeStartingLoadout({ ...loadout, weapons })
+  return normalizeCombatLabLoadout({ ...loadout, weapons })
 }
 
 function setLoadoutModuleRank(loadout: StartingLoadout, id: ModuleId, rank: number) {
   const modules = loadout.modules.filter((module) => module.id !== id)
   if (rank > 0) modules.push({ id, rank })
-  return normalizeStartingLoadout({ ...loadout, modules })
+  return normalizeCombatLabLoadout({ ...loadout, modules })
 }
 
 function setWeaponAwakened(loadout: StartingLoadout, id: WeaponId, awakened: boolean) {
-  return normalizeStartingLoadout({
+  return normalizeCombatLabLoadout({
     ...loadout,
     weapons: loadout.weapons.map((weapon) => (
       weapon.id === id ? { ...weapon, awakened } : weapon
@@ -708,7 +709,7 @@ export function CombatLabScreen({
   }
   const updateLoadout = (loadout: StartingLoadout) => {
     setActivePreset(undefined)
-    updateConfig({ loadout: normalizeStartingLoadout(loadout) })
+    updateConfig({ loadout: normalizeCombatLabLoadout(loadout) })
   }
   const applyPreset = (presetId: CombatLabPresetId) => {
     setActivePreset(presetId)
@@ -736,7 +737,15 @@ export function CombatLabScreen({
             <h1>Combat Lab</h1>
             <p>Isolate a sovereign, bend the arena, and measure every recovered pattern at full clarity.</p>
           </div>
-          <span className="combat-lab-heading__safety"><Shield size={15} /> Invincibility protocol active</span>
+          <button
+            type="button"
+            className={`combat-lab-heading__safety${normalized.invincible ? ' is-active' : ''}`}
+            aria-pressed={normalized.invincible}
+            onClick={() => updateConfig({ invincible: !normalized.invincible })}
+          >
+            <Shield size={15} />
+            Invincibility {normalized.invincible ? 'active' : 'disabled'}
+          </button>
         </header>
 
         <div className="combat-lab-body">
@@ -899,25 +908,34 @@ export function CombatLabScreen({
                 const canAwaken = owned?.rank === 5 && Boolean(pairedModule)
                 return (
                   <div key={weapon.id} className={`combat-lab-weapon${owned ? ' is-equipped' : ''}${owned?.awakened ? ' is-awakened' : ''}`}>
-                    <div className="combat-lab-weapon__identity">
+                    <button
+                      type="button"
+                      className={`combat-lab-weapon__identity${presetWeaponId === weapon.id ? ' is-reviewing' : ''}`}
+                      aria-pressed={presetWeaponId === weapon.id}
+                      onClick={() => setPresetWeaponId(weapon.id)}
+                      title={`Review ${weapon.name} presentation`}
+                    >
                       <WeaponGlyph id={weapon.id} size={23} />
                       <span>
                         <strong>{owned?.awakened ? weapon.awakening : weapon.name}</strong>
                         <small>{MODULES[weapon.moduleId].name} pairing</small>
                       </span>
-                    </div>
+                    </button>
                     <label>
-                      <span>Weapon rank <strong>{owned?.rank ?? 0}</strong></span>
+                      <span>Spell rank <strong>{owned?.rank ?? 0}</strong></span>
                       <input
                         type="range"
                         min={0}
                         max={5}
                         value={owned?.rank ?? 0}
-                        onChange={(event) => updateLoadout(setLoadoutWeaponRank(
-                          normalized.loadout,
-                          weapon.id,
-                          Number(event.currentTarget.value),
-                        ))}
+                        onChange={(event) => {
+                          setPresetWeaponId(weapon.id)
+                          updateLoadout(setLoadoutWeaponRank(
+                            normalized.loadout,
+                            weapon.id,
+                            Number(event.currentTarget.value),
+                          ))
+                        }}
                       />
                     </label>
                     <label>
@@ -927,23 +945,29 @@ export function CombatLabScreen({
                         min={0}
                         max={3}
                         value={pairedModule?.rank ?? 0}
-                        onChange={(event) => updateLoadout(setLoadoutModuleRank(
-                          normalized.loadout,
-                          weapon.moduleId,
-                          Number(event.currentTarget.value),
-                        ))}
+                        onChange={(event) => {
+                          setPresetWeaponId(weapon.id)
+                          updateLoadout(setLoadoutModuleRank(
+                            normalized.loadout,
+                            weapon.moduleId,
+                            Number(event.currentTarget.value),
+                          ))
+                        }}
                       />
                     </label>
                     <button
                       className={`combat-lab-awakening${owned?.awakened ? ' is-active' : ''}`}
                       disabled={!canAwaken}
-                      onClick={() => updateLoadout(setWeaponAwakened(
-                        normalized.loadout,
-                        weapon.id,
-                        !owned?.awakened,
-                      ))}
+                      onClick={() => {
+                        setPresetWeaponId(weapon.id)
+                        updateLoadout(setWeaponAwakened(
+                          normalized.loadout,
+                          weapon.id,
+                          !owned?.awakened,
+                        ))
+                      }}
                       aria-pressed={Boolean(owned?.awakened)}
-                      title={canAwaken ? weapon.awakening : 'Requires Rank V and its paired module'}
+                      title={canAwaken ? weapon.awakening : 'Requires Spell Rank V and its paired module'}
                     >
                       <Sparkles size={15} />
                       {owned?.awakened ? 'Awakened' : 'Awaken'}
@@ -980,6 +1004,10 @@ export function CombatLabScreen({
           </PanelFrame>
 
           <PanelFrame className="combat-lab-preview">
+            <CombatLabSpellTheater
+              weaponId={presetWeaponId}
+              ownedWeapon={normalized.loadout.weapons.find((weapon) => weapon.id === presetWeaponId)}
+            />
             <div
               className="combat-lab-preview__arena"
               style={{ '--arena-accent': arena.accent, '--boss-accent': boss.accent } as React.CSSProperties}
@@ -1003,7 +1031,9 @@ export function CombatLabScreen({
               Launch Simulation
             </CrestButton>
             <p className="combat-lab-preview__note">
-              Damage is recorded. Death, rewards, and campaign progression are disabled.
+              {normalized.invincible
+                ? 'Damage is recorded while incoming damage is ignored. Rewards and campaign progression are disabled.'
+                : 'Normal damage is active. Rewards and campaign progression remain disabled.'}
             </p>
           </PanelFrame>
         </div>
@@ -1297,9 +1327,9 @@ export function CodexScreen({
             {tab === 'arsenal' && selectedWeapon ? (
               <div key={selectedWeapon.id} className="codex-reveal">
                 <div className="codex-glyph-art"><WeaponGlyph id={selectedWeapon.id} size={76} /></div>
-                <small>Awakenable weapon</small>
+                <small>Awakenable spell</small>
                 <h2>{selectedWeapon.discovered ? selectedWeapon.name : 'Shrouded Armament'}</h2>
-                <p>{selectedWeapon.discovered ? selectedWeapon.description : 'Relight the sector holding this weapon memory.'}</p>
+                <p>{selectedWeapon.discovered ? selectedWeapon.description : 'Relight the sector holding this spell memory.'}</p>
                 {selectedWeapon.discovered ? (
                   <>
                     <div className="codex-awakening">

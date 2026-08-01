@@ -6296,7 +6296,19 @@ select:focus-visible {
   margin-left: auto;
   padding: 11px 14px;
   border: 1px solid rgba(98, 221, 245, .28);
+  appearance: none;
+  color: #7c898d;
   background: rgba(5, 32, 40, .52);
+  cursor: pointer;
+  transition: border-color 180ms ease, color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.combat-lab-heading__safety:hover,
+.combat-lab-heading__safety.is-active {
+  border-color: rgba(98, 221, 245, .58);
+  color: var(--cyan-bright);
+  background: rgba(8, 44, 53, .68);
+  box-shadow: 0 0 18px rgba(98, 221, 245, .08);
 }
 
 .boss-trials-body {
@@ -6986,6 +6998,19 @@ select:focus-visible {
   align-items: center;
   min-width: 0;
   gap: 9px;
+  padding: 5px;
+  border: 1px solid transparent;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.combat-lab-weapon__identity:hover,
+.combat-lab-weapon__identity.is-reviewing {
+  border-color: rgba(98, 221, 245, .22);
+  color: #eefbfc;
+  background: rgba(78, 186, 205, .06);
 }
 
 .combat-lab-weapon__identity > span {
@@ -7373,6 +7398,733 @@ select:focus-visible {
 .combat-lab-preview > .crest-button {
   width: 100%;
   min-width: 0;
+}
+
+/* Combat Lab-only spell presentation theater. Campaign VFX remain untouched. */
+
+.spell-theater {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 13px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid rgba(203, 170, 101, .13);
+}
+
+.spell-theater__header {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.spell-theater__glyph {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid rgba(211, 188, 135, .25);
+  color: #ecd89e;
+  background: linear-gradient(145deg, rgba(217, 184, 103, .1), rgba(3, 8, 12, .9));
+  clip-path: polygon(50% 0, 91% 17%, 100% 66%, 70% 100%, 18% 91%, 0 44%, 18% 8%);
+}
+
+.spell-theater__header > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.spell-theater__header small,
+.spell-theater__readout small {
+  color: #758084;
+  font: 500 .44rem/1 var(--display);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.spell-theater__header strong {
+  overflow: hidden;
+  color: #eee7d8;
+  font: 500 .61rem/1.2 var(--display);
+  letter-spacing: .07em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.spell-theater__header em {
+  padding: 6px 7px;
+  border: 1px solid rgba(98, 221, 245, .19);
+  color: #9ddce7;
+  background: rgba(3, 12, 18, .74);
+  font: 500 .42rem/1 var(--display);
+  font-style: normal;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.spell-theater__stage {
+  --spell-primary: #f1d37d;
+  --spell-secondary: #89e4f3;
+  position: relative;
+  isolation: isolate;
+  height: clamp(210px, 24vh, 285px);
+  overflow: hidden;
+  border: 1px solid rgba(207, 184, 132, .18);
+  background:
+    radial-gradient(ellipse at 50% 58%, color-mix(in srgb, var(--spell-primary) 8%, transparent), transparent 27%),
+    radial-gradient(circle at 84% 12%, rgba(118, 184, 213, .07), transparent 29%),
+    linear-gradient(155deg, #020508, #071019 56%, #020406);
+  box-shadow:
+    inset 0 0 48px rgba(0, 0, 0, .62),
+    inset 0 1px rgba(255, 245, 216, .04);
+}
+
+.spell-theater__stage::before {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  opacity: .55;
+  background:
+    repeating-linear-gradient(117deg, transparent 0 36px, rgba(151, 190, 202, .018) 37px 38px),
+    radial-gradient(ellipse at 50% 93%, transparent 0 29%, rgba(172, 150, 100, .1) 29.4% 29.8%, transparent 30.2% 38%, rgba(92, 151, 165, .07) 38.4% 38.8%, transparent 39.2%);
+  content: '';
+}
+
+.spell-theater__stage::after {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, .42), transparent 18% 83%, rgba(0, 0, 0, .38)),
+    linear-gradient(180deg, rgba(0, 0, 0, .16), transparent 30% 72%, rgba(0, 0, 0, .32));
+  content: '';
+}
+
+.spell-theater__floor {
+  position: absolute;
+  z-index: -1;
+  left: -8%;
+  right: -8%;
+  bottom: -13%;
+  height: 62%;
+  opacity: .58;
+  background:
+    linear-gradient(68deg, transparent 49.4%, rgba(110, 160, 174, .08) 49.7% 50.2%, transparent 50.5%),
+    linear-gradient(112deg, transparent 49.4%, rgba(188, 159, 100, .065) 49.7% 50.2%, transparent 50.5%),
+    radial-gradient(ellipse, rgba(5, 14, 20, .92), rgba(0, 2, 4, .9));
+  transform: perspective(230px) rotateX(58deg);
+  transform-origin: bottom center;
+}
+
+.spell-theater__hero {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 23px;
+  width: 72px;
+  height: 112px;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 14px 11px rgba(0, 0, 0, .92));
+}
+
+.spell-theater__hero .atlas-sprite {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+}
+
+.spell-theater__hero-aura {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: 3px;
+  width: 76px;
+  height: 23px;
+  border-radius: 50%;
+  opacity: calc(.18 + var(--spell-rank) * .045);
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--spell-primary) 45%, transparent), transparent 66%);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--spell-primary) 22%, transparent);
+  transform: translateX(-50%);
+  animation: spell-theater-breathe 2.4s ease-in-out infinite;
+}
+
+.spell-theater-effect {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  pointer-events: none;
+}
+
+.spell-theater__particle {
+  position: absolute;
+  z-index: 5;
+  left: var(--particle-x);
+  top: var(--particle-y);
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--spell-primary) 78%, white);
+  box-shadow: 0 0 6px var(--spell-primary), 0 0 12px color-mix(in srgb, var(--spell-primary) 34%, transparent);
+  animation: spell-theater-mote 2.1s var(--particle-delay) ease-in-out infinite;
+}
+
+.spell-theater__dormant {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  bottom: 10px;
+  width: max-content;
+  max-width: calc(100% - 20px);
+  padding: 5px 8px;
+  color: #6f7779;
+  background: rgba(1, 5, 8, .72);
+  font: 500 .42rem/1 var(--display);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+}
+
+.spell-theater__readout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr .75fr;
+  gap: 5px;
+}
+
+.spell-theater__readout > span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(98, 221, 245, .1);
+  background: rgba(2, 8, 12, .62);
+}
+
+.spell-theater__readout strong {
+  overflow: hidden;
+  color: #d7d4ca;
+  font: 500 .47rem/1.15 var(--display);
+  letter-spacing: .035em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Helio Lance: one authored solar weapon gaining sheath, fragments, and crown. */
+
+.spell-theater__stage--helio-lance {
+  --spell-primary: #f5ce6c;
+  --spell-secondary: #a8eff8;
+}
+
+.spell-theater-lance {
+  position: absolute;
+  left: 48%;
+  top: 45%;
+  width: calc(83px + var(--spell-rank) * 11px);
+  height: 2px;
+  border-radius: 50%;
+  transform: rotate(-16deg);
+  transform-origin: left center;
+}
+
+.spell-theater-lance--wake {
+  height: calc(6px + var(--spell-rank) * 1px);
+  opacity: calc(.15 + var(--spell-rank) * .05);
+  background: linear-gradient(90deg, rgba(255, 245, 201, .55), rgba(100, 225, 244, .16) 48%, transparent);
+  filter: blur(3px);
+}
+
+.spell-theater-lance--body {
+  background: linear-gradient(90deg, #fff7d2, #eabd4f 34%, #bdebf1 71%, transparent);
+  box-shadow: 0 0 5px #f3c55f, 0 0 12px rgba(112, 220, 241, .36);
+}
+
+.spell-theater-lance--core {
+  left: calc(48% + 65px + var(--spell-rank) * 8px);
+  width: 18px;
+  height: 7px;
+  clip-path: polygon(0 43%, 65% 0, 100% 50%, 65% 100%, 0 59%, 25% 50%);
+  background: linear-gradient(90deg, #eec45d, #fffef0 55%, #94ecfa);
+  filter: drop-shadow(0 0 5px #f6d678);
+  animation: spell-theater-lance-pulse .92s ease-in-out infinite;
+}
+
+.spell-theater-shard {
+  position: absolute;
+  left: 56%;
+  top: 46%;
+  width: calc(13px + var(--spell-rank) * 2px);
+  height: 2px;
+  opacity: calc(.2 + var(--spell-rank) * .1);
+  background: linear-gradient(90deg, transparent, #fff2bc 45%, #8ee7f5 72%, transparent);
+  transform: translateY(var(--shard-offset)) rotate(calc(-16deg + var(--shard-angle)));
+  transform-origin: left center;
+  animation: spell-theater-shard-flight 1.4s var(--shard-delay) ease-in-out infinite;
+}
+
+.spell-theater-eclipse {
+  position: absolute;
+  right: 11%;
+  top: 22%;
+  width: 46px;
+  height: 46px;
+  border: 2px solid #f5d37c;
+  border-radius: 50%;
+  background: radial-gradient(circle, #010205 0 52%, #f8e6ae 55% 58%, transparent 62%);
+  box-shadow: 0 0 20px rgba(245, 204, 95, .48), inset 0 0 11px rgba(143, 231, 248, .28);
+  animation: spell-theater-eclipse-drift 3.4s ease-in-out infinite;
+}
+
+/* Crescent Array: crescent count and orbital depth increase without adding UI rings. */
+
+.spell-theater__stage--crescent-array {
+  --spell-primary: #a9efff;
+  --spell-secondary: #d8e2ff;
+}
+
+.spell-theater-crescent {
+  position: absolute;
+  left: 50%;
+  top: 51%;
+  width: calc(20px + var(--spell-rank) * 2px);
+  height: calc(28px + var(--spell-rank) * 2px);
+  border-right: 4px solid #dffaff;
+  border-radius: 50%;
+  opacity: calc(.42 + var(--spell-rank) * .09);
+  filter: drop-shadow(0 0 4px #7bdaf0) drop-shadow(0 0 8px rgba(116, 173, 239, .38));
+  transform: translate(-50%, -50%) rotate(var(--blade-angle)) translateY(calc(-42px - var(--spell-rank) * 8px)) rotate(22deg);
+  animation: spell-theater-crescent-orbit 4.1s var(--blade-delay) linear infinite;
+}
+
+.spell-theater-moonmist {
+  position: absolute;
+  inset: 22% 17%;
+  border-radius: 50%;
+  opacity: .34;
+  background: conic-gradient(from 12deg, transparent, rgba(108, 218, 242, .25), transparent 24%, rgba(189, 211, 255, .18), transparent 55%);
+  filter: blur(5px);
+  animation: spell-theater-turn 8s linear infinite;
+}
+
+.spell-theater-moonwell {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  opacity: .82;
+  background: radial-gradient(circle at 36% 34%, rgba(197, 246, 255, .85), rgba(52, 116, 153, .26) 14%, rgba(0, 5, 11, .96) 54%, transparent 59%);
+  box-shadow: 0 0 23px rgba(123, 223, 246, .24);
+  transform: translate(-50%, -50%);
+  animation: spell-theater-moonwell-pulse 2.6s ease-in-out infinite;
+}
+
+/* Arc Choir: suspended resonators and storm filaments, not HUD-like geometry. */
+
+.spell-theater__stage--arc-choir {
+  --spell-primary: #b996ff;
+  --spell-secondary: #edf1ff;
+}
+
+.spell-theater-choir-node {
+  position: absolute;
+  width: calc(13px + var(--spell-rank) * 1px);
+  height: calc(13px + var(--spell-rank) * 1px);
+  border: 1px solid rgba(221, 209, 255, .72);
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: radial-gradient(circle, #f4f1ff 0 8%, #8f69e3 16%, rgba(32, 13, 62, .82) 45%, transparent 70%);
+  box-shadow: 0 0 8px #9d76ef, 0 0 18px rgba(124, 86, 209, .34);
+  animation: spell-theater-node-pulse 1.45s calc(var(--node-index) * -.12s) ease-in-out infinite;
+}
+
+.spell-theater-choir-node i {
+  position: absolute;
+  inset: -6px;
+  border: 1px solid rgba(206, 190, 255, .22);
+  transform: rotate(19deg);
+}
+
+.spell-theater-choir-arc {
+  position: absolute;
+  left: 50%;
+  top: 51%;
+  width: calc(60px + var(--spell-rank) * 13px);
+  height: 3px;
+  opacity: calc(.31 + var(--spell-rank) * .08);
+  background: linear-gradient(90deg, rgba(244, 239, 255, .9), #9b76e9 42%, transparent);
+  box-shadow: 0 0 5px #c4abff, 16px -3px 0 -1px rgba(215, 204, 255, .6), 35px 2px 0 -1px rgba(151, 106, 232, .65);
+  clip-path: polygon(0 40%, 16% 0, 30% 65%, 47% 18%, 63% 78%, 82% 30%, 100% 50%, 82% 50%, 64% 100%, 48% 42%, 30% 88%, 15% 27%);
+  transform: rotate(var(--arc-angle));
+  transform-origin: left center;
+  animation: spell-theater-arc-strike 1.05s var(--arc-delay) ease-in-out infinite;
+}
+
+.spell-theater-cathedral {
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  width: 116px;
+  height: 158px;
+  opacity: .38;
+  border: 1px solid rgba(211, 194, 255, .3);
+  border-bottom: 0;
+  border-radius: 58px 58px 0 0;
+  background: repeating-linear-gradient(90deg, transparent 0 18px, rgba(169, 133, 240, .1) 19px 20px);
+  box-shadow: inset 0 0 22px rgba(125, 83, 202, .19), 0 0 19px rgba(164, 123, 238, .16);
+  transform: translateX(-50%);
+  animation: spell-theater-cathedral-rise 3.5s ease-in-out infinite;
+}
+
+/* Rift Seeds rework: dimensional lenses, floating nightglass, and gravitational tide. */
+
+.spell-theater__stage--rift-seeds {
+  --spell-primary: #61e5d4;
+  --spell-secondary: #9a65dc;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(55, 205, 191, .09), transparent 31%),
+    radial-gradient(circle at 22% 20%, rgba(125, 68, 171, .09), transparent 28%),
+    linear-gradient(155deg, #010607, #061217 58%, #020306);
+}
+
+.spell-theater-rift-haze {
+  position: absolute;
+  inset: 13% 7%;
+  opacity: calc(.22 + var(--spell-rank) * .055);
+  background:
+    radial-gradient(ellipse at 28% 45%, rgba(76, 225, 209, .28), transparent 21%),
+    radial-gradient(ellipse at 72% 50%, rgba(121, 73, 186, .25), transparent 24%),
+    radial-gradient(ellipse at 50% 65%, rgba(44, 164, 158, .2), transparent 29%);
+  filter: blur(10px);
+  animation: spell-theater-rift-breathe 3.8s ease-in-out infinite;
+}
+
+.spell-theater-seed {
+  position: absolute;
+  width: calc(24px + var(--spell-rank) * 2px);
+  height: calc(24px + var(--spell-rank) * 2px);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 36% 30%, rgba(222, 255, 249, .8) 0 2%, transparent 5%),
+    radial-gradient(circle, #000105 0 41%, #092b32 49%, #62e4d3 55%, rgba(90, 57, 126, .58) 61%, transparent 69%);
+  box-shadow:
+    0 0 8px rgba(105, 240, 220, .65),
+    0 0 23px rgba(45, 181, 173, .23),
+    inset -5px -4px 8px rgba(94, 63, 161, .34);
+  animation: spell-theater-seed-hover 2.7s calc(var(--seed-index) * -.23s) ease-in-out infinite;
+}
+
+.spell-theater-seed__lens {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: conic-gradient(from 40deg, transparent, rgba(98, 234, 215, .32), transparent 28%, rgba(138, 90, 196, .3), transparent 63%);
+  filter: blur(1px);
+  animation: spell-theater-turn 5s linear infinite;
+}
+
+.spell-theater-seed__splinters {
+  position: absolute;
+  inset: -13px;
+  opacity: calc(.22 + var(--spell-rank) * .09);
+  background: conic-gradient(from 5deg, transparent 0 7%, #75e7d8 8% 9%, transparent 10% 27%, #7760a4 28% 30%, transparent 31% 57%, #8cebdd 58% 59%, transparent 60% 82%, #b07be2 83% 84%, transparent 85%);
+  clip-path: polygon(50% 0, 58% 37%, 91% 13%, 68% 44%, 100% 51%, 67% 57%, 89% 92%, 58% 66%, 49% 100%, 42% 66%, 8% 88%, 35% 57%, 0 49%, 36% 43%, 11% 10%, 43% 36%);
+  animation: spell-theater-turn 8s reverse linear infinite;
+}
+
+.spell-theater-seed.is-sovereign {
+  width: 54px;
+  height: 54px;
+  z-index: 2;
+  box-shadow: 0 0 12px #71ebda, 0 0 38px rgba(87, 218, 201, .35), 0 0 55px rgba(122, 67, 174, .24);
+}
+
+.spell-theater-rift-tide {
+  position: absolute;
+  inset: 24% 15%;
+  border-radius: 50%;
+  opacity: .45;
+  background: conic-gradient(from 20deg, transparent, rgba(100, 228, 210, .17), transparent 20%, rgba(132, 84, 190, .18), transparent 48%, rgba(67, 176, 166, .13), transparent 78%);
+  filter: blur(4px);
+  animation: spell-theater-turn 9s linear infinite;
+}
+
+/* Comet Swarm: smoky authored bodies with controlled fan density. */
+
+.spell-theater__stage--comet-swarm {
+  --spell-primary: #ff9d67;
+  --spell-secondary: #ffe5aa;
+}
+
+.spell-theater-comet {
+  position: absolute;
+  left: 53%;
+  top: var(--comet-top);
+  width: calc(65px + var(--spell-rank) * 8px);
+  height: 11px;
+  opacity: calc(.42 + var(--spell-rank) * .085);
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, rgba(171, 68, 48, .2) 18%, rgba(255, 137, 79, .48) 67%, #fff1be 94%);
+  filter: drop-shadow(0 0 5px rgba(255, 112, 65, .68));
+  transform: rotate(var(--comet-angle));
+  transform-origin: left center;
+  animation: spell-theater-comet-hunt 2s var(--comet-delay) ease-in-out infinite;
+}
+
+.spell-theater-comet i {
+  position: absolute;
+  right: -3px;
+  top: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff8dd;
+  box-shadow: 0 0 7px #ffbd72, 0 0 16px rgba(255, 92, 50, .8);
+}
+
+.spell-theater-perihelion {
+  position: absolute;
+  right: 10%;
+  top: 31%;
+  width: 49px;
+  height: 49px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fffce8 0 6%, #ffb659 13%, rgba(153, 39, 25, .38) 31%, transparent 67%);
+  box-shadow: 0 0 25px rgba(255, 111, 56, .48);
+  animation: spell-theater-perihelion-pulse 1.7s ease-in-out infinite;
+}
+
+/* Mirror Bow rework: a physical paleglass bow, refracted bolts, and a final arch. */
+
+.spell-theater__stage--mirror-bow {
+  --spell-primary: #dcefff;
+  --spell-secondary: #8bc9ef;
+  background:
+    radial-gradient(ellipse at 73% 48%, rgba(180, 220, 255, .11), transparent 28%),
+    radial-gradient(circle at 22% 16%, rgba(116, 88, 168, .08), transparent 28%),
+    linear-gradient(155deg, #020508, #08111a 58%, #020406);
+}
+
+.spell-theater-mirror-bow {
+  position: absolute;
+  z-index: 2;
+  left: 48%;
+  top: 47%;
+  width: calc(50px + var(--spell-rank) * 5px);
+  height: calc(85px + var(--spell-rank) * 6px);
+  transform: translate(-18%, -50%) rotate(7deg);
+  filter: drop-shadow(0 0 7px rgba(199, 233, 255, .57));
+  animation: spell-theater-bow-draw 2.4s ease-in-out infinite;
+}
+
+.spell-theater-mirror-bow__upper,
+.spell-theater-mirror-bow__lower {
+  position: absolute;
+  left: 7%;
+  width: 86%;
+  height: 52%;
+  border-right: 4px solid rgba(226, 244, 255, .92);
+  background: linear-gradient(105deg, transparent 46%, rgba(115, 184, 224, .25) 48%, rgba(235, 247, 255, .76) 51%, transparent 54%);
+  clip-path: polygon(0 100%, 28% 68%, 47% 16%, 100% 0, 69% 24%, 48% 79%);
+}
+
+.spell-theater-mirror-bow__upper {
+  top: 0;
+}
+
+.spell-theater-mirror-bow__lower {
+  bottom: 0;
+  transform: scaleY(-1);
+}
+
+.spell-theater-mirror-bow__nock {
+  position: absolute;
+  left: 7%;
+  top: 50%;
+  width: 91%;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(224, 245, 255, .94), rgba(129, 197, 236, .45), transparent);
+  box-shadow: 0 0 5px rgba(194, 234, 255, .66);
+}
+
+.spell-theater-pale-bolt {
+  position: absolute;
+  z-index: 3;
+  left: 55%;
+  top: calc(47% + var(--bolt-offset));
+  width: calc(58px + var(--spell-rank) * 10px);
+  height: 7px;
+  opacity: calc(.34 + var(--spell-rank) * .1);
+  background: linear-gradient(90deg, rgba(238, 250, 255, .95), rgba(113, 194, 238, .37) 48%, transparent);
+  clip-path: polygon(0 42%, 78% 38%, 86% 0, 100% 50%, 86% 100%, 78% 61%, 0 57%);
+  filter: drop-shadow(0 0 4px rgba(196, 234, 255, .75));
+  transform: rotate(var(--bolt-angle));
+  transform-origin: left center;
+  animation: spell-theater-bolt-echo 1.55s var(--bolt-delay) ease-in-out infinite;
+}
+
+.spell-theater-pale-bolt i {
+  position: absolute;
+  left: 14%;
+  top: -5px;
+  width: 25px;
+  height: 16px;
+  opacity: .48;
+  background: linear-gradient(135deg, transparent 20%, rgba(203, 238, 255, .7), transparent 62%);
+  clip-path: polygon(0 48%, 35% 0, 100% 50%, 34% 100%);
+}
+
+.spell-theater-prism-fan {
+  position: absolute;
+  right: 4%;
+  top: 24%;
+  width: 85px;
+  height: 112px;
+  opacity: .28;
+  background: conic-gradient(from 246deg at 0 50%, transparent 0 6%, rgba(196, 231, 255, .48) 7% 8%, transparent 9% 14%, rgba(147, 107, 205, .33) 15% 16%, transparent 17% 24%, rgba(107, 202, 230, .32) 25% 26%, transparent 27%);
+  filter: blur(.4px);
+  animation: spell-theater-prism-shiver 2.8s ease-in-out infinite;
+}
+
+.spell-theater-infinite-arch {
+  position: absolute;
+  right: 5%;
+  top: 11%;
+  width: 105px;
+  height: 169px;
+  opacity: .55;
+  border: 2px solid rgba(217, 241, 255, .7);
+  border-left-color: rgba(135, 100, 196, .34);
+  border-radius: 56px 56px 8px 8px;
+  box-shadow: inset 0 0 19px rgba(134, 198, 235, .13), 0 0 20px rgba(171, 220, 245, .16);
+  clip-path: polygon(0 100%, 0 31%, 16% 13%, 37% 0, 63% 0, 85% 13%, 100% 31%, 100% 100%, 91% 100%, 91% 35%, 78% 21%, 60% 11%, 40% 11%, 22% 21%, 9% 35%, 9% 100%);
+  animation: spell-theater-arch-phase 3.2s ease-in-out infinite;
+}
+
+.spell-theater__retained {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  color: rgba(220, 226, 229, .58);
+  transform: translate(-50%, -50%);
+}
+
+.spell-theater__retained span {
+  width: max-content;
+  max-width: 220px;
+  font: 500 .46rem/1.4 var(--display);
+  letter-spacing: .1em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+@keyframes spell-theater-breathe {
+  0%, 100% { opacity: .48; transform: translateX(-50%) scale(.9); }
+  50% { opacity: .9; transform: translateX(-50%) scale(1.08); }
+}
+
+@keyframes spell-theater-mote {
+  0%, 100% { opacity: .18; transform: translate3d(-2px, 6px, 0) scale(.65); }
+  45% { opacity: .9; transform: translate3d(4px, -7px, 0) scale(1.15); }
+}
+
+@keyframes spell-theater-turn {
+  to { transform: rotate(1turn); }
+}
+
+@keyframes spell-theater-lance-pulse {
+  0%, 100% { opacity: .72; transform: rotate(-16deg) scaleX(.86); }
+  50% { opacity: 1; transform: rotate(-16deg) scaleX(1.12); }
+}
+
+@keyframes spell-theater-shard-flight {
+  0%, 100% { opacity: .16; translate: -8px 2px; }
+  45% { opacity: .92; translate: 8px -2px; }
+}
+
+@keyframes spell-theater-eclipse-drift {
+  0%, 100% { transform: translateY(3px) scale(.94); }
+  50% { transform: translateY(-4px) scale(1.05); }
+}
+
+@keyframes spell-theater-crescent-orbit {
+  to { rotate: 1turn; }
+}
+
+@keyframes spell-theater-node-pulse {
+  0%, 100% { opacity: .52; scale: .84; }
+  50% { opacity: 1; scale: 1.13; }
+}
+
+@keyframes spell-theater-arc-strike {
+  0%, 100% { opacity: .14; scale: .88 1; }
+  14%, 36% { opacity: .95; scale: 1.05 1; }
+  46% { opacity: .3; }
+}
+
+@keyframes spell-theater-cathedral-rise {
+  0%, 100% { opacity: .22; transform: translate(-50%, 5px); }
+  50% { opacity: .48; transform: translate(-50%, -4px); }
+}
+
+@keyframes spell-theater-moonwell-pulse {
+  0%, 100% { opacity: .58; transform: translate(-50%, -50%) scale(.9); }
+  50% { opacity: .92; transform: translate(-50%, -50%) scale(1.08); }
+}
+
+@keyframes spell-theater-rift-breathe {
+  0%, 100% { opacity: .24; transform: scale(.94) rotate(-2deg); }
+  50% { opacity: .52; transform: scale(1.07) rotate(2deg); }
+}
+
+@keyframes spell-theater-seed-hover {
+  0%, 100% { margin-top: 4px; filter: brightness(.82); }
+  50% { margin-top: -5px; filter: brightness(1.2); }
+}
+
+@keyframes spell-theater-comet-hunt {
+  0%, 100% { opacity: .18; translate: -16px 7px; }
+  45% { opacity: 1; translate: 11px -5px; }
+}
+
+@keyframes spell-theater-perihelion-pulse {
+  0%, 100% { opacity: .58; transform: scale(.84); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+
+@keyframes spell-theater-bow-draw {
+  0%, 100% { transform: translate(-18%, -50%) rotate(7deg) scaleX(.93); }
+  50% { transform: translate(-18%, -50%) rotate(5deg) scaleX(1.08); }
+}
+
+@keyframes spell-theater-bolt-echo {
+  0%, 100% { opacity: .18; translate: -8px 0; }
+  42% { opacity: .96; translate: 11px 0; }
+}
+
+@keyframes spell-theater-prism-shiver {
+  0%, 100% { opacity: .18; transform: skewY(-2deg); }
+  50% { opacity: .44; transform: skewY(2deg); }
+}
+
+@keyframes spell-theater-arch-phase {
+  0%, 100% { opacity: .37; filter: brightness(.82); transform: scale(.97); }
+  50% { opacity: .68; filter: brightness(1.18); transform: scale(1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spell-theater *,
+  .spell-theater *::before,
+  .spell-theater *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 .result-reward--lab {

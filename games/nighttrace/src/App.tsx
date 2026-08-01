@@ -822,7 +822,7 @@ export default function App() {
             {snapshot.revivePending && !isTouchDevicePortrait ? (
               <ReviveOverlay onRevive={revive} onDecline={declineRevive} />
             ) : null}
-            {snapshot.ending ? (
+            {snapshot.ending?.completionVisible ? (
               <RunEndingOverlay ending={snapshot.ending} />
             ) : null}
             {snapshot.paused &&

@@ -39,7 +39,6 @@ type CinematicPresentation = CampaignCinematic & {
   kicker?: string
   summary?: string
   progressLabels?: string[]
-  heroKeyframeAsset?: string
 }
 
 type CinematicSettings = GameSettings & {
@@ -201,11 +200,6 @@ function CinematicSession({
     cinematic.beats?.find(
       (beat) => elapsedMs >= beat.startMs && elapsedMs < beat.endMs,
     ) ?? null
-  // Intro and Memory key art already contains its authored hero composition.
-  // Only the finale retains a separate runtime actor layer for its climax beat.
-  const heroAsset = cinematic.kind === 'finale'
-    ? scene.heroKeyframeAsset ?? cinematic.heroAsset
-    : undefined
   const progressLabels =
     scene.progressLabels?.slice(0, 3) ??
     [
@@ -624,10 +618,6 @@ function CinematicSession({
         }%`,
       } satisfies CSSProperties)
     : undefined
-  const heroIsRuntimeAtlas = Boolean(
-    heroAsset && /assets\/hero-animations\/hero-(walk|fire|charge)-runtime\.webp$/i.test(heroAsset),
-  )
-
   return (
     <main
       ref={rootRef}
@@ -675,23 +665,6 @@ function CinematicSession({
             <img
               className="nt-cinematic__boss"
               src={appAssetUrl(cinematic.bossAsset)}
-              alt=""
-              draggable={false}
-            />
-          )
-        ) : null}
-
-        {heroAsset ? (
-          heroIsRuntimeAtlas ? (
-            <div
-              className="nt-cinematic__hero nt-cinematic__hero--atlas"
-              style={{ backgroundImage: `url("${appAssetUrl(heroAsset)}")` }}
-              aria-hidden="true"
-            />
-          ) : (
-            <img
-              className="nt-cinematic__hero"
-              src={appAssetUrl(heroAsset)}
               alt=""
               draggable={false}
             />

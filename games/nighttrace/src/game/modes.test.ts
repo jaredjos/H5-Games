@@ -28,6 +28,7 @@ import {
   getCombatLabPresetLoadout,
   isBossTrialUnlocked,
   normalizeBossTrialClears,
+  normalizeCombatLabLoadout,
   normalizeCombatLabConfig,
   normalizeStartingLoadout,
   resolveArenaLevel,
@@ -156,6 +157,7 @@ describe('Combat Lab presets and normalization', () => {
       arenaLevelId: 1,
       bossLevelId: 1,
       encounter: 'boss',
+      invincible: true,
       playerLevel: 1,
       bossHealthMultiplier: 1,
       lightRingRank: 1,
@@ -187,6 +189,7 @@ describe('Combat Lab presets and normalization', () => {
       arenaLevelId: LEVELS.length,
       bossLevelId: 1,
       encounter: 'boss',
+      invincible: true,
       playerLevel: COMBAT_LAB_PLAYER_LEVEL_MAX,
       bossHealthMultiplier: COMBAT_LAB_BOSS_HEALTH_MAX,
       lightRingRank: 6,
@@ -199,6 +202,22 @@ describe('Combat Lab presets and normalization', () => {
     expect(normalizeCombatLabConfig({
       bossHealthMultiplier: -10,
     }).bossHealthMultiplier).toBe(COMBAT_LAB_BOSS_HEALTH_MIN)
+  })
+
+  it('allows every spell to be disabled and preserves the invincibility toggle', () => {
+    expect(normalizeCombatLabLoadout({
+      weapons: [],
+      modules: [],
+      traceMods: [],
+    }).weapons).toEqual([])
+
+    const normalized = normalizeCombatLabConfig({
+      ...DEFAULT_COMBAT_LAB_CONFIG,
+      invincible: false,
+      loadout: { weapons: [], modules: [], traceMods: [] },
+    })
+    expect(normalized.invincible).toBe(false)
+    expect(normalized.loadout.weapons).toEqual([])
   })
 })
 
@@ -323,11 +342,12 @@ describe('curated Boss Trial progression', () => {
 })
 
 describe('RunConfig builders', () => {
-  it('builds an invincible fixed-loadout Combat Lab run', () => {
+  it('builds a fixed-loadout Combat Lab run using the selected damage protocol', () => {
     const run = buildCombatLabRunConfig({
       arenaLevelId: 8,
       bossLevelId: 3,
       encounter: 'sector',
+      invincible: false,
       playerLevel: 14,
       bossHealthMultiplier: 1.75,
       lightRingRank: 6,
@@ -339,7 +359,7 @@ describe('RunConfig builders', () => {
       arenaLevelId: 8,
       bossLevelId: 3,
       bossOnly: false,
-      invincible: true,
+      invincible: false,
       fixedLoadout: true,
       playerLevel: 14,
       bossHealthMultiplier: 1.75,

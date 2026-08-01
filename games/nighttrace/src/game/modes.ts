@@ -167,11 +167,25 @@ function normalizeTraceMods(value: unknown): TraceModId[] {
  * modules retain their highest supplied rank while preserving first-seen order.
  */
 export function normalizeStartingLoadout(value: unknown): StartingLoadout {
+  return normalizeLoadout(value, false)
+}
+
+/**
+ * Combat Lab deliberately permits an empty arsenal so a single prototype can
+ * be evaluated without Helio Lance being silently restored as a fallback.
+ */
+export function normalizeCombatLabLoadout(value: unknown): StartingLoadout {
+  return normalizeLoadout(value, true)
+}
+
+function normalizeLoadout(value: unknown, allowEmptyWeapons: boolean): StartingLoadout {
   const source = isRecord(value) ? value : {}
   const modules = normalizeModules(source.modules)
   const weapons = normalizeWeapons(source.weapons, modules)
   return {
-    weapons: weapons.length > 0 ? weapons : [{ id: 'helio-lance', rank: 1 }],
+    weapons: weapons.length > 0 || allowEmptyWeapons
+      ? weapons
+      : [{ id: 'helio-lance', rank: 1 }],
     modules,
     traceMods: normalizeTraceMods(source.traceMods),
   }
@@ -181,7 +195,7 @@ export const COMBAT_LAB_PRESETS: readonly CombatLabPresetDefinition[] = [
   {
     id: 'solo',
     label: 'Solo',
-    description: 'Rank I weapon without its paired module.',
+    description: 'Spell Rank I without its paired module.',
     weaponRank: 1,
     moduleRank: 0,
     awakened: false,
@@ -189,7 +203,7 @@ export const COMBAT_LAB_PRESETS: readonly CombatLabPresetDefinition[] = [
   {
     id: 'combined',
     label: 'Combined',
-    description: 'Rank I weapon combined with its paired module.',
+    description: 'Spell Rank I combined with its paired module.',
     weaponRank: 1,
     moduleRank: 1,
     awakened: false,
@@ -197,7 +211,7 @@ export const COMBAT_LAB_PRESETS: readonly CombatLabPresetDefinition[] = [
   {
     id: 'mastered',
     label: 'Mastered',
-    description: 'Rank V weapon before its final awakening.',
+    description: 'Spell Rank V before its final awakening.',
     weaponRank: 5,
     moduleRank: 0,
     awakened: false,
@@ -205,7 +219,7 @@ export const COMBAT_LAB_PRESETS: readonly CombatLabPresetDefinition[] = [
   {
     id: 'final',
     label: 'Final',
-    description: 'Awakened Rank V weapon with a Rank III paired module.',
+    description: 'Awakened Spell Rank V with a Rank III paired module.',
     weaponRank: 5,
     moduleRank: 3,
     awakened: true,
@@ -238,6 +252,7 @@ export const DEFAULT_COMBAT_LAB_CONFIG: CombatLabConfig = {
   arenaLevelId: 1,
   bossLevelId: 1,
   encounter: 'boss',
+  invincible: true,
   playerLevel: 1,
   bossHealthMultiplier: 1,
   lightRingRank: 1,
@@ -258,6 +273,9 @@ export function normalizeCombatLabConfig(value: unknown): CombatLabConfig {
     encounter: source.encounter === 'sector' || source.encounter === 'boss'
       ? source.encounter
       : DEFAULT_COMBAT_LAB_CONFIG.encounter,
+    invincible: typeof source.invincible === 'boolean'
+      ? source.invincible
+      : DEFAULT_COMBAT_LAB_CONFIG.invincible,
     playerLevel: clampInteger(
       source.playerLevel,
       DEFAULT_COMBAT_LAB_CONFIG.playerLevel,
@@ -275,7 +293,7 @@ export function normalizeCombatLabConfig(value: unknown): CombatLabConfig {
     lightRingRank: normalizeLightRingRank(
       source.lightRingRank ?? DEFAULT_COMBAT_LAB_CONFIG.lightRingRank,
     ),
-    loadout: normalizeStartingLoadout(
+    loadout: normalizeCombatLabLoadout(
       source.loadout ?? DEFAULT_COMBAT_LAB_CONFIG.loadout,
     ),
   }
@@ -527,12 +545,12 @@ export function buildCombatLabRunConfig(value: unknown): RunConfig {
     arenaLevelId: config.arenaLevelId,
     bossLevelId: config.bossLevelId,
     bossOnly: config.encounter === 'boss',
-    invincible: true,
+    invincible: config.invincible,
     fixedLoadout: true,
     playerLevel: config.playerLevel,
     bossHealthMultiplier: config.bossHealthMultiplier,
     lightRingRank: config.lightRingRank,
-    startingLoadout: normalizeStartingLoadout(config.loadout),
+    startingLoadout: normalizeCombatLabLoadout(config.loadout),
   }
 }
 

@@ -88,6 +88,12 @@ import {
   revivedHealth,
 } from './revivePolicy'
 import {
+  BOSS_DEATH_MOTION_SECONDS,
+  runEndingCompletionVisible,
+  runEndingDuration,
+  runEndingTitle,
+} from './runEndingPresentation'
+import {
   createBossPatternDirectorState,
   directBossPattern,
   type BossPatternDirectorState,
@@ -124,6 +130,11 @@ import {
   resolveHostileTelegraphPalette,
   type HostileTelegraphMaterialPalette,
 } from './hostileTelegraphPalette'
+import { hostileSpecialReactionWindow } from './hostileReactionWindow'
+import {
+  sampleHostileSpecialEnergy,
+  type HostileSpecialEnergyMark,
+} from './hostileSpecialEnergy'
 import {
   advanceHostileProjectile,
   hostileProjectilePoseAt,
@@ -134,9 +145,14 @@ import {
   resolveWeaponVfxState,
   weaponVfxMotifProfile,
   weaponVfxProfile,
+  type WeaponVfxProfile,
   type WeaponVfxStage,
   type WeaponVfxState,
 } from './weaponVfx'
+import {
+  resolveCombatLabRuntimeVfx,
+  type CombatLabRuntimeVfxPresentation,
+} from './combatLabRuntimeVfx'
 import {
   buildReplacementWeaponPattern,
   resolvePatternHits,
@@ -217,6 +233,7 @@ import {
   pulseChargeFromNormalKill,
   tracePointAllowance,
   tracePulseReward,
+  traceSegmentIsDiscontinuous,
 } from './tracePulse'
 import {
   LIGHT_RING_AWAKENING_NAME,
@@ -243,6 +260,7 @@ import {
   combatTextPose,
   createPlayerHitFeedback,
   formatCombatDamage,
+  heroDamageFlashTint,
   laneTouchesHeroBody,
   type CombatTextTarget,
   type PlayerDamageContext,
@@ -427,6 +445,7 @@ interface TelegraphEntity {
   total: number
   damage: number
   bossAttack: boolean
+  specialAttack: boolean
   color?: number
 }
 
@@ -548,6 +567,7 @@ class NighttraceRuntime {
   private readonly groundedVfxSmokeGraphics = new Graphics()
   private readonly groundedVfxDustGraphics = new Graphics()
   private readonly groundedVfxCinderGraphics = new Graphics()
+  private readonly hostileSpecialEnergyGraphics = new Graphics()
   private readonly hostileBoundaryGlowGraphics = new Graphics()
   private readonly hostileBoundaryCoreGraphics = new Graphics()
   private readonly motionGraphics = new Graphics()
@@ -952,6 +972,7 @@ class NighttraceRuntime {
       )
       this.groundedVfxMaterialLayer.sortableChildren = true
       this.groundedVfxCinderGraphics.blendMode = 'add'
+      this.hostileSpecialEnergyGraphics.blendMode = 'add'
       this.hostileBoundaryGlowGraphics.blendMode = 'add'
       this.weaponMaterialLayer.sortableChildren = true
       this.pickupLayer.addChild(this.pickupAuraGraphics)
@@ -965,6 +986,7 @@ class NighttraceRuntime {
       this.lightRingOverlayAdditiveGraphics.blendMode = 'add'
       this.enemyForegroundLayer.addChild(
         this.groundedVfxCinderGraphics,
+        this.hostileSpecialEnergyGraphics,
         this.hostileBoundaryGlowGraphics,
         this.hostileBoundaryCoreGraphics,
       )
@@ -2404,6 +2426,7 @@ class NighttraceRuntime {
         enemy.attackMotionStyle === 'blink' &&
         motionProgress(enemy.attackMotionRemaining, enemy.attackMotionDuration) >= 0.46
       ) {
+        this.audio.playHostileSpecialRelease('elite', 'blink')
         enemy.x = enemy.blinkTargetX
         enemy.y = enemy.blinkTargetY
         enemy.previousX = enemy.x
@@ -2423,6 +2446,9 @@ class NighttraceRuntime {
         enemy.attackMotionStyle === 'melee' &&
         contactAttackProgress >= 0.42
       ) {
+        if (enemy.isBoss) {
+          this.audio.playHostileSpecialRelease('boss', 'melee')
+        }
         if (
           circleTouchesHeroBody(
             this.player.x,
@@ -2533,7 +2559,13 @@ class NighttraceRuntime {
   private performEnemySpecial(enemy: EnemyEntity, angle: number, distance: number) {
     if (enemy.id === 'cantor') {
       const destination = this.predictedPlayerPoint(0.34)
-      this.triggerEnemyAttack(enemy, 'cast', 1.16, angle, true)
+      this.triggerEnemyAttack(
+        enemy,
+        'cast',
+        hostileSpecialReactionWindow(1.16),
+        angle,
+        true,
+      )
       this.launchHostileProjectile(enemy, destination, {
         windup: 0.98,
         flight: 0.38,
@@ -2550,7 +2582,13 @@ class NighttraceRuntime {
       const destination = this.predictedPlayerPoint(0.42)
       const normalX = -Math.sin(angle)
       const normalY = Math.cos(angle)
-      this.triggerEnemyAttack(enemy, 'cast', 1.02, angle, true)
+      this.triggerEnemyAttack(
+        enemy,
+        'cast',
+        hostileSpecialReactionWindow(1.02),
+        angle,
+        true,
+      )
       for (const side of [-1, 1]) {
         this.launchHostileProjectile(
           enemy,
@@ -2573,7 +2611,13 @@ class NighttraceRuntime {
     }
 
     if (enemy.id === 'railjaw') {
-      this.triggerEnemyAttack(enemy, 'charge', 0.76, angle, true)
+      this.triggerEnemyAttack(
+        enemy,
+        'charge',
+        hostileSpecialReactionWindow(0.76),
+        angle,
+        true,
+      )
       this.queueLineTelegraph(
         enemy.x,
         enemy.y,
@@ -2584,6 +2628,7 @@ class NighttraceRuntime {
         enemy.damage * 1.15,
         false,
         this.actorAccentColor(enemy),
+        true,
       )
       enemy.attackTimer = this.random.range(5.4, 7.4)
       return
@@ -2595,7 +2640,13 @@ class NighttraceRuntime {
         this.random.next() < Math.min(0.8, 0.36 + this.level.id * 0.045)
       ) {
         const destination = this.predictedPlayerPoint(0.48)
-        this.triggerEnemyAttack(enemy, 'cast', 1.08, angle, true)
+        this.triggerEnemyAttack(
+          enemy,
+          'cast',
+          hostileSpecialReactionWindow(1.08),
+          angle,
+          true,
+        )
         this.launchHostileProjectile(enemy, destination, {
           windup: 0.9,
           flight: 0.38,
@@ -2630,7 +2681,13 @@ class NighttraceRuntime {
     if (enemy.id === 'cinder-guard') {
       if (this.level.id >= 5 && this.random.next() < 0.62) {
         const destination = this.predictedPlayerPoint(0.5)
-        this.triggerEnemyAttack(enemy, 'cast', 1.22, angle, true)
+        this.triggerEnemyAttack(
+          enemy,
+          'cast',
+          hostileSpecialReactionWindow(1.22),
+          angle,
+          true,
+        )
         this.launchHostileProjectile(enemy, destination, {
           windup: 1.04,
           flight: 0.46,
@@ -2642,7 +2699,13 @@ class NighttraceRuntime {
         enemy.attackTimer = this.random.range(6.2, 8.2)
         return
       }
-      this.triggerEnemyAttack(enemy, 'slam', 0.92, angle, true)
+      this.triggerEnemyAttack(
+        enemy,
+        'slam',
+        hostileSpecialReactionWindow(0.92),
+        angle,
+        true,
+      )
       this.queueCircleTelegraph(
         enemy.x,
         enemy.y,
@@ -2651,6 +2714,7 @@ class NighttraceRuntime {
         enemy.damage,
         false,
         this.actorAccentColor(enemy),
+        true,
       )
       enemy.attackTimer = this.random.range(6.2, 8.4)
     }
@@ -2717,6 +2781,8 @@ class NighttraceRuntime {
       )
       hitCount += 1
     }
+
+    this.audio.playLightRingPulse(this.lightRingRank, hitCount > 0)
 
     if (hitCount > 0) {
       this.lightRingPulse = Math.max(
@@ -3097,6 +3163,25 @@ class NighttraceRuntime {
     return heroWeaponOrigin(this.player, facingX)
   }
 
+  private combatLabRuntimeVfx(
+    weaponId: WeaponId,
+    state: WeaponVfxState,
+  ): CombatLabRuntimeVfxPresentation {
+    return resolveCombatLabRuntimeVfx(
+      this.runConfig.mode,
+      weaponId,
+      state,
+      weaponVfxProfile(weaponId, state),
+    )
+  }
+
+  private weaponPresentationProfile(
+    weaponId: WeaponId,
+    state: WeaponVfxState,
+  ): WeaponVfxProfile {
+    return this.combatLabRuntimeVfx(weaponId, state).profile
+  }
+
   private pushWeaponEffect(effect: WeaponEffectEntity) {
     if (this.weaponEffects.length >= 72) {
       let shortestIndex = 0
@@ -3162,7 +3247,7 @@ class NighttraceRuntime {
       hitPulseTotal,
     })
 
-    const profile = weaponVfxProfile(weaponId, visualState)
+    const profile = this.weaponPresentationProfile(weaponId, visualState)
     const burstCount = Math.min(14, Math.max(4, Math.ceil(profile.particleCount * 0.45)))
     if (weaponId !== 'ash-halo' && weaponId !== 'null-bell') {
       this.spawnBurst(
@@ -3191,7 +3276,10 @@ class NighttraceRuntime {
     }
     const effectKind = kind[projectile.weaponId]
     if (!effectKind) return
-    const profile = weaponVfxProfile(projectile.weaponId, projectile.visualState)
+    const profile = this.weaponPresentationProfile(
+      projectile.weaponId,
+      projectile.visualState,
+    )
     const radius =
       projectile.weaponId === 'rift-seeds'
         ? expired ? 118 : 88
@@ -3300,7 +3388,7 @@ class NighttraceRuntime {
     projectile.sprite.texture = this.projectileTextures.get(weaponId) ?? Texture.WHITE
     projectile.sprite.tint = 0xffffff
     const [projectileWidth, projectileHeight] = this.projectileDimensions(weaponId)
-    const visualProfile = weaponVfxProfile(weaponId, visualState)
+    const visualProfile = this.weaponPresentationProfile(weaponId, visualState)
     projectile.sprite.width = projectileWidth * visualProfile.projectileScale
     projectile.sprite.height = projectileHeight * visualProfile.projectileScale
     projectile.sprite.alpha = 0.95
@@ -3555,6 +3643,12 @@ class NighttraceRuntime {
       if (telegraph.life > 0) continue
       telegraph.active = false
       this.activeTelegraphCount = Math.max(0, this.activeTelegraphCount - 1)
+      if (telegraph.specialAttack) {
+        this.audio.playHostileSpecialRelease(
+          telegraph.bossAttack ? 'boss' : 'elite',
+          telegraph.kind === 'circle' ? 'field' : 'lane',
+        )
+      }
 
       const hit =
         telegraph.kind === 'circle'
@@ -3639,7 +3733,7 @@ class NighttraceRuntime {
           x: clamp(destination.x, options.radius + 24, WORLD_WIDTH - options.radius - 24),
           y: clamp(destination.y, options.radius + 24, WORLD_HEIGHT - options.radius - 24),
         },
-        windupSeconds: options.windup,
+        windupSeconds: hostileSpecialReactionWindow(options.windup),
         flightSeconds: options.flight,
         impactHoldSeconds: 0.22,
         arcHeight: options.arcHeight,
@@ -3672,6 +3766,10 @@ class NighttraceRuntime {
       projectile.state = step.state
       for (const event of step.events) {
         if (event.type === 'release') {
+          this.audio.playHostileSpecialRelease(
+            projectile.state.config.boss ? 'boss' : 'elite',
+            'projectile',
+          )
           this.spawnBurst(
             event.origin.x,
             event.origin.y,
@@ -3849,6 +3947,11 @@ class NighttraceRuntime {
   private updateTrace() {
     const last = this.trace[this.trace.length - 1]
     const point = { x: this.player.x, y: this.player.y }
+    if (traceSegmentIsDiscontinuous(last, point)) {
+      this.trace.length = 0
+      this.trace.push(point)
+      return
+    }
     if (distanceSquared(last, point) < TRACE_SAMPLE_DISTANCE ** 2) return
     this.trace.push(point)
     const memoryRank = this.persistentUpgrades.pulse ?? 0
@@ -4015,9 +4118,35 @@ class NighttraceRuntime {
       enemy.attackMotionRemaining = 0
       enemy.attackMotionDuration = 0
       enemy.attackMotionStyle = 'none'
-      enemy.deathMotionDuration = wasBoss ? 1 : 0.42
+      enemy.deathMotionDuration = wasBoss ? BOSS_DEATH_MOTION_SECONDS : 0.42
       enemy.deathMotionRemaining = enemy.deathMotionDuration
       enemy.sprite.visible = true
+      if (wasBoss) {
+        this.rings.push(
+          {
+            x: enemy.x,
+            y: enemy.y,
+            radius: Math.max(22, enemy.radius * 0.34),
+            maxRadius: Math.max(210, enemy.radius * 2.4),
+            life: 1.1,
+            total: 1.1,
+            color: 0x8b1839,
+            width: 11,
+          },
+          {
+            x: enemy.x,
+            y: enemy.y,
+            radius: Math.max(15, enemy.radius * 0.22),
+            maxRadius: Math.max(300, enemy.radius * 3.15),
+            life: BOSS_DEATH_MOTION_SECONDS,
+            total: BOSS_DEATH_MOTION_SECONDS,
+            color: 0x9b57c7,
+            width: 6,
+          },
+        )
+        this.spawnBurst(enemy.x, enemy.y, 0x8d1b45, 38, 270)
+        this.spawnBurst(enemy.x, enemy.y, 0xd8c8de, 24, 210)
+      }
     }
     if (lethal && !wasBoss) {
       // Settle the primary defeat before chained fractures. If a fracture also
@@ -4180,11 +4309,9 @@ class NighttraceRuntime {
     }
     this.pendingResult = result
     this.endSequenceVictory = victory
-    this.endSequenceDuration = victory ? 2.8 : 2.2
+    this.endSequenceDuration = runEndingDuration(victory)
     this.endSequenceTimer = this.endSequenceDuration
-    this.cinematicTitle.text = victory
-      ? 'SOVEREIGN DEFEATED'
-      : 'TRACE SEVERED'
+    this.cinematicTitle.text = runEndingTitle(victory, 0)
     this.cinematicTitle.tint = victory ? 0xffd978 : 0xff657c
     this.emitSnapshot(true)
     this.rings.push({
@@ -4565,8 +4692,13 @@ class NighttraceRuntime {
       'boss-cross',
       'boss-mirror',
     ][pattern] as AttackMotionStyle
-    this.triggerEnemyAttack(enemy, attackStyle, warningTime + 0.24, angle, true)
-    this.audio.playBossAttack(enemy.phase, pattern)
+    this.triggerEnemyAttack(
+      enemy,
+      attackStyle,
+      hostileSpecialReactionWindow(warningTime) + 0.24,
+      angle,
+      true,
+    )
 
     if (pattern === 0) {
       const lines = 1 + enemy.phase
@@ -4971,9 +5103,13 @@ class NighttraceRuntime {
     damage: number,
     bossAttack = false,
     color?: number,
+    specialAttack = bossAttack,
   ) {
     if (this.activeTelegraphCount >= 32) return
     const telegraph = this.telegraphs.find((candidate) => !candidate.active)
+    const warningLife = specialAttack
+      ? hostileSpecialReactionWindow(life)
+      : life
     const next: TelegraphEntity = {
       active: true,
       kind: 'circle',
@@ -4983,10 +5119,11 @@ class NighttraceRuntime {
       angle: 0,
       length: 0,
       width: 0,
-      life,
-      total: life,
+      life: warningLife,
+      total: warningLife,
       damage,
       bossAttack,
+      specialAttack,
       color,
     }
     if (telegraph) Object.assign(telegraph, next)
@@ -5004,9 +5141,13 @@ class NighttraceRuntime {
     damage: number,
     bossAttack = false,
     color?: number,
+    specialAttack = bossAttack,
   ) {
     if (this.activeTelegraphCount >= 32) return
     const telegraph = this.telegraphs.find((candidate) => !candidate.active)
+    const warningLife = specialAttack
+      ? hostileSpecialReactionWindow(life)
+      : life
     const next: TelegraphEntity = {
       active: true,
       kind: 'line',
@@ -5016,10 +5157,11 @@ class NighttraceRuntime {
       angle,
       length,
       width,
-      life,
-      total: life,
+      life: warningLife,
+      total: warningLife,
       damage,
       bossAttack,
+      specialAttack,
       color,
     }
     if (telegraph) Object.assign(telegraph, next)
@@ -5324,6 +5466,7 @@ class NighttraceRuntime {
     this.groundedVfxDustGraphics.clear()
     this.groundedVfxSmokeGraphics.clear()
     this.groundedVfxCinderGraphics.clear()
+    this.hostileSpecialEnergyGraphics.clear()
     this.hostileBoundaryGlowGraphics.clear()
     this.hostileBoundaryCoreGraphics.clear()
   }
@@ -5624,6 +5767,133 @@ class NighttraceRuntime {
     return 0
   }
 
+  private drawHostileSpecialFieldEnergy(
+    x: number,
+    y: number,
+    radius: number,
+    progress: number,
+    seed: number,
+    active: boolean,
+  ) {
+    const marks = sampleHostileSpecialEnergy({
+      footprint: 'field',
+      progress,
+      motionTime: this.motionClock,
+      seed,
+      lod: this.groundedVfxLod(),
+      reducedFlash: this.settings.reducedFlash,
+      active,
+    })
+    for (const mark of marks) {
+      const angle = mark.anchor * Math.PI * 2
+      const angularSpan = mark.span * Math.PI * 2
+      const edgeRadius = radius * mark.edge
+      const startAngle = angle - angularSpan * 0.5
+      const endAngle = angle + angularSpan * 0.5
+      const startX = x + Math.cos(startAngle) * edgeRadius
+      const startY = y + Math.sin(startAngle) * edgeRadius * 0.9
+      const endX = x + Math.cos(endAngle) * edgeRadius
+      const endY = y + Math.sin(endAngle) * edgeRadius * 0.9
+      const bendRadius = edgeRadius * (1 + mark.bend * 0.075)
+      const controlX = x + Math.cos(angle) * bendRadius
+      const controlY = y + Math.sin(angle) * bendRadius * 0.9
+      this.drawHostileSpecialEnergyFilament(
+        mark,
+        startX,
+        startY,
+        controlX,
+        controlY,
+        endX,
+        endY,
+        Math.max(1, radius * 0.018),
+      )
+    }
+  }
+
+  private drawHostileSpecialLaneEnergy(
+    start: Vec2,
+    end: Vec2,
+    width: number,
+    progress: number,
+    seed: number,
+    active: boolean,
+  ) {
+    const marks = sampleHostileSpecialEnergy({
+      footprint: 'lane',
+      progress,
+      motionTime: this.motionClock,
+      seed,
+      lod: this.groundedVfxLod(),
+      reducedFlash: this.settings.reducedFlash,
+      active,
+    })
+    const dx = end.x - start.x
+    const dy = end.y - start.y
+    const length = Math.max(1, Math.hypot(dx, dy))
+    const tangentX = dx / length
+    const tangentY = dy / length
+    const normalX = -tangentY
+    const normalY = tangentX
+    for (const mark of marks) {
+      const centerDistance = mark.anchor * length
+      const halfSpan = mark.span * length * 0.5
+      const side = mark.edge * width
+      const centerX = start.x + tangentX * centerDistance + normalX * side
+      const centerY = start.y + tangentY * centerDistance + normalY * side
+      const startX = centerX - tangentX * halfSpan
+      const startY = centerY - tangentY * halfSpan
+      const endX = centerX + tangentX * halfSpan
+      const endY = centerY + tangentY * halfSpan
+      const bend = mark.bend * width * 0.12
+      this.drawHostileSpecialEnergyFilament(
+        mark,
+        startX,
+        startY,
+        centerX + normalX * bend,
+        centerY + normalY * bend,
+        endX,
+        endY,
+        Math.max(0.9, width * 0.034),
+      )
+    }
+  }
+
+  private drawHostileSpecialEnergyFilament(
+    mark: HostileSpecialEnergyMark,
+    startX: number,
+    startY: number,
+    controlX: number,
+    controlY: number,
+    endX: number,
+    endY: number,
+    scale: number,
+  ) {
+    const coreWidth = scale * mark.width
+    this.hostileSpecialEnergyGraphics
+      .moveTo(startX, startY)
+      .quadraticCurveTo(controlX, controlY, endX, endY)
+      .stroke({
+        color: mark.color,
+        width: coreWidth * 4.4,
+        alpha: mark.alpha * 0.28,
+        cap: 'round',
+      })
+    this.hostileSpecialEnergyGraphics
+      .moveTo(startX, startY)
+      .quadraticCurveTo(controlX, controlY, endX, endY)
+      .stroke({
+        color: mark.color,
+        width: coreWidth,
+        alpha: mark.alpha,
+        cap: 'round',
+      })
+    if (mark.mote) {
+      this.hostileSpecialEnergyGraphics
+        .ellipse(endX, endY, coreWidth * 1.35, coreWidth * 0.72)
+        .fill({ color: mark.color, alpha: mark.alpha * 0.82 })
+    }
+  }
+
   private drawHostileFieldParticles(
     x: number,
     y: number,
@@ -5635,7 +5905,16 @@ class NighttraceRuntime {
     palette: HostileTelegraphMaterialPalette,
     boss: boolean,
     boundaryPriority: boolean,
+    specialAttack: boolean,
   ) {
+    this.drawHostileSpecialFieldEnergy(
+      x,
+      y,
+      radius,
+      progress,
+      seed,
+      specialAttack,
+    )
     const boundaryQuota = this.reserveHostileBoundaryQuota(boundaryPriority)
     const boundaryParticles = sampleHostileBoundaryParticles({
       prominence: boss ? 'boss' : 'horde',
@@ -5695,6 +5974,7 @@ class NighttraceRuntime {
     palette: HostileTelegraphMaterialPalette,
     boss: boolean,
     boundaryPriority: boolean,
+    specialAttack: boolean,
   ) {
     const dx = end.x - start.x
     const dy = end.y - start.y
@@ -5704,6 +5984,15 @@ class NighttraceRuntime {
     const normalX = -tangentY
     const normalY = tangentX
     const angle = Math.atan2(dy, dx)
+
+    this.drawHostileSpecialLaneEnergy(
+      start,
+      end,
+      width,
+      progress,
+      seed,
+      specialAttack,
+    )
 
     const boundaryQuota = this.reserveHostileBoundaryQuota(boundaryPriority)
     const boundaryParticles = sampleHostileBoundaryParticles({
@@ -5775,6 +6064,7 @@ class NighttraceRuntime {
     bossId?: BossId,
     hostilePalette?: HostileTelegraphMaterialPalette,
     hostileBoundaryPriority = boss,
+    specialAttack = false,
   ) {
     const pose = sampleGroundedVfxPose(kind, { progress })
     const texture = this.hostileGroundFieldTexture
@@ -5791,6 +6081,7 @@ class NighttraceRuntime {
           hostilePalette,
           boss,
           hostileBoundaryPriority,
+          specialAttack,
         )
       }
       return
@@ -5952,6 +6243,7 @@ class NighttraceRuntime {
         hostilePalette,
         boss,
         hostileBoundaryPriority,
+        specialAttack,
       )
     }
   }
@@ -5969,6 +6261,7 @@ class NighttraceRuntime {
     bossId?: BossId,
     hostilePalette?: HostileTelegraphMaterialPalette,
     hostileBoundaryPriority = boss,
+    specialAttack = false,
   ) {
     const pose = sampleGroundedVfxPose(kind, { progress })
     const texture = this.hostileGroundLaneTexture
@@ -5985,6 +6278,7 @@ class NighttraceRuntime {
           hostilePalette,
           boss,
           hostileBoundaryPriority,
+          specialAttack,
         )
       }
       return
@@ -6154,6 +6448,7 @@ class NighttraceRuntime {
         hostilePalette,
         boss,
         hostileBoundaryPriority,
+        specialAttack,
       )
     }
   }
@@ -6987,6 +7282,220 @@ class NighttraceRuntime {
     }
   }
 
+  private drawCombatLabWeaponEffectAccent(
+    effect: WeaponEffectEntity,
+    graphics: Graphics,
+    additiveGraphics: Graphics,
+    progress: number,
+    motionAlpha: number,
+    radius: number,
+    rotation: number,
+    profile: WeaponVfxProfile,
+  ) {
+    const presentation = this.combatLabRuntimeVfx(
+      effect.weaponId,
+      effect.visualState,
+    )
+    if (!presentation.enabled) return
+
+    const energy = presentation.energyScale * motionAlpha
+    const rank = presentation.rank
+    const pulse = 0.82 + Math.sin(this.motionClock * 5.2 + effect.seed) * 0.18
+
+    switch (presentation.motif) {
+      case 'solar-filaments': {
+        const rayCount = Math.min(8, presentation.ornamentCount + 1)
+        for (let ray = 0; ray < rayCount; ray += 1) {
+          const rayAngle = effect.angle + (ray - (rayCount - 1) * 0.5) * 0.12
+          const inner = 10 + rank * 2
+          const outer = inner + (20 + rank * 5) * (0.55 + progress * 0.45)
+          this.drawPolyline(
+            additiveGraphics,
+            [
+              {
+                x: effect.x + Math.cos(rayAngle) * inner,
+                y: effect.y + Math.sin(rayAngle) * inner,
+              },
+              {
+                x: effect.x + Math.cos(rayAngle) * outer,
+                y: effect.y + Math.sin(rayAngle) * outer,
+              },
+            ],
+            ray % 2 ? profile.secondaryColor : profile.glowColor,
+            0.8 + rank * 0.18,
+            energy * 0.42,
+          )
+        }
+        break
+      }
+      case 'lunar-petals': {
+        const petals = Math.min(8, presentation.ornamentCount)
+        for (let petal = 0; petal < petals; petal += 1) {
+          const angle = rotation * 0.72 + (Math.PI * 2 * petal) / petals
+          const distance = radius * (0.55 + (petal % 2) * 0.18)
+          this.drawCrescentGlyph(
+            graphics,
+            effect.x + Math.cos(angle) * distance,
+            effect.y + Math.sin(angle) * distance,
+            angle + Math.PI * 0.5,
+            3.6 + rank * 0.72,
+            petal % 2 ? profile.secondaryColor : profile.coreColor,
+            energy * 0.56,
+          )
+        }
+        break
+      }
+      case 'cathedral-branches': {
+        const points = effect.points ?? []
+        for (let index = 1; index < points.length; index += 1) {
+          const point = points[index]
+          const previous = points[index - 1]
+          const angle = Math.atan2(point.y - previous.y, point.x - previous.x)
+          for (let branch = 0; branch < Math.min(3, presentation.laneCount); branch += 1) {
+            const side = branch % 2 ? 1 : -1
+            const forkAngle = angle + side * (0.64 + branch * 0.16)
+            const forkLength = 9 + rank * 2.4 + branch * 3
+            this.drawPolyline(
+              additiveGraphics,
+              [
+                { x: point.x, y: point.y },
+                {
+                  x: point.x - Math.cos(forkAngle) * forkLength,
+                  y: point.y - Math.sin(forkAngle) * forkLength,
+                },
+              ],
+              branch % 2 ? profile.secondaryColor : profile.glowColor,
+              0.7 + rank * 0.13,
+              energy * 0.38,
+            )
+          }
+        }
+        break
+      }
+      case 'event-horizon-seeds': {
+        const mawRadius = Math.max(12, radius * (0.22 + rank * 0.016)) * pulse
+        graphics
+          .ellipse(effect.x, effect.y, mawRadius * 1.12, mawRadius * 0.62)
+          .fill({ color: 0x000405, alpha: energy * 0.68 })
+        for (const side of [-1, 1] as const) {
+          const sweep = mawRadius * (2.4 + rank * 0.16)
+          additiveGraphics
+            .moveTo(effect.x - sweep, effect.y + side * mawRadius * 0.12)
+            .quadraticCurveTo(
+              effect.x - sweep * 0.1,
+              effect.y + side * mawRadius * 1.8,
+              effect.x + sweep * 0.72,
+              effect.y - side * mawRadius * 0.32,
+            )
+            .stroke({
+              color: side > 0 ? profile.glowColor : profile.secondaryColor,
+              width: 1.5 + rank * 0.4,
+              alpha: energy * 0.58,
+              cap: 'round',
+            })
+        }
+        const seedCount = Math.min(7, presentation.ornamentCount)
+        for (let seed = 0; seed < seedCount; seed += 1) {
+          const angle = -rotation * 0.7 + (Math.PI * 2 * seed) / seedCount
+          const distance = mawRadius * (1.45 + (seed % 3) * 0.34)
+          const seedX = effect.x + Math.cos(angle) * distance
+          const seedY = effect.y + Math.sin(angle) * distance * 0.56
+          const size = 1.7 + rank * 0.3
+          graphics
+            .poly([
+              seedX,
+              seedY - size * 1.8,
+              seedX + size,
+              seedY,
+              seedX,
+              seedY + size * 1.8,
+              seedX - size,
+              seedY,
+            ], true)
+            .fill({
+              color: seed % 2 ? profile.secondaryColor : profile.accentColor,
+              alpha: energy * 0.54,
+            })
+        }
+        break
+      }
+      case 'plasma-embers': {
+        const flareCount = Math.min(8, presentation.ornamentCount + 1)
+        for (let flare = 0; flare < flareCount; flare += 1) {
+          const spread = (flare - (flareCount - 1) * 0.5) * 0.17
+          const angle = effect.angle + Math.PI + spread
+          const length = (18 + rank * 5 + (flare % 2) * 8) * pulse
+          additiveGraphics
+            .moveTo(effect.x, effect.y)
+            .quadraticCurveTo(
+              effect.x + Math.cos(angle + spread * 0.5) * length * 0.54,
+              effect.y + Math.sin(angle + spread * 0.5) * length * 0.54,
+              effect.x + Math.cos(angle) * length,
+              effect.y + Math.sin(angle) * length,
+            )
+            .stroke({
+              color: flare % 2 ? profile.secondaryColor : profile.accentColor,
+              width: 1.2 + rank * 0.32,
+              alpha: energy * 0.46,
+              cap: 'round',
+            })
+        }
+        break
+      }
+      case 'prismatic-fletching': {
+        const bowRadius = Math.max(18, radius * (0.38 + rank * 0.02)) * pulse
+        const tangentX = -Math.sin(effect.angle)
+        const tangentY = Math.cos(effect.angle)
+        for (const side of [-1, 1] as const) {
+          const rootX = effect.x + tangentX * side * bowRadius * 0.2
+          const rootY = effect.y + tangentY * side * bowRadius * 0.2
+          const tipX = effect.x + tangentX * side * bowRadius
+          const tipY = effect.y + tangentY * side * bowRadius
+          additiveGraphics
+            .moveTo(rootX, rootY)
+            .quadraticCurveTo(
+              effect.x - Math.cos(effect.angle) * bowRadius * 0.74,
+              effect.y - Math.sin(effect.angle) * bowRadius * 0.74,
+              tipX,
+              tipY,
+            )
+            .stroke({
+              color: side > 0 ? profile.glowColor : profile.secondaryColor,
+              width: 1.4 + rank * 0.32,
+              alpha: energy * 0.58,
+              cap: 'round',
+            })
+        }
+        const paneCount = Math.min(7, presentation.ornamentCount)
+        for (let pane = 0; pane < paneCount; pane += 1) {
+          const angle = rotation * 0.42 + (Math.PI * 2 * pane) / paneCount
+          const distance = bowRadius * (0.72 + (pane % 2) * 0.3)
+          const paneX = effect.x + Math.cos(angle) * distance
+          const paneY = effect.y + Math.sin(angle) * distance * 0.62
+          const size = 2.1 + rank * 0.42
+          graphics
+            .poly([
+              paneX,
+              paneY - size,
+              paneX + size * 0.72,
+              paneY,
+              paneX,
+              paneY + size,
+              paneX - size * 0.72,
+              paneY,
+            ], true)
+            .fill({
+              color: pane % 2 ? profile.secondaryColor : profile.coreColor,
+              alpha: energy * 0.52,
+            })
+        }
+        break
+      }
+      default:
+        break
+    }
+  }
+
   private drawWeaponEffects() {
     this.beginAuthoredSpellMaterialFrame()
     this.lightRingAdditiveGraphics.clear()
@@ -7025,7 +7534,7 @@ class NighttraceRuntime {
       const radius = lerp(effect.radius, effect.maxRadius, eased)
       const state = effect.visualState
       const stage = this.vfxStageIndex(state.stage)
-      const profile = weaponVfxProfile(effect.weaponId, state)
+      const profile = this.weaponPresentationProfile(effect.weaponId, state)
       const rotation = effect.angle + progress * (0.8 + stage * 0.26) + effect.seed * 0.013
 
       switch (effect.kind) {
@@ -7301,6 +7810,16 @@ class NighttraceRuntime {
           break
         }
       }
+      this.drawCombatLabWeaponEffectAccent(
+        effect,
+        graphics,
+        additiveGraphics,
+        progress,
+        motionAlpha,
+        radius,
+        rotation,
+        profile,
+      )
     }
     this.finishAuthoredSpellMaterialFrame()
   }
@@ -7406,6 +7925,8 @@ class NighttraceRuntime {
           telegraph.bossAttack ? 0.84 : 0.72,
           telegraph.bossAttack ? this.bossLevel.bossId : undefined,
           hostilePalette,
+          telegraph.bossAttack,
+          telegraph.specialAttack,
         )
       } else {
         const end = {
@@ -7424,6 +7945,8 @@ class NighttraceRuntime {
           telegraph.bossAttack ? 0.86 : 0.74,
           telegraph.bossAttack ? this.bossLevel.bossId : undefined,
           hostilePalette,
+          telegraph.bossAttack,
+          telegraph.specialAttack,
         )
       }
     }
@@ -7458,6 +7981,7 @@ class NighttraceRuntime {
         config.boss ? 0.92 : 0.78,
         config.boss ? this.bossLevel.bossId : undefined,
         projectile.palette,
+        true,
         true,
       )
     }
@@ -7500,6 +8024,12 @@ class NighttraceRuntime {
       this.endSequenceDuration > 0
         ? 1 - this.endSequenceTimer / this.endSequenceDuration
         : 0
+    if (this.completed && this.endSequenceVictory !== undefined) {
+      this.cinematicTitle.text = runEndingTitle(
+        this.endSequenceVictory,
+        endProgress,
+      )
+    }
     const endAlpha =
       this.completed && this.endSequenceTimer > 0
         ? Math.min(
@@ -7573,10 +8103,11 @@ class NighttraceRuntime {
     const sourceY = -feedback.directionY
     const impactX = heroX + sourceX * 17
     const impactY = heroY - 27 + sourceY * 10
-    const red = (feedback.color >> 16) & 0xff
-    const blue = feedback.color & 0xff
-    const hostileRim = blue > red * 0.82 ? 0xf1e2ff : 0xffe1dc
-    this.hero!.tint = energy > 0.2 ? hostileRim : 0xffffff
+    this.hero!.tint = heroDamageFlashTint(
+      progress,
+      feedback.intensity,
+      this.settings.reducedFlash,
+    )
 
     // A localized hostile seep and thrown cinders communicate the side and
     // character of the hit without drawing a ring, arrow, or solid outline.
@@ -8186,6 +8717,224 @@ class NighttraceRuntime {
     }[weaponId] as [number, number]
   }
 
+  private drawCombatLabProjectileSignature(
+    projectile: ProjectileEntity,
+    x: number,
+    y: number,
+    dx: number,
+    dy: number,
+    normalX: number,
+    normalY: number,
+    length: number,
+    width: number,
+    profile: WeaponVfxProfile,
+  ) {
+    const presentation = this.combatLabRuntimeVfx(
+      projectile.weaponId,
+      projectile.visualState,
+    )
+    if (!presentation.enabled) return
+
+    const graphics = this.projectileTrailGraphics
+    const phase =
+      this.motionClock * (2.2 + presentation.rank * 0.14) +
+      projectile.visualSeed * 0.19
+    const energy =
+      presentation.energyScale * (this.settings.reducedFlash ? 0.72 : 1)
+    const startX = x - dx * length
+    const startY = y - dy * length
+
+    switch (presentation.motif) {
+      case 'solar-filaments': {
+        for (let lane = 0; lane < presentation.laneCount; lane += 1) {
+          const laneOffset =
+            (lane - (presentation.laneCount - 1) * 0.5) *
+            (2.8 + presentation.rank * 0.72)
+          const wave = Math.sin(phase + lane * 1.7) * (1.4 + presentation.rank * 0.32)
+          this.drawPolyline(
+            graphics,
+            [
+              {
+                x: startX + normalX * laneOffset,
+                y: startY + normalY * laneOffset,
+              },
+              {
+                x: lerp(startX, x, 0.55) + normalX * (laneOffset + wave),
+                y: lerp(startY, y, 0.55) + normalY * (laneOffset + wave),
+              },
+              { x: x + normalX * laneOffset * 0.24, y: y + normalY * laneOffset * 0.24 },
+            ],
+            lane % 2 ? profile.secondaryColor : profile.accentColor,
+            0.65 + presentation.rank * 0.14,
+            0.34 * energy,
+          )
+        }
+        if (presentation.awakened) {
+          graphics
+            .poly([
+              x + dx * 11,
+              y + dy * 11,
+              x + normalX * 7,
+              y + normalY * 7,
+              x - dx * 5,
+              y - dy * 5,
+              x - normalX * 7,
+              y - normalY * 7,
+            ], true)
+            .fill({ color: profile.coreColor, alpha: 0.48 * energy })
+        }
+        break
+      }
+      case 'lunar-petals': {
+        const petals = Math.min(5, presentation.ornamentCount)
+        for (let petal = 0; petal < petals; petal += 1) {
+          const t = (petal + 1) / (petals + 1)
+          const sway = Math.sin(phase + petal * 2.1) * (5 + presentation.rank)
+          this.drawCrescentGlyph(
+            graphics,
+            lerp(startX, x, t) + normalX * sway,
+            lerp(startY, y, t) + normalY * sway,
+            Math.atan2(dy, dx) + Math.PI * 0.5,
+            2.8 + presentation.rank * 0.65,
+            petal % 2 ? profile.secondaryColor : profile.coreColor,
+            (0.2 + t * 0.28) * energy,
+          )
+        }
+        break
+      }
+      case 'cathedral-branches': {
+        for (let branch = 0; branch < presentation.laneCount; branch += 1) {
+          const side = branch % 2 ? 1 : -1
+          const t = 0.25 + branch * 0.12
+          const branchX = lerp(startX, x, Math.min(0.82, t))
+          const branchY = lerp(startY, y, Math.min(0.82, t))
+          this.drawPolyline(
+            graphics,
+            [
+              { x: branchX, y: branchY },
+              {
+                x: branchX - dx * (10 + presentation.rank * 2) + normalX * side * 9,
+                y: branchY - dy * (10 + presentation.rank * 2) + normalY * side * 9,
+              },
+            ],
+            branch % 2 ? profile.secondaryColor : profile.glowColor,
+            0.8 + presentation.rank * 0.16,
+            0.38 * energy,
+          )
+        }
+        break
+      }
+      case 'event-horizon-seeds': {
+        const coreRadius = 8.4 + presentation.rank * 1.65
+        const curl = 18 + presentation.rank * 4
+        for (const side of [-1, 1] as const) {
+          graphics
+            .moveTo(x - dx * curl + normalX * side * coreRadius * 0.22, y - dy * curl + normalY * side * coreRadius * 0.22)
+            .quadraticCurveTo(
+              x - dx * curl * 0.42 + normalX * side * coreRadius * 1.9,
+              y - dy * curl * 0.42 + normalY * side * coreRadius * 1.9,
+              x + dx * coreRadius * 0.38,
+              y + dy * coreRadius * 0.38,
+            )
+            .stroke({
+              color: side > 0 ? profile.glowColor : profile.secondaryColor,
+              width: 1.4 + presentation.rank * 0.34,
+              alpha: 0.44 * energy,
+              cap: 'round',
+            })
+        }
+        for (let seed = 0; seed < Math.min(6, presentation.ornamentCount); seed += 1) {
+          const angle = phase * 0.54 + (Math.PI * 2 * seed) / presentation.ornamentCount
+          const distance = coreRadius * (1.55 + (seed % 2) * 0.44)
+          const seedX = x + Math.cos(angle) * distance
+          const seedY = y + Math.sin(angle) * distance * 0.62
+          graphics
+            .poly([
+              seedX,
+              seedY - 2.4,
+              seedX + 1.5,
+              seedY,
+              seedX,
+              seedY + 2.4,
+              seedX - 1.5,
+              seedY,
+            ], true)
+            .fill({
+              color: seed % 2 ? profile.secondaryColor : profile.accentColor,
+              alpha: 0.48 * energy,
+            })
+        }
+        break
+      }
+      case 'plasma-embers': {
+        const embers = Math.min(8, presentation.ornamentCount + 1)
+        for (let ember = 0; ember < embers; ember += 1) {
+          const t = (ember + 1) / (embers + 1)
+          const turbulence = Math.sin(phase * 1.8 + ember * 2.37) * (4 + presentation.rank)
+          graphics
+            .ellipse(
+              lerp(x, startX, t) + normalX * turbulence,
+              lerp(y, startY, t) + normalY * turbulence,
+              1.2 + (1 - t) * 2.1 + presentation.rank * 0.16,
+              0.7 + (1 - t) * 0.8,
+            )
+            .fill({
+              color: ember % 2 ? profile.secondaryColor : profile.accentColor,
+              alpha: (0.22 + (1 - t) * 0.38) * energy,
+            })
+        }
+        break
+      }
+      case 'prismatic-fletching': {
+        const forks = presentation.laneCount
+        for (let fork = 0; fork < forks; fork += 1) {
+          const side = fork - (forks - 1) * 0.5
+          const offset = side * (4.5 + presentation.rank * 0.75)
+          const split = (10 + presentation.rank * 2.5) * Math.sign(side || 1)
+          this.drawPolyline(
+            graphics,
+            [
+              { x: startX + normalX * offset, y: startY + normalY * offset },
+              {
+                x: lerp(startX, x, 0.7) + normalX * (offset + split * 0.35),
+                y: lerp(startY, y, 0.7) + normalY * (offset + split * 0.35),
+              },
+              { x: x + normalX * split, y: y + normalY * split },
+            ],
+            fork % 2 ? profile.secondaryColor : profile.accentColor,
+            Math.max(0.7, width * 0.28),
+            0.34 * energy,
+          )
+        }
+        const shardCount = Math.min(6, presentation.ornamentCount)
+        for (let shard = 0; shard < shardCount; shard += 1) {
+          const t = (shard + 1) / (shardCount + 1)
+          const shardX = lerp(startX, x, t)
+          const shardY = lerp(startY, y, t)
+          const size = 1.6 + presentation.rank * 0.26
+          graphics
+            .poly([
+              shardX + dx * size,
+              shardY + dy * size,
+              shardX + normalX * size * 0.62,
+              shardY + normalY * size * 0.62,
+              shardX - dx * size,
+              shardY - dy * size,
+              shardX - normalX * size * 0.62,
+              shardY - normalY * size * 0.62,
+            ], true)
+            .fill({
+              color: shard % 2 ? profile.secondaryColor : profile.coreColor,
+              alpha: 0.46 * energy,
+            })
+        }
+        break
+      }
+      default:
+        break
+    }
+  }
+
   private drawProjectileTrail(projectile: ProjectileEntity, x: number, y: number) {
     const speed = Math.hypot(projectile.vx, projectile.vy)
     if (speed < 1) return
@@ -8203,13 +8952,29 @@ class NighttraceRuntime {
       'mirror-bow': [58, 3],
       'null-bell': [20, 5],
     }[projectile.weaponId]
-    const profile = weaponVfxProfile(projectile.weaponId, projectile.visualState)
+    const profile = this.weaponPresentationProfile(
+      projectile.weaponId,
+      projectile.visualState,
+    )
     const stage = this.vfxStageIndex(projectile.visualState.stage)
     const length = baseTrail[0] * profile.trailLengthScale
     const width = baseTrail[1] * profile.trailWidthScale
     const startX = x - dx * length
     const startY = y - dy * length
     const graphics = this.projectileTrailGraphics
+
+    this.drawCombatLabProjectileSignature(
+      projectile,
+      x,
+      y,
+      dx,
+      dy,
+      normalX,
+      normalY,
+      length,
+      width,
+      profile,
+    )
 
     if (projectile.weaponId === 'rift-seeds') {
       const pulse = 1 + Math.sin(this.motionClock * 8 + projectile.visualSeed) * 0.08
@@ -8443,6 +9208,10 @@ class NighttraceRuntime {
 
   private createSnapshot(): GameSnapshot {
     const remaining = Math.max(0, this.level.duration - this.elapsed)
+    const endingProgress =
+      this.endSequenceDuration > 0
+        ? clamp(1 - this.endSequenceTimer / this.endSequenceDuration, 0, 1)
+        : 1
     const boss = this.boss?.active
       ? {
           name: this.bossLevel.bossName,
@@ -8495,6 +9264,10 @@ class NighttraceRuntime {
             victory: Boolean(this.endSequenceVictory),
             levelId: this.bossLevel.id,
             bossName: this.bossLevel.bossName,
+            completionVisible: runEndingCompletionVisible(
+              Boolean(this.endSequenceVictory),
+              endingProgress,
+            ),
           }
         : undefined,
     }

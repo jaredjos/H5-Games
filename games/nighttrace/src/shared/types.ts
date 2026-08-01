@@ -124,6 +124,8 @@ export interface CombatLabConfig {
   arenaLevelId: number
   bossLevelId: number
   encounter: 'boss' | 'sector'
+  /** When enabled, the Bearer ignores all incoming damage in the simulation. */
+  invincible: boolean
   playerLevel: number
   bossHealthMultiplier: number
   /**
@@ -173,6 +175,8 @@ export interface RunEndingSnapshot {
   victory: boolean
   levelId: number
   bossName: string
+  /** False during a victory's sovereign-collapse beat. */
+  completionVisible: boolean
 }
 
 export interface GameSnapshot {

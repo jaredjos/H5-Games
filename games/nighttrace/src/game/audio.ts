@@ -1,5 +1,5 @@
 import { appAssetUrl } from '../assetUrl'
-import type { GameSettings } from '../shared/types'
+import type { GameSettings, WeaponId } from '../shared/types'
 import {
   chooseMusicVariant,
   musicAssetsToPrime,
@@ -7,12 +7,20 @@ import {
   musicCrossfadeSeconds,
   musicRouteForLevel,
   resolveMusicLevels,
-  weaponAudioCue,
   type MusicDeviceHints,
   type MusicScene,
   type MusicTrackId,
   type MusicVariant,
 } from './audioMix'
+import {
+  COMBAT_SFX_MAX_TONE_VOICES,
+  canAdmitCombatTone,
+  combatSfxProfile,
+  hostileSpecialSfxCue,
+  type CombatSfxCueId,
+  type HostileSpecialFootprint,
+  type HostileSpecialSource,
+} from './combatSfx'
 
 type SoundName =
   | 'shot'
@@ -42,6 +50,14 @@ interface MusicTrack {
   available: boolean
   pendingPlay?: Promise<void>
   onError: () => void
+}
+
+interface ScheduledToneVoice {
+  readonly oscillator: OscillatorNode
+  readonly filter: BiquadFilterNode
+  readonly gain: GainNode
+  readonly priority: number
+  readonly endsAt: number
 }
 
 interface NavigatorWithAudioHints extends Navigator {
@@ -202,7 +218,8 @@ export class NighttraceAudio {
   private destroyed = false
   private musicScene: MusicScene = 'ambient'
   private bossPhase = 1
-  private lastBossAttackAt = -10
+  private readonly activeToneVoices: ScheduledToneVoice[] = []
+  private readonly lastCombatCueAt = new Map<CombatSfxCueId, number>()
   private resumeAfterLifecyclePause = false
   private resumeTracksAfterLifecyclePause = false
   private lifecycleSuspend?: Promise<void>
@@ -259,57 +276,24 @@ export class NighttraceAudio {
     })
   }
 
-  playWeaponCue(weaponId: string) {
-    const cue = weaponAudioCue(weaponId)
-    if (cue === 'graveglass') {
-      // A low stone fracture followed by brittle, high glass splinters.
-      this.scheduleTone({
-        frequency: 188,
-        endFrequency: 62,
-        duration: 0.22,
-        volume: 0.032,
-        type: 'square',
-        filterFrequency: 1250,
-      })
-      for (const [delay, frequency, endFrequency, volume] of [
-        [0.018, 1760, 720, 0.022],
-        [0.052, 2280, 890, 0.017],
-        [0.086, 1420, 540, 0.014],
-      ] as const) {
-        this.scheduleTone({
-          delay,
-          frequency,
-          endFrequency,
-          duration: 0.13,
-          volume,
-          type: 'triangle',
-          filterFrequency: 5200,
-        })
-      }
-      return
-    }
-    if (cue === 'harrow') {
-      // A narrow hostile plane-cut: fast, bright and deliberately non-musical.
-      this.scheduleTone({
-        frequency: 2640,
-        endFrequency: 280,
-        duration: 0.12,
-        volume: 0.035,
-        type: 'sawtooth',
-        filterFrequency: 6400,
-      })
-      this.scheduleTone({
-        delay: 0.024,
-        frequency: 118,
-        endFrequency: 52,
-        duration: 0.17,
-        volume: 0.026,
-        type: 'square',
-        filterFrequency: 1050,
-      })
-      return
-    }
-    this.play('shot', 0.22)
+  playWeaponCue(weaponId: WeaponId) {
+    this.playCombatCue(weaponId)
+  }
+
+  playLightRingPulse(rank: number, madeContact: boolean) {
+    const safeRank = Math.max(1, Math.min(6, Math.floor(rank)))
+    this.playCombatCue(
+      'dawnward-aegis',
+      1 + (safeRank - 1) * 0.018,
+      madeContact ? 1.12 : 0.78,
+    )
+  }
+
+  playHostileSpecialRelease(
+    source: HostileSpecialSource,
+    footprint: HostileSpecialFootprint,
+  ) {
+    this.playCombatCue(hostileSpecialSfxCue(source, footprint))
   }
 
   playBossIntro() {
@@ -395,22 +379,6 @@ export class NighttraceAudio {
       volume: 0.032,
       type: 'triangle',
       filterFrequency: 2400,
-    })
-  }
-
-  playBossAttack(phase: number, pattern: number) {
-    const context = this.context
-    if (!context || context.state !== 'running' || this.destroyed) return
-    if (context.currentTime - this.lastBossAttackAt < 0.16) return
-    this.lastBossAttackAt = context.currentTime
-    const patternOffset = [0, 7, -5, 12, -9, 16, -12, 4, 19, -16][pattern] ?? 0
-    this.scheduleTone({
-      frequency: 78 + phase * 5 + patternOffset,
-      endFrequency: 42 + patternOffset * 0.2,
-      duration: 0.3 + phase * 0.035,
-      volume: 0.045 + phase * 0.008,
-      type: pattern === 3 || pattern === 6 || pattern === 8 ? 'triangle' : 'sawtooth',
-      filterFrequency: 1380,
     })
   }
 
@@ -656,6 +624,72 @@ export class NighttraceAudio {
     else param.linearRampToValueAtTime(value, now + duration)
   }
 
+  private playCombatCue(
+    cueId: CombatSfxCueId,
+    pitchScale = 1,
+    volumeScale = 1,
+  ) {
+    const context = this.context
+    if (!context || context.state !== 'running' || this.destroyed) return
+    const profile = combatSfxProfile(cueId)
+    const lastPlayed = this.lastCombatCueAt.get(cueId) ?? Number.NEGATIVE_INFINITY
+    if (context.currentTime - lastPlayed < profile.cooldownSeconds) return
+
+    let scheduled = false
+    for (const tone of profile.tones) {
+      scheduled = this.scheduleTone({
+        ...tone,
+        frequency: tone.frequency * pitchScale,
+        endFrequency: tone.endFrequency * pitchScale,
+        volume: tone.volume * volumeScale,
+        priority: profile.priority,
+      }) || scheduled
+    }
+    if (scheduled) this.lastCombatCueAt.set(cueId, context.currentTime)
+  }
+
+  private releaseToneVoice(voice: ScheduledToneVoice, stop = false) {
+    const index = this.activeToneVoices.indexOf(voice)
+    if (index < 0) return
+    this.activeToneVoices.splice(index, 1)
+    if (stop) {
+      try {
+        voice.oscillator.stop()
+      } catch {
+        // The voice may already have ended between admission and eviction.
+      }
+    }
+    try {
+      voice.oscillator.disconnect()
+      voice.filter.disconnect()
+      voice.gain.disconnect()
+    } catch {
+      // Nodes can already be disconnected by browser audio teardown.
+    }
+  }
+
+  private admitToneVoice(priority: number, now: number) {
+    for (let index = this.activeToneVoices.length - 1; index >= 0; index -= 1) {
+      const voice = this.activeToneVoices[index]
+      if (voice.endsAt <= now) this.releaseToneVoice(voice)
+    }
+    const priorities = this.activeToneVoices.map((voice) => voice.priority)
+    if (!canAdmitCombatTone(priorities, priority)) return false
+    if (this.activeToneVoices.length < COMBAT_SFX_MAX_TONE_VOICES) return true
+
+    let victim = this.activeToneVoices[0]
+    for (const candidate of this.activeToneVoices) {
+      if (
+        candidate.priority < victim.priority ||
+        (candidate.priority === victim.priority && candidate.endsAt < victim.endsAt)
+      ) {
+        victim = candidate
+      }
+    }
+    this.releaseToneVoice(victim, true)
+    return true
+  }
+
   private scheduleTone({
     delay = 0,
     frequency,
@@ -664,6 +698,7 @@ export class NighttraceAudio {
     volume,
     type,
     filterFrequency,
+    priority = 1,
   }: {
     delay?: number
     frequency: number
@@ -672,11 +707,13 @@ export class NighttraceAudio {
     volume: number
     type: OscillatorType
     filterFrequency: number
+    priority?: number
   }) {
     const context = this.context
     const output = this.sfx
-    if (!context || !output || context.state !== 'running' || this.destroyed) return
+    if (!context || !output || context.state !== 'running' || this.destroyed) return false
     const now = context.currentTime + Math.max(0, delay)
+    if (!this.admitToneVoice(priority, context.currentTime)) return false
     const oscillator = context.createOscillator()
     const gain = context.createGain()
     const filter = context.createBiquadFilter()
@@ -698,11 +735,18 @@ export class NighttraceAudio {
     gain.connect(output)
     oscillator.start(now)
     oscillator.stop(now + duration + 0.02)
+    const voice: ScheduledToneVoice = {
+      oscillator,
+      filter,
+      gain,
+      priority,
+      endsAt: now + duration + 0.02,
+    }
+    this.activeToneVoices.push(voice)
     oscillator.addEventListener('ended', () => {
-      oscillator.disconnect()
-      filter.disconnect()
-      gain.disconnect()
+      this.releaseToneVoice(voice)
     })
+    return true
   }
 
   private startDrone() {
@@ -807,6 +851,10 @@ export class NighttraceAudio {
       }
     }
     this.droneOscillators = []
+    for (const voice of [...this.activeToneVoices]) {
+      this.releaseToneVoice(voice, true)
+    }
+    this.lastCombatCueAt.clear()
     void this.context?.close()
     this.context = undefined
     this.master = undefined

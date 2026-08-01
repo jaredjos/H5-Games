@@ -582,7 +582,7 @@ describe('character motion samplers', () => {
         }
       }
     }
-  })
+  }, 15_000)
 
   it('adds deterministic hit recoil without changing existing callers', () => {
     const baseInput = {

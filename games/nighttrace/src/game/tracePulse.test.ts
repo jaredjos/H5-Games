@@ -4,10 +4,12 @@ import {
   TRACE_AFTERIMAGE_POINT_BONUS,
   TRACE_BASE_POINT_ALLOWANCE,
   TRACE_MEMORY_POINT_BONUS,
+  TRACE_MAX_CONTIGUOUS_SEGMENT,
   pulseChargeFromExperience,
   pulseChargeFromNormalKill,
   tracePointAllowance,
   tracePulseReward,
+  traceSegmentIsDiscontinuous,
 } from './tracePulse'
 
 describe('trace allowance', () => {
@@ -23,6 +25,17 @@ describe('trace allowance', () => {
   it('normalizes malformed progression inputs', () => {
     expect(tracePointAllowance(Number.NaN, false)).toBe(101)
     expect(tracePointAllowance(-4, true)).toBe(123)
+  })
+
+  it('breaks only teleport-sized discontinuities instead of drawing diagonal artifacts', () => {
+    expect(traceSegmentIsDiscontinuous({ x: 10, y: 10 }, { x: 42, y: 28 }))
+      .toBe(false)
+    expect(traceSegmentIsDiscontinuous(
+      { x: 10, y: 10 },
+      { x: 10 + TRACE_MAX_CONTIGUOUS_SEGMENT + 1, y: 10 },
+    )).toBe(true)
+    expect(traceSegmentIsDiscontinuous(undefined, { x: 10, y: 10 }))
+      .toBe(false)
   })
 })
 

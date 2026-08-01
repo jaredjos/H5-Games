@@ -1,3 +1,5 @@
+import memoryVoicePlanJson from './memoryVoicePlan.json'
+
 /**
  * NIGHTTRACE campaign cinema bible.
  *
@@ -108,7 +110,6 @@ export interface CampaignCinematic {
   readonly afterLevelId?: CampaignLevelId
   readonly nextLevelId?: CampaignLevelId
   readonly arenaAsset: string
-  readonly heroAsset: string
   readonly bossAsset?: string
   readonly heroPose: CinematicHeroAction
   readonly bossFrame?: CinematicAtlasFrame
@@ -122,15 +123,21 @@ export interface CampaignCinematic {
 export const INTRO_CINEMATIC_ID: CinematicId = 'intro-a-world-without-dawn'
 export const FINALE_CINEMATIC_ID: CinematicId = 'finale-the-first-light'
 
-const HERO_ASSET_BY_POSE: Readonly<Record<CinematicHeroAction, string>> = {
-  idle: 'assets/nighttrace-title-hero-v2.png',
-  walk: 'assets/hero-animations/hero-walk-runtime.webp',
-  charge: 'assets/hero-animations/hero-charge-runtime.webp',
-  fire: 'assets/hero-animations/hero-fire-runtime.webp',
-}
-
 const BOSS_ATLAS = 'assets/nighttrace-boss-atlas.webp'
 const LAST_STAR_AUDIO_ROOT = 'assets/cinematics/audio/last-star'
+const MEMORY_AUDIO_ROOT = 'assets/cinematics/audio/memories'
+
+interface MemoryVoicePlanEntry {
+  readonly id: string
+  readonly speaker: CinematicSpeaker
+  readonly text: string
+  readonly voiceName: string
+  readonly maximumMs: number
+}
+
+export const MEMORY_VOICE_PLAN = Object.freeze(
+  memoryVoicePlanJson as readonly MemoryVoicePlanEntry[],
+)
 
 const NARRATION_REMOTE_REELS = {
   bearer:
@@ -161,6 +168,16 @@ const localLastStarClip = (id: string, endMs: number): NarrationClip => ({
   endMs,
 })
 
+const localMemoryClip = (
+  id: string,
+  maximumMs: number,
+): NarrationClip => ({
+  audioSrc: `${MEMORY_AUDIO_ROOT}/${id}.wav`,
+  startMs: 0,
+  // Generated takes are rejected when they exceed this authored window.
+  endMs: maximumMs,
+})
+
 /**
  * The Last Star uses independent same-origin takes so every scene begins at
  * sample zero without remote buffering or reel seeking. The existing Bearer
@@ -183,6 +200,13 @@ const NARRATION_CLIPS: Readonly<Record<string, NarrationClip>> = {
 
   'finale-sun-eater-01': clip('sovereign', 10_760, 13_840),
   'finale-sun-eater-02': clip('sovereign', 14_839, 15_679),
+
+  ...Object.fromEntries(
+    MEMORY_VOICE_PLAN.map((entry) => [
+      entry.id,
+      localMemoryClip(entry.id, entry.maximumMs),
+    ]),
+  ),
 }
 
 const frame = (index: number): CinematicAtlasFrame => ({
@@ -238,17 +262,70 @@ const beat = (
   transition,
 })
 
+export const CINEMATIC_LEAD_IN_MS = 700
+export const CINEMATIC_DIALOGUE_GAP_MS = 450
+export const CINEMATIC_OUTRO_MS = 850
+
+function compactDialogueTimeline(lines: readonly CinematicLine[]) {
+  let cursor = CINEMATIC_LEAD_IN_MS
+  return lines.map((entry) => {
+    const compacted = {
+      ...entry,
+      start: cursor,
+      startMs: cursor,
+      endMs: cursor + entry.duration,
+    }
+    cursor = compacted.endMs + CINEMATIC_DIALOGUE_GAP_MS
+    return compacted
+  })
+}
+
+function scaleVisualBeats(
+  beats: readonly CinematicBeat[],
+  sourceDuration: number,
+  targetDuration: number,
+) {
+  let cursor = 0
+  return beats.map((entry, index) => {
+    const isLast = index === beats.length - 1
+    const sourceEnd = entry.start + entry.duration
+    const scaledEnd = isLast
+      ? targetDuration
+      : Math.max(cursor + 1, Math.round((sourceEnd / sourceDuration) * targetDuration))
+    const scaled = {
+      ...entry,
+      start: cursor,
+      startMs: cursor,
+      duration: scaledEnd - cursor,
+      endMs: scaledEnd,
+    }
+    cursor = scaledEnd
+    return scaled
+  })
+}
+
 const cinema = (
   cinematic: Omit<
     CampaignCinematic,
-    'chapterLabel' | 'durationMs' | 'heroAsset'
+    'chapterLabel' | 'durationMs'
   >,
-): CampaignCinematic => ({
-  ...cinematic,
-  chapterLabel: cinematic.chapter,
-  durationMs: cinematic.duration,
-  heroAsset: HERO_ASSET_BY_POSE[cinematic.heroPose],
-})
+): CampaignCinematic => {
+  const lines = compactDialogueTimeline(cinematic.lines)
+  const lastLine = lines.at(-1)
+  const duration = Math.max(
+    CINEMATIC_LEAD_IN_MS + CINEMATIC_OUTRO_MS,
+    (lastLine?.endMs ?? CINEMATIC_LEAD_IN_MS) + CINEMATIC_OUTRO_MS,
+  )
+
+  return {
+    ...cinematic,
+    duration,
+    durationMs: duration,
+    lines,
+    beats: scaleVisualBeats(cinematic.beats, cinematic.duration, duration),
+    chapterLabel: cinematic.chapter,
+  }
+}
 
 export const CAMPAIGN_CINEMATICS = Object.freeze([
   cinema({

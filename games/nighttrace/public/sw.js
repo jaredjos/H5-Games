@@ -1,10 +1,15 @@
-const CACHE_VERSION = 'v1.20.2'
+const CACHE_VERSION = 'v1.21.0'
+const MEMORY_VOICE_REVISION = '7960f319e5c12459'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
 const ASSET_CACHE = `${CACHE_PREFIX}assets-${CACHE_VERSION}`
 const SCOPE_URL = new URL(self.registration.scope)
 const INDEX_URL = new URL('index.html', SCOPE_URL).href
 const BUILD_MANIFEST_URL = new URL('.vite/manifest.json', SCOPE_URL).href
+const MEMORY_VOICE_MANIFEST_URL = new URL(
+  'assets/cinematics/audio/memories/manifest.json',
+  SCOPE_URL,
+).href
 const SHELL_URLS = [
   new URL('./', SCOPE_URL).href,
   INDEX_URL,
@@ -68,9 +73,58 @@ function collectBuildFiles(manifest) {
   return [...files]
 }
 
+function collectMemoryVoiceFiles(manifest) {
+  if (manifest?.status === 'pending-generation') return []
+  if (
+    manifest?.status !== 'ready' ||
+    manifest.expectedClipCount !== 22 ||
+    !Array.isArray(manifest.clips) ||
+    manifest.clips.length !== 22
+  ) {
+    throw new Error('Invalid Memory narration manifest')
+  }
+
+  const ids = new Set()
+  return manifest.clips.map((clip) => {
+    if (
+      !clip ||
+      typeof clip.id !== 'string' ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(clip.id) ||
+      ids.has(clip.id)
+    ) {
+      throw new Error('Invalid or duplicate Memory narration clip id')
+    }
+    ids.add(clip.id)
+    return new URL(
+      `assets/cinematics/audio/memories/${clip.id}.wav`,
+      SCOPE_URL,
+    ).href
+  })
+}
+
+async function precacheMemoryVoices(cache) {
+  const response = await fetch(MEMORY_VOICE_MANIFEST_URL, { cache: 'reload' })
+  if (!isCacheable(response)) {
+    throw new Error('Unable to load the Memory narration manifest')
+  }
+  await cache.put(MEMORY_VOICE_MANIFEST_URL, response.clone())
+  const manifest = await response.clone().json()
+  const memoryVoiceFiles = collectMemoryVoiceFiles(manifest)
+
+  if (memoryVoiceFiles.length === 0) {
+    console.info(
+      `[NIGHTTRACE] Memory narration ${MEMORY_VOICE_REVISION}; subtitles remain the explicit fallback.`,
+    )
+    return
+  }
+
+  await Promise.all(memoryVoiceFiles.map((url) => cache.add(url)))
+}
+
 async function precacheShell() {
   const cache = await caches.open(SHELL_CACHE)
   await cache.addAll(SHELL_URLS)
+  await precacheMemoryVoices(cache)
 
   const manifestResponse = await fetch(BUILD_MANIFEST_URL, { cache: 'reload' })
   if (!isCacheable(manifestResponse)) {

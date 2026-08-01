@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   CAMPAIGN_CINEMATICS,
   CINEMATIC_BY_ID,
+  CINEMATIC_DIALOGUE_GAP_MS,
+  CINEMATIC_LEAD_IN_MS,
+  CINEMATIC_OUTRO_MS,
   FINALE_CINEMATIC_ID,
   INTRO_CINEMATIC_ID,
+  MEMORY_VOICE_PLAN,
   cinematicForFirstClear,
   cinematicIdsForCompletedLevels,
   getCinematic,
@@ -52,7 +56,6 @@ describe('NIGHTTRACE campaign cinematics', () => {
       expect(scene.duration).toBeGreaterThan(0)
       expect(scene.durationMs).toBe(scene.duration)
       expect(scene.arenaAsset).toMatch(/^assets\//)
-      expect(scene.heroAsset).toMatch(/^assets\//)
       expect(scene.lines.length).toBeGreaterThan(0)
 
       for (const line of scene.lines) {
@@ -68,65 +71,75 @@ describe('NIGHTTRACE campaign cinematics', () => {
         expect(line.text.trim().length).toBeGreaterThan(1)
 
         if (scene.kind === 'interlude') {
-          expect(line.audioSrc).toBeUndefined()
-          expect(line.audioFallbackSrc).toBeUndefined()
-          expect(line.audioStartMs).toBeUndefined()
-          expect(line.audioEndMs).toBeUndefined()
+          expect(line.audioSrc).toBe(
+            `assets/cinematics/audio/memories/${line.id}.wav`,
+          )
+        } else if (line.speaker === 'Last Star') {
+          expect(line.audioSrc).toMatch(
+            /^assets\/cinematics\/audio\/last-star\/.+\.wav$/,
+          )
         } else {
-          if (line.speaker === 'Last Star') {
-            expect(line.audioSrc).toMatch(
-              /^assets\/cinematics\/audio\/last-star\/.+\.wav$/,
-            )
-          } else {
-            expect(line.audioSrc).toMatch(
-              /^https:\/\/resource2\.heygen\.ai\/.+\.wav$/,
-            )
-          }
-          expect(line.audioFallbackSrc).toBeUndefined()
-          expect(line.audioStartMs).toBeGreaterThanOrEqual(0)
-          expect(line.audioEndMs).toBeGreaterThan(line.audioStartMs ?? 0)
-          expect((line.audioEndMs ?? 0) - (line.audioStartMs ?? 0))
-            .toBeLessThanOrEqual(line.duration)
-          const segment = `${line.audioSrc}#${line.audioStartMs}-${line.audioEndMs}`
-          expect(audioSegments.has(segment), `duplicate voice segment ${segment}`).toBe(false)
-          audioSegments.add(segment)
-          audioPaths.add(line.audioSrc ?? '')
-          voicedLineIds.add(line.id)
+          expect(line.audioSrc).toMatch(
+            /^https:\/\/resource2\.heygen\.ai\/.+\.wav$/,
+          )
         }
+
+        expect(line.audioFallbackSrc).toBeUndefined()
+        expect(line.audioStartMs).toBeGreaterThanOrEqual(0)
+        expect(line.audioEndMs).toBeGreaterThan(line.audioStartMs ?? 0)
+        expect((line.audioEndMs ?? 0) - (line.audioStartMs ?? 0))
+          .toBeLessThanOrEqual(line.duration)
+        const segment = `${line.audioSrc}#${line.audioStartMs}-${line.audioEndMs}`
+        expect(audioSegments.has(segment), `duplicate voice segment ${segment}`).toBe(false)
+        audioSegments.add(segment)
+        audioPaths.add(line.audioSrc ?? '')
+        voicedLineIds.add(line.id)
       }
     }
 
-    expect(audioPaths.size).toBe(9)
+    expect(audioPaths.size).toBe(31)
     expect(audioSegments.size).toBe(voicedLineIds.size)
-    expect(voicedLineIds.size).toBe(13)
+    expect(voicedLineIds.size).toBe(35)
     expect(lineIds.size).toBe(35)
   })
 
-  it('keeps Memories I-IX subtitle-only without losing dialogue or portraits', () => {
+  it('maps Memories I-IX to independent local takes with exact speaker attribution', () => {
     const memories = CAMPAIGN_CINEMATICS.filter(
       (scene) => scene.kind === 'interlude',
     )
+    const memoryLines = memories.flatMap((scene) => scene.lines)
+    const planById = new Map(MEMORY_VOICE_PLAN.map((entry) => [entry.id, entry]))
 
     expect(memories).toHaveLength(9)
-    expect(memories.flatMap((scene) => scene.lines)).toHaveLength(22)
-    for (const scene of memories) {
-      for (const line of scene.lines) {
-        expect(line.text.trim()).not.toBe('')
-        expect(line.audioSrc).toBeUndefined()
-      }
+    expect(memoryLines).toHaveLength(22)
+    expect(planById.size).toBe(22)
+    expect(new Set(memoryLines.map((line) => line.text)).size).toBe(22)
+
+    for (const line of memoryLines) {
+      const plan = planById.get(line.id)
+      expect(plan, `missing plan entry for ${line.id}`).toBeDefined()
+      expect(plan?.speaker).toBe(line.speaker)
+      expect(plan?.text).toBe(line.text)
+      expect(plan?.maximumMs).toBe(line.audioEndMs)
+      expect(plan?.maximumMs).toBe(line.duration)
+      expect(line.audioStartMs).toBe(0)
+      expect(line.audioSrc).toBe(
+        `assets/cinematics/audio/memories/${line.id}.wav`,
+      )
     }
 
-    const cartographer = memories
-      .flatMap((scene) => scene.lines)
+    const cartographer = memoryLines
       .find((line) => line.id === 'interlude-09-cartographer-01')
+    const cartographerPlan = planById.get('interlude-09-cartographer-01')
+    const sunEaterPlan = planById.get('interlude-09-sun-eater-01')
     expect(cartographer?.speaker).toBe('Cartographer echo')
-    expect(cartographer?.audioSrc).toBeUndefined()
+    expect(cartographerPlan?.voiceName).not.toBe(sunEaterPlan?.voiceName)
   })
 
   it('maps every Last Star line to a unique same-origin narration asset', () => {
     const localAudioSources = CAMPAIGN_CINEMATICS.flatMap((scene) =>
       scene.lines.flatMap((line) =>
-        line.audioSrc && !/^https?:\/\//i.test(line.audioSrc)
+        line.audioSrc?.startsWith('assets/cinematics/audio/last-star/')
           ? [line.audioSrc]
           : [],
       ),
@@ -141,6 +154,17 @@ describe('NIGHTTRACE campaign cinematics', () => {
 
   it('uses contiguous beats with no gaps, overlaps, or out-of-bounds frames', () => {
     for (const scene of CAMPAIGN_CINEMATICS) {
+      expect(scene.lines[0].startMs).toBe(CINEMATIC_LEAD_IN_MS)
+      expect(scene.duration - (scene.lines.at(-1)?.endMs ?? 0)).toBe(
+        CINEMATIC_OUTRO_MS,
+      )
+
+      for (let index = 1; index < scene.lines.length; index += 1) {
+        expect(scene.lines[index].startMs - scene.lines[index - 1].endMs).toBe(
+          CINEMATIC_DIALOGUE_GAP_MS,
+        )
+      }
+
       expect(scene.beats.length).toBeGreaterThan(0)
       expect(scene.beats[0].start).toBe(0)
 

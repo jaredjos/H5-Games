@@ -14,8 +14,8 @@ describe('durable run-ending transition', () => {
     )
     const finish = runtimeSource.slice(finishStart, finishEnd)
 
-    expect(finish).toContain('this.endSequenceDuration = victory ? 2.8 : 2.2')
-    expect(finish).toContain("'SOVEREIGN DEFEATED'")
+    expect(finish).toContain('this.endSequenceDuration = runEndingDuration(victory)')
+    expect(finish).toContain('runEndingTitle(victory, 0)')
     expect(finish).toContain('this.emitSnapshot(true)')
     expect(finish.indexOf('this.emitSnapshot(true)')).toBeLessThan(
       finish.indexOf('this.spawnBurst('),
@@ -35,15 +35,14 @@ describe('durable run-ending transition', () => {
     expect(completedStep).not.toContain('this.endSequenceTimer - delta')
   })
 
-  it('renders the boss name and sector message above the game', () => {
+  it('renders an explicit level-complete card with boss and sector context', () => {
     expect(appSource).toContain(
       '<RunEndingOverlay ending={snapshot.ending} />',
     )
+    expect(appSource).toContain('snapshot.ending?.completionVisible')
+    expect(gameUiSource).toContain("'Level Complete'")
     expect(gameUiSource).toContain(
-      '`${ending.bossName} Defeated`',
-    )
-    expect(gameUiSource).toContain(
-      '`Sector ${String(ending.levelId).padStart(2, \'0\')} reclaimed`',
+      "`Sector ${String(ending.levelId).padStart(2, '0')} reclaimed · ${ending.bossName} defeated`",
     )
   })
 })

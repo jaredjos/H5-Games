@@ -7,6 +7,8 @@ import {
   HERO_BODY_CENTER_OFFSET_Y,
   HERO_BODY_HALF_HEIGHT,
   HERO_BODY_HALF_WIDTH,
+  HERO_DAMAGE_FLASH_CRIMSON,
+  HERO_DAMAGE_FLASH_CRIMSON_REDUCED,
   HERO_CONTACT_TRIGGER_PADDING,
   HERO_MELEE_RELEASE_PADDING,
   circleTouchesHeroBody,
@@ -14,6 +16,7 @@ import {
   combatTextPose,
   createPlayerHitFeedback,
   formatCombatDamage,
+  heroDamageFlashTint,
   laneTouchesHeroBody,
 } from './combatReadability'
 
@@ -103,6 +106,14 @@ describe('source-aware player hit feedback', () => {
     expect(fallback?.color).toBeGreaterThan(0)
     expect(Math.hypot(fallback?.directionX ?? 0, fallback?.directionY ?? 0))
       .toBeCloseTo(1)
+  })
+
+  it('flashes the hero crimson briefly for every accepted hit event', () => {
+    expect(heroDamageFlashTint(0, 0.4, false)).toBe(HERO_DAMAGE_FLASH_CRIMSON)
+    expect(heroDamageFlashTint(0, 0.4, true))
+      .toBe(HERO_DAMAGE_FLASH_CRIMSON_REDUCED)
+    expect(heroDamageFlashTint(0.5, 1, false)).toBe(0xffffff)
+    expect(heroDamageFlashTint(0, 0, false)).toBe(0xffffff)
   })
 })
 

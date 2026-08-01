@@ -68,14 +68,14 @@ describe('cinematic audio runtime integration', () => {
     expect(source).toContain('const probe = scoreRef.current')
   })
 
-  it('keeps narration-only UI and duplicate runtime heroes out of intro and memories', () => {
-    expect(source).toContain(
-      "const heroAsset = cinematic.kind === 'finale'",
-    )
-    expect(source).toContain("Only the finale retains a separate runtime actor layer")
+  it('uses authored key art and dialogue portraits without a duplicate runtime hero layer', () => {
+    expect(source).not.toContain('const heroAsset =')
+    expect(source).not.toContain('nt-cinematic__hero')
+    expect(source).not.toContain('heroKeyframeAsset')
     expect(source).toContain('{hasNarration && narrationUnavailable ? (')
     expect(source).toContain('{hasNarration ? (')
     expect(source).toContain('{captionsVisible && activeLine ? (')
+    expect(source).toContain('getCinematicPortrait(activeLine)')
     expect(source).not.toContain(
       '{captionsVisible && activeLine && activePortrait ? (',
     )

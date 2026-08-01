@@ -204,7 +204,7 @@ export function UpgradeOverlay({
         </header>
         <div className="upgrade-loadout" aria-label="Current loadout">
           <div>
-            <small>Weapons</small>
+            <small>Spells</small>
             <span className="upgrade-loadout__slots">
               {snapshot.weapons.map((weapon) => (
                 <i key={weapon.id}>
@@ -272,7 +272,7 @@ export function UpgradeOverlay({
             : `All ${rerollCapacity} refreshes spent`}
         </button>
         <p className="smart-draft-note">
-          All eight weapons are available · Smart draft protects an owned weapon.
+          All eight spells are available · Smart draft protects an owned spell.
         </p>
       </div>
     </section>
@@ -351,7 +351,7 @@ function ArsenalHud({
   weaponDefinitions: WeaponDefinition[]
 }) {
   return (
-    <div className="arsenal-hud" aria-label="Current weapons">
+    <div className="arsenal-hud" aria-label="Current spells">
       {snapshot.weapons.map((weapon, index) => {
         const definition = weaponDefinitions.find((entry) => entry.id === weapon.id)
         const accent = definition
@@ -533,12 +533,12 @@ export function RunEndingOverlay({
         </span>
         <small>
           {ending.victory
-            ? `Sector ${String(ending.levelId).padStart(2, '0')} reclaimed`
+            ? `Sector ${String(ending.levelId).padStart(2, '0')} reclaimed · ${ending.bossName} defeated`
             : 'The trace has fallen'}
         </small>
         <h1>
           {ending.victory
-            ? `${ending.bossName} Defeated`
+            ? 'Level Complete'
             : 'Trace Severed'}
         </h1>
         <OrnamentRule />

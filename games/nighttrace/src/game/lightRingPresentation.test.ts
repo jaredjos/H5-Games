@@ -82,7 +82,7 @@ describe('Dawnward Aegis presentation', () => {
   it('routes every continuous Aegis animation through reduced motion time', () => {
     const auraSource = section(
       '  private drawLightRingAura(',
-      '  private drawWeaponEffects()',
+      '  private drawCombatLabWeaponEffectAccent(',
     )
 
     expect(auraSource).toContain(

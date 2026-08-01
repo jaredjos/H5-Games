@@ -95,6 +95,8 @@ export const COMBAT_TEXT_COALESCE_SECONDS = 0.1
 export const COMBAT_TEXT_LIFETIME_SECONDS = 0.64
 export const COMBAT_TEXT_CAP_DESKTOP = 88
 export const COMBAT_TEXT_CAP_MOBILE = 44
+export const HERO_DAMAGE_FLASH_CRIMSON = 0xff3548
+export const HERO_DAMAGE_FLASH_CRIMSON_REDUCED = 0xff6670
 
 export type PlayerDamageKind = 'contact' | 'telegraph' | 'projectile'
 export type CombatTextTarget =
@@ -221,6 +223,28 @@ export function createPlayerHitFeedback(
     boss: input.context.boss,
     kind: input.context.kind,
   })
+}
+
+/**
+ * Returns a short, unmistakable crimson sprite tint at the front of every
+ * accepted damage event. It releases quickly so the authored hero palette is
+ * restored well before the directional cinders and vignette finish fading.
+ */
+export function heroDamageFlashTint(
+  progress: number,
+  intensity: number,
+  reducedFlash: boolean,
+) {
+  const safeProgress = clamp01(finiteOr(progress, 1))
+  const safeIntensity = clamp01(finiteOr(intensity, 0))
+  const flashWindow = reducedFlash ? 0.16 : 0.24
+  if (safeProgress >= flashWindow || safeIntensity <= 0) return 0xffffff
+  const cadence = safeProgress / flashWindow
+  const visible = cadence < 0.44 || cadence > 0.62
+  if (!visible) return 0xffffff
+  return reducedFlash
+    ? HERO_DAMAGE_FLASH_CRIMSON_REDUCED
+    : HERO_DAMAGE_FLASH_CRIMSON
 }
 
 export function formatCombatDamage(amount: number) {
