@@ -42,12 +42,14 @@ describe('Combat Lab survival protocol', () => {
 
   it('wires the Lab-only timings and opening density into the runtime', () => {
     expect(gameCanvasSource).toContain('openingHordeSize(this.runConfig)')
-    expect(gameCanvasSource).toContain('bossArrivalSeconds(\n      this.runConfig,')
+    expect(gameCanvasSource).toMatch(
+      /bossArrivalSeconds\(\r?\n\s*this\.runConfig,/,
+    )
   })
 
   it('wires the invincibility toggle into finite HP and armor readouts', () => {
-    expect(gameUiSource).toContain(
-      'hasUnlimitedVitality(\n    snapshot.runMode,\n    snapshot.invincible,',
+    expect(gameUiSource).toMatch(
+      /hasUnlimitedVitality\(\r?\n\s*snapshot\.runMode,\r?\n\s*snapshot\.invincible,/,
     )
     expect(gameUiSource).toContain("isMortalCombatLab ? ' HP' : ''")
     expect(gameUiSource).toContain("isMortalCombatLab ? ' ARMOR' : ''")

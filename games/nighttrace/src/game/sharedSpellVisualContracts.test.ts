@@ -85,6 +85,17 @@ describe('shared persistent-spell visual contracts', () => {
     expect(comets).toContain('const distance = 3 + wake *')
   })
 
+  it('gives every orbiting Comet a bright broken molten corona without scaling the stone', () => {
+    expect(comets).toContain('const coronaPulse =')
+    expect(comets).toContain('const coronaPointCount =')
+    expect(comets).toContain("this.visualLod === 'mobile' ? 5 : 7")
+    expect(comets).toContain('for (let coronaPoint = 0; coronaPoint < coronaPointCount;')
+    expect(comets).toContain('color: coronaPoint % 3 === 0 ? 0xffb32e : 0xff6a10')
+    expect(comets).toContain('.fill({ color: 0xffd05a, alpha: 0.54 * trailEnergy })')
+    expect(comets).toContain('const size = (62 + stage * 4)')
+    expect(comets).not.toContain('comet.sprite.width = size *')
+  })
+
   it('gives Cinderwake Reavers an additive edge silhouette and sparse material wake', () => {
     const entityShape = section(
       'interface CinderwakeReaverEntity {',

@@ -1,7 +1,7 @@
 {
   "name": "nighttrace",
   "private": true,
-  "version": "1.23.1",
+  "version": "1.23.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,14 @@
     "audio:render": "node scripts/render-original-music.mjs",
     "voice:campaign": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-cinematic-voices.ps1",
     "voice:campaign:dry-run": "node scripts/render-cinematic-voices.mjs --dry-run",
+    "voice:campaign:batch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-cinematic-voices-batch.ps1",
+    "voice:campaign:batch:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-cinematic-voices-batch.ps1 -Mode Status",
+    "voice:campaign:batch:resume": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-cinematic-voices-batch.ps1 -Mode Resume",
+    "voice:campaign:batch:watch": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-cinematic-voices-batch.ps1 -Mode Watch",
+    "voice:campaign:review:auto": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-cinematic-voices-batch.ps1 -Mode Review",
+    "voice:campaign:review:dry-run": "node scripts/render-cinematic-voices-batch.mjs --mode review-auto --dry-run",
     "voice:campaign:promote-approved": "node scripts/promote-approved-cinematic-voices.mjs",
+    "voice:campaign:batch:dry-run": "node scripts/render-cinematic-voices-batch.mjs --dry-run",
     "voice:last-star": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-last-star-voice.ps1",
     "voice:memories": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-memory-voices.ps1",
     "lint": "eslint .",

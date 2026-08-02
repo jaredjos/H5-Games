@@ -7688,14 +7688,22 @@ select:focus-visible {
   position: absolute;
   left: 50%;
   top: 51%;
-  width: calc(20px + var(--spell-rank) * 2px);
-  height: calc(28px + var(--spell-rank) * 2px);
-  border-right: 4px solid #dffaff;
-  border-radius: 50%;
+  width: calc(34px + var(--spell-rank) * 2px);
+  height: calc(34px + var(--spell-rank) * 2px);
   opacity: calc(.42 + var(--spell-rank) * .09);
   filter: drop-shadow(0 0 4px #7bdaf0) drop-shadow(0 0 8px rgba(116, 173, 239, .38));
   transform: translate(-50%, -50%) rotate(var(--blade-angle)) translateY(calc(-42px - var(--spell-rank) * 8px)) rotate(22deg);
   animation: spell-theater-crescent-orbit 4.1s var(--blade-delay) linear infinite;
+}
+
+.spell-theater-crescent::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--crescent-sheet);
+  background-repeat: no-repeat;
+  background-size: 400% 400%;
+  animation: spell-theater-atlas-4x4 .92s var(--blade-delay) steps(1, end) infinite;
 }
 
 .spell-theater-moonmist {
@@ -7731,20 +7739,20 @@ select:focus-visible {
 
 .spell-theater-choir-node {
   position: absolute;
-  width: calc(13px + var(--spell-rank) * 1px);
-  height: calc(13px + var(--spell-rank) * 1px);
-  border: 1px solid rgba(221, 209, 255, .72);
-  transform: translate(-50%, -50%) rotate(45deg);
-  background: radial-gradient(circle, #f4f1ff 0 8%, #8f69e3 16%, rgba(32, 13, 62, .82) 45%, transparent 70%);
-  box-shadow: 0 0 8px #9d76ef, 0 0 18px rgba(124, 86, 209, .34);
+  width: calc(30px + var(--spell-rank) * 2px);
+  height: calc(30px + var(--spell-rank) * 2px);
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 6px rgba(161, 112, 244, .58));
   animation: spell-theater-node-pulse 1.45s calc(var(--node-index) * -.12s) ease-in-out infinite;
 }
 
 .spell-theater-choir-node i {
   position: absolute;
-  inset: -6px;
-  border: 1px solid rgba(206, 190, 255, .22);
-  transform: rotate(19deg);
+  inset: 0;
+  background-image: var(--arc-impact-sheet);
+  background-repeat: no-repeat;
+  background-size: 400% 400%;
+  animation: spell-theater-atlas-4x4 1.05s calc(var(--node-index) * -.12s) steps(1, end) infinite;
 }
 
 .spell-theater-choir-arc {
@@ -7892,26 +7900,53 @@ select:focus-visible {
   position: absolute;
   left: 53%;
   top: var(--comet-top);
-  width: calc(46px + var(--spell-rank) * 5px);
-  height: 8px;
-  opacity: calc(.42 + var(--spell-rank) * .085);
-  border-radius: 50%;
-  background: linear-gradient(90deg, transparent, rgba(121, 37, 12, .24) 18%, rgba(225, 75, 18, .64) 61%, #ffc15e 94%);
-  filter: drop-shadow(0 0 5px rgba(240, 88, 23, .72));
+  width: calc(42px + var(--spell-rank) * 3px);
+  height: calc(42px + var(--spell-rank) * 3px);
+  opacity: calc(.52 + var(--spell-rank) * .075);
+  filter:
+    drop-shadow(0 0 4px rgba(255, 104, 16, .95))
+    drop-shadow(0 0 11px rgba(245, 74, 10, .68));
   transform: rotate(var(--comet-angle));
-  transform-origin: left center;
+  transform-origin: center;
   animation: spell-theater-comet-hunt 2s var(--comet-delay) ease-in-out infinite;
+}
+
+.spell-theater-comet::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--comet-sheet);
+  background-repeat: no-repeat;
+  background-size: 400% 400%;
+  animation: spell-theater-atlas-4x4 .92s var(--comet-delay) steps(1, end) infinite;
+}
+
+.spell-theater-comet::after {
+  content: '';
+  position: absolute;
+  inset: 17%;
+  border-radius: 46% 54% 48% 52%;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 211, 89, .7) 0 4%, transparent 13%),
+    radial-gradient(circle at 81% 31%, rgba(255, 126, 18, .78) 0 5%, transparent 15%),
+    radial-gradient(circle at 28% 82%, rgba(255, 92, 9, .74) 0 4%, transparent 14%);
+  box-shadow:
+    0 0 7px 2px rgba(255, 111, 13, .82),
+    0 0 15px 4px rgba(223, 52, 7, .44);
+  animation: spell-theater-comet-corona 1.08s var(--comet-delay) ease-in-out infinite;
 }
 
 .spell-theater-comet i {
   position: absolute;
-  right: -2px;
-  top: 1px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #ffd080;
-  box-shadow: 0 0 6px #ff9f45, 0 0 13px rgba(239, 67, 16, .82);
+  z-index: -1;
+  right: 56%;
+  top: 50%;
+  width: calc(18px + var(--spell-rank) * 2px);
+  height: 9px;
+  border-radius: 50% 0 0 50%;
+  background: linear-gradient(90deg, transparent, rgba(205, 45, 5, .26) 20%, #ff6710 72%, #ffb52f 100%);
+  filter: blur(1.2px) drop-shadow(0 0 5px rgba(255, 86, 9, .78));
+  transform: translateY(-50%);
 }
 
 .spell-theater-perihelion {
@@ -8151,6 +8186,25 @@ select:focus-visible {
   to { rotate: 1turn; }
 }
 
+@keyframes spell-theater-atlas-4x4 {
+  0% { background-position: 0% 0%; }
+  6.25% { background-position: 33.333% 0%; }
+  12.5% { background-position: 66.667% 0%; }
+  18.75% { background-position: 100% 0%; }
+  25% { background-position: 0% 33.333%; }
+  31.25% { background-position: 33.333% 33.333%; }
+  37.5% { background-position: 66.667% 33.333%; }
+  43.75% { background-position: 100% 33.333%; }
+  50% { background-position: 0% 66.667%; }
+  56.25% { background-position: 33.333% 66.667%; }
+  62.5% { background-position: 66.667% 66.667%; }
+  68.75% { background-position: 100% 66.667%; }
+  75% { background-position: 0% 100%; }
+  81.25% { background-position: 33.333% 100%; }
+  87.5% { background-position: 66.667% 100%; }
+  93.75%, 100% { background-position: 100% 100%; }
+}
+
 @keyframes spell-theater-node-pulse {
   0%, 100% { opacity: .52; scale: .84; }
   50% { opacity: 1; scale: 1.13; }
@@ -8196,6 +8250,11 @@ select:focus-visible {
 @keyframes spell-theater-comet-hunt {
   0%, 100% { opacity: .18; translate: -16px 7px; }
   45% { opacity: 1; translate: 11px -5px; }
+}
+
+@keyframes spell-theater-comet-corona {
+  0%, 100% { opacity: .56; scale: .9; rotate: -4deg; }
+  50% { opacity: 1; scale: 1.12; rotate: 5deg; }
 }
 
 @keyframes spell-theater-perihelion-pulse {

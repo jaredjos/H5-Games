@@ -58,8 +58,8 @@ describe('Dawnward Aegis presentation', () => {
     expect(damageSource).toContain(
       'const ringCenterY = this.player.y + HERO_BODY_CENTER_OFFSET_Y',
     )
-    expect(damageSource).toContain('ringCenterX,\n      ringCenterY,')
-    expect(auraSource).toContain('+\n      HERO_BODY_CENTER_OFFSET_Y')
+    expect(damageSource).toMatch(/ringCenterX,\r?\n\s*ringCenterY,/)
+    expect(auraSource).toMatch(/\+\r?\n\s*HERO_BODY_CENTER_OFFSET_Y/)
     expect(runtimeSource).toContain('dataset.lightRingCenterOffsetY')
   })
 

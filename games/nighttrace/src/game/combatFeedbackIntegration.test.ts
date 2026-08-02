@@ -42,7 +42,7 @@ describe('combat feedback runtime integration', () => {
     expect(drawing).toContain('this.settings.reducedFlash')
   })
 
-  it('extends special anticipation by 0.20 seconds without changing geometry', () => {
+  it('uses one level-scaled special anticipation wrapper without changing geometry', () => {
     const circleQueue = section(
       runtimeSource,
       '  private queueCircleTelegraph(',
@@ -59,7 +59,7 @@ describe('combat feedback runtime integration', () => {
       '  private updateHostileProjectiles(',
     )
     for (const queue of [circleQueue, lineQueue]) {
-      expect(queue).toContain('hostileSpecialReactionWindow(life)')
+      expect(queue).toContain('this.hostileWarningWindow(life)')
       expect(queue).toContain('life: warningLife')
       expect(queue).toContain('total: warningLife')
     }
@@ -67,9 +67,12 @@ describe('combat feedback runtime integration', () => {
     expect(lineQueue).toContain('length,')
     expect(lineQueue).toContain('width,')
     expect(projectileQueue).toContain(
-      'windupSeconds: hostileSpecialReactionWindow(options.windup)',
+      'windupSeconds: this.hostileWarningWindow(options.windup)',
     )
     expect(projectileQueue).toContain('impactRadius: options.radius')
+    expect(runtimeSource).toContain(
+      'hostileSpecialReactionBonusSeconds(this.runConfig.mode, this.level.id)',
+    )
   })
 
   it('applies the damaging reaction bonus once in each queue, not again at call sites', () => {
@@ -99,25 +102,25 @@ describe('combat feedback runtime integration', () => {
       '  private predictedPlayerPoint(',
     )
 
-    expect(circleQueue.match(/hostileSpecialReactionWindow\(life\)/g))
+    expect(circleQueue.match(/this\.hostileWarningWindow\(life\)/g))
       .toHaveLength(1)
-    expect(lineQueue.match(/hostileSpecialReactionWindow\(life\)/g))
+    expect(lineQueue.match(/this\.hostileWarningWindow\(life\)/g))
       .toHaveLength(1)
     expect(
       projectileQueue.match(
-        /hostileSpecialReactionWindow\(options\.windup\)/g,
+        /this\.hostileWarningWindow\(options\.windup\)/g,
       ),
     ).toHaveLength(1)
     // These are matching animation holds only. Damage timing remains owned by
-    // the three queues above and therefore cannot receive a second +0.20s.
-    expect(bossAttack.match(/hostileSpecialReactionWindow\(/g)).toHaveLength(1)
-    expect(eliteSpecials.match(/hostileSpecialReactionWindow\(/g))
+    // the three queues above and therefore cannot receive a second bonus.
+    expect(bossAttack.match(/this\.hostileWarningWindow\(/g)).toHaveLength(1)
+    expect(eliteSpecials.match(/this\.hostileWarningWindow\(/g))
       .toHaveLength(6)
     expect(bossAttack).not.toMatch(
-      /(?:windup|warningTime):\s*hostileSpecialReactionWindow/,
+      /(?:windup|warningTime):\s*this\.hostileWarningWindow/,
     )
     expect(eliteSpecials).not.toMatch(
-      /windup:\s*hostileSpecialReactionWindow/,
+      /windup:\s*this\.hostileWarningWindow/,
     )
   })
 

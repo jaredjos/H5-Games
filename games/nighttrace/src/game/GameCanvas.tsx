@@ -136,7 +136,10 @@ import {
   resolveHostileTelegraphPalette,
   type HostileTelegraphMaterialPalette,
 } from './hostileTelegraphPalette'
-import { hostileSpecialReactionWindow } from './hostileReactionWindow'
+import {
+  hostileSpecialReactionBonusSeconds,
+  hostileSpecialReactionWindow,
+} from './hostileReactionWindow'
 import {
   sampleHostileSpecialEnergy,
   type HostileSpecialEnergyMark,
@@ -582,6 +585,7 @@ interface WeaponEffectEntity {
   total: number
   seed: number
   points?: Vec2[]
+  pointScales?: number[]
   pattern?: ReplacementWeaponPattern<number>
   hitPulseLife?: number
   hitPulseTotal?: number
@@ -692,6 +696,8 @@ class NighttraceRuntime {
   private astralVerdictFrames: Texture[] = []
   private cometOrbitFrames: Texture[] = []
   private cinderwakeReaverFrames: Texture[] = []
+  private crescentMoonbladeFrames: Texture[] = []
+  private arcChoirImpactFrames: Texture[] = []
   private readonly authoredSpellMaterialSprites: Sprite[] = []
   private authoredSpellMaterialCursor = 0
   private readonly groundedVfxMaterialSprites: Sprite[] = []
@@ -977,6 +983,16 @@ class NighttraceRuntime {
         ? 'assets/spell-vfx/cinderwake-reaver-v1-mobile.webp'
         : 'assets/spell-vfx/cinderwake-reaver-v1.webp',
     )
+    const crescentMoonbladeAtlas = appAssetUrl(
+      this.visualLod === 'mobile'
+        ? 'assets/spell-vfx/crescent-moonblade-v1-mobile.webp'
+        : 'assets/spell-vfx/crescent-moonblade-v1.webp',
+    )
+    const arcChoirImpactAtlas = appAssetUrl(
+      this.visualLod === 'mobile'
+        ? 'assets/spell-vfx/arc-choir-impact-v1-mobile.webp'
+        : 'assets/spell-vfx/arc-choir-impact-v1.webp',
+    )
     const assetLoad = Promise.all([
       Assets.load<Texture>(backgroundForLevel(this.level.id)),
       Assets.load<Texture>(appAssetUrl('assets/hero-animations/hero-walk-runtime.webp')),
@@ -1017,6 +1033,8 @@ class NighttraceRuntime {
       Assets.load<Texture>(astralVerdictAtlas),
       Assets.load<Texture>(cometOrbitAtlas),
       Assets.load<Texture>(cinderwakeReaverAtlas),
+      Assets.load<Texture>(crescentMoonbladeAtlas),
+      Assets.load<Texture>(arcChoirImpactAtlas),
     ])
     try {
       const [
@@ -1041,6 +1059,8 @@ class NighttraceRuntime {
           astralVerdictSheet,
           cometOrbitSheet,
           cinderwakeReaverSheet,
+          crescentMoonbladeSheet,
+          arcChoirImpactSheet,
         ],
       ] = await Promise.all([applicationInit, assetLoad])
 
@@ -1159,6 +1179,8 @@ class NighttraceRuntime {
       this.astralVerdictFrames = this.sliceTexture(astralVerdictSheet, 4, 4)
       this.cometOrbitFrames = this.sliceTexture(cometOrbitSheet, 4, 4)
       this.cinderwakeReaverFrames = this.sliceTexture(cinderwakeReaverSheet, 4, 4)
+      this.crescentMoonbladeFrames = this.sliceTexture(crescentMoonbladeSheet, 4, 4)
+      this.arcChoirImpactFrames = this.sliceTexture(arcChoirImpactSheet, 4, 4)
       this.createVfxTextures()
       const initialHeroTexture =
         this.heroChargeFrames[0] ?? this.heroWalkFrames[0] ?? Texture.WHITE
@@ -1995,6 +2017,16 @@ class NighttraceRuntime {
       const renderX = lerp(projectile.previousX, projectile.x, this.interpolation)
       const renderY = lerp(projectile.previousY, projectile.y, this.interpolation)
       projectile.sprite.position.set(renderX, renderY)
+      if (
+        projectile.weaponId === 'crescent-array' &&
+        this.crescentMoonbladeFrames.length > 0
+      ) {
+        const frameIndex =
+          Math.floor(
+            this.motionClock * 18 + projectile.visualSeed * 1.73,
+          ) % this.crescentMoonbladeFrames.length
+        projectile.sprite.texture = this.crescentMoonbladeFrames[frameIndex]
+      }
       projectile.sprite.rotation = Math.atan2(projectile.vy, projectile.vx)
       const projectileAlpha =
         projectile.weaponId === 'rift-seeds'
@@ -2685,7 +2717,7 @@ class NighttraceRuntime {
       this.triggerEnemyAttack(
         enemy,
         'cast',
-        hostileSpecialReactionWindow(1.16),
+        this.hostileWarningWindow(1.16),
         angle,
         true,
       )
@@ -2708,7 +2740,7 @@ class NighttraceRuntime {
       this.triggerEnemyAttack(
         enemy,
         'cast',
-        hostileSpecialReactionWindow(1.02),
+        this.hostileWarningWindow(1.02),
         angle,
         true,
       )
@@ -2737,7 +2769,7 @@ class NighttraceRuntime {
       this.triggerEnemyAttack(
         enemy,
         'charge',
-        hostileSpecialReactionWindow(0.76),
+        this.hostileWarningWindow(0.76),
         angle,
         true,
       )
@@ -2766,7 +2798,7 @@ class NighttraceRuntime {
         this.triggerEnemyAttack(
           enemy,
           'cast',
-          hostileSpecialReactionWindow(1.08),
+          this.hostileWarningWindow(1.08),
           angle,
           true,
         )
@@ -2807,7 +2839,7 @@ class NighttraceRuntime {
         this.triggerEnemyAttack(
           enemy,
           'cast',
-          hostileSpecialReactionWindow(1.22),
+          this.hostileWarningWindow(1.22),
           angle,
           true,
         )
@@ -2825,7 +2857,7 @@ class NighttraceRuntime {
       this.triggerEnemyAttack(
         enemy,
         'slam',
-        hostileSpecialReactionWindow(0.92),
+        this.hostileWarningWindow(0.92),
         angle,
         true,
       )
@@ -3268,12 +3300,23 @@ class NighttraceRuntime {
     return heroWeaponOrigin(this.player, facingX)
   }
 
+  private hostileWarningWindow(baseSeconds: number) {
+    return hostileSpecialReactionWindow(
+      baseSeconds,
+      hostileSpecialReactionBonusSeconds(this.runConfig.mode, this.level.id),
+    )
+  }
+
+  private usesCombatLabVfxPresentation() {
+    return this.runConfig.mode === 'combat-lab' || Boolean(this.showcase)
+  }
+
   private combatLabRuntimeVfx(
     weaponId: WeaponId,
     state: WeaponVfxState,
   ): CombatLabRuntimeVfxPresentation {
     return resolveCombatLabRuntimeVfx(
-      this.runConfig.mode,
+      this.usesCombatLabVfxPresentation() ? 'combat-lab' : this.runConfig.mode,
       weaponId,
       state,
       weaponVfxProfile(weaponId, state),
@@ -3491,14 +3534,20 @@ class NighttraceRuntime {
     projectile.visualState = visualState
     projectile.visualSeed = visualSeed
     projectile.hitIds.length = 0
-    projectile.sprite.texture = this.projectileTextures.get(weaponId) ?? Texture.WHITE
+    const usesAuthoredCrescentMaterial =
+      weaponId === 'crescent-array' && this.crescentMoonbladeFrames.length > 0
+    projectile.sprite.texture = usesAuthoredCrescentMaterial
+      ? this.crescentMoonbladeFrames[visualSeed % this.crescentMoonbladeFrames.length]
+      : this.projectileTextures.get(weaponId) ?? Texture.WHITE
     projectile.sprite.tint = 0xffffff
-    const [projectileWidth, projectileHeight] = this.projectileDimensions(weaponId)
+    const [projectileWidth, projectileHeight] = usesAuthoredCrescentMaterial
+      ? [36, 36]
+      : this.projectileDimensions(weaponId)
     const visualProfile = this.weaponPresentationProfile(weaponId, visualState)
     projectile.sprite.width = projectileWidth * visualProfile.projectileScale
     projectile.sprite.height = projectileHeight * visualProfile.projectileScale
     projectile.sprite.alpha = 0.95
-    projectile.sprite.blendMode = 'add'
+    projectile.sprite.blendMode = usesAuthoredCrescentMaterial ? 'normal' : 'add'
     projectile.sprite.visible = true
     projectile.sprite.position.set(x, y)
   }
@@ -4174,6 +4223,69 @@ class NighttraceRuntime {
       const trailNormalX = -trailY
       const trailNormalY = trailX
       const trailEnergy = Math.max(0.58, sceneVfxScale)
+      const coronaPulse =
+        0.86 +
+        Math.sin(this.motionClock * 7.2 + comet.frameOffset * 0.43) * 0.14
+      const coronaPointCount =
+        (this.visualLod === 'mobile' ? 5 : 7) + Math.min(2, stage)
+
+      // The basalt body is intentionally dark, so a compact broken corona
+      // carries its silhouette against the arena. Filled flame tongues and
+      // molten motes avoid a clean vector ring while preserving the authored
+      // stone at its established gameplay scale.
+      this.projectileTrailGraphics
+        .ellipse(renderX, renderY, size * 0.31, size * 0.245)
+        .fill({ color: 0xff4a0a, alpha: 0.16 * trailEnergy * coronaPulse })
+      this.projectileTrailGraphics
+        .ellipse(renderX, renderY, size * 0.265, size * 0.205)
+        .fill({ color: 0xff8a1c, alpha: 0.2 * trailEnergy * coronaPulse })
+      for (let coronaPoint = 0; coronaPoint < coronaPointCount; coronaPoint += 1) {
+        const coronaAngle =
+          (Math.PI * 2 * coronaPoint) / coronaPointCount -
+          comet.angle * 0.24 +
+          Math.sin(
+            this.motionClock * 3.8 +
+              comet.frameOffset * 0.17 +
+              coronaPoint * 1.91,
+          ) *
+            0.12
+        const radialX = Math.cos(coronaAngle)
+        const radialY = Math.sin(coronaAngle)
+        const tangentX = -radialY
+        const tangentY = radialX
+        const baseRadius = size * (0.405 + (coronaPoint % 3) * 0.012)
+        const baseX = renderX + radialX * baseRadius
+        const baseY = renderY + radialY * baseRadius * 0.82
+        const tongueLength =
+          (3.2 + stage * 0.42 + (coronaPoint % 2) * 1.15) * coronaPulse
+        const tongueWidth = 1.15 + stage * 0.11
+
+        this.projectileTrailGraphics
+          .poly(
+            [
+              baseX - tangentX * tongueWidth,
+              baseY - tangentY * tongueWidth,
+              baseX + radialX * tongueLength,
+              baseY + radialY * tongueLength,
+              baseX + tangentX * tongueWidth,
+              baseY + tangentY * tongueWidth,
+            ],
+            true,
+          )
+          .fill({
+            color: coronaPoint % 3 === 0 ? 0xffb32e : 0xff6a10,
+            alpha: (0.48 + (coronaPoint % 2) * 0.09) * trailEnergy,
+          })
+        if (coronaPoint % 2 === 0) {
+          this.projectileTrailGraphics
+            .circle(
+              baseX + radialX * tongueLength * 0.48,
+              baseY + radialY * tongueLength * 0.48,
+              0.8 + stage * 0.08,
+            )
+            .fill({ color: 0xffd05a, alpha: 0.54 * trailEnergy })
+        }
+      }
 
       // A compact, tapered ember wake makes the orbit readable without
       // turning each basalt stone into a large projectile or a neon ring.
@@ -4186,18 +4298,18 @@ class NighttraceRuntime {
         const wakeY = renderY + trailY * distance + trailNormalY * drift
         const wakeScale = 1 - wake * 0.19
         this.projectileTrailGraphics
-          .circle(wakeX, wakeY, Math.max(1.2, size * 0.075 * wakeScale))
-          .fill({
-            color: wake === 1 ? 0xffc15a : wake === 2 ? 0xff6a1d : 0x8f2b19,
-            alpha: (0.24 - wake * 0.045) * trailEnergy,
-          })
+           .circle(wakeX, wakeY, Math.max(1.2, size * 0.075 * wakeScale))
+           .fill({
+            color: wake === 1 ? 0xffd05a : wake === 2 ? 0xff7a18 : 0xbd3a0c,
+            alpha: (0.34 - wake * 0.055) * trailEnergy,
+           })
       }
       this.projectileTrailGraphics
         .ellipse(renderX, renderY, size * 0.23, size * 0.18)
-        .fill({ color: 0xff5a18, alpha: 0.085 * trailEnergy })
+        .fill({ color: 0xff5a10, alpha: 0.18 * trailEnergy })
       this.projectileTrailGraphics
         .ellipse(renderX, renderY, size * 0.1, size * 0.08)
-        .fill({ color: 0xffb13b, alpha: 0.16 * trailEnergy })
+        .fill({ color: 0xffb32e, alpha: 0.28 * trailEnergy })
       comet.sprite.width = size
       comet.sprite.height = size
       comet.sprite.alpha = Math.max(0.58, sceneVfxScale) * 0.94
@@ -4743,7 +4855,7 @@ class NighttraceRuntime {
           x: clamp(destination.x, options.radius + 24, WORLD_WIDTH - options.radius - 24),
           y: clamp(destination.y, options.radius + 24, WORLD_HEIGHT - options.radius - 24),
         },
-        windupSeconds: hostileSpecialReactionWindow(options.windup),
+        windupSeconds: this.hostileWarningWindow(options.windup),
         flightSeconds: options.flight,
         impactHoldSeconds: 0.22,
         arcHeight: options.arcHeight,
@@ -5809,6 +5921,7 @@ class NighttraceRuntime {
         total: visualState.stage === 'final' ? 0.58 : 0.44,
         seed: visualSeed,
         points,
+        pointScales: [1, ...chain.map((enemy) => (enemy.isBoss ? 1.25 : 1))],
       })
     }
   }
@@ -5844,7 +5957,7 @@ class NighttraceRuntime {
     this.triggerEnemyAttack(
       enemy,
       attackStyle,
-      hostileSpecialReactionWindow(warningTime) + 0.24,
+      this.hostileWarningWindow(warningTime) + 0.24,
       angle,
       true,
     )
@@ -6257,7 +6370,7 @@ class NighttraceRuntime {
     if (this.activeTelegraphCount >= 32) return
     const telegraph = this.telegraphs.find((candidate) => !candidate.active)
     const warningLife = specialAttack
-      ? hostileSpecialReactionWindow(life)
+      ? this.hostileWarningWindow(life)
       : life
     const next: TelegraphEntity = {
       active: true,
@@ -6295,7 +6408,7 @@ class NighttraceRuntime {
     if (this.activeTelegraphCount >= 32) return
     const telegraph = this.telegraphs.find((candidate) => !candidate.active)
     const warningLife = specialAttack
-      ? hostileSpecialReactionWindow(life)
+      ? this.hostileWarningWindow(life)
       : life
     const next: TelegraphEntity = {
       active: true,
@@ -6607,6 +6720,69 @@ class NighttraceRuntime {
     sprite.blendMode = 'normal'
     sprite.anchor.set(0.5, 0.96)
     return sprite
+  }
+
+  private drawAuthoredCrescentMaterial(options: {
+    x: number
+    y: number
+    angle: number
+    size: number
+    progress: number
+    seed: number
+    alpha: number
+  }) {
+    if (this.crescentMoonbladeFrames.length === 0) {
+      return false
+    }
+
+    const frameIndex =
+      (Math.floor(clamp(options.progress, 0, 0.999) * this.crescentMoonbladeFrames.length) +
+        Math.abs(options.seed)) %
+      this.crescentMoonbladeFrames.length
+    const blade = this.acquireAuthoredSpellMaterialSprite(
+      this.crescentMoonbladeFrames[frameIndex],
+    )
+    blade.anchor.set(0.5)
+    blade.position.set(options.x, options.y)
+    blade.width = options.size * 2.65
+    blade.height = options.size * 2.65
+    blade.rotation = options.angle
+    blade.alpha = options.alpha * (this.settings.reducedFlash ? 0.78 : 1)
+    blade.blendMode = 'normal'
+    blade.zIndex = Math.round(options.y * 10) - 1
+    return true
+  }
+
+  private drawAuthoredArcImpact(options: {
+    x: number
+    y: number
+    progress: number
+    size: number
+    seed: number
+    alpha: number
+  }) {
+    if (this.arcChoirImpactFrames.length === 0) {
+      return false
+    }
+    if (options.progress < 0 || options.progress >= 1) return true
+
+    const frameIndex = Math.min(
+      this.arcChoirImpactFrames.length - 1,
+      Math.floor(options.progress * this.arcChoirImpactFrames.length),
+    )
+    const impact = this.acquireAuthoredSpellMaterialSprite(
+      this.arcChoirImpactFrames[frameIndex],
+    )
+    impact.anchor.set(0.5)
+    impact.position.set(options.x, options.y)
+    impact.width = options.size
+    impact.height = options.size
+    impact.rotation =
+      (replacementCosmeticUnit(options.seed, frameIndex, 421) - 0.5) * 0.18
+    impact.alpha = options.alpha * (this.settings.reducedFlash ? 0.72 : 1)
+    impact.blendMode = 'normal'
+    impact.zIndex = Math.round(options.y * 10) + 1
+    return true
   }
 
   private drawHeroPowerMaterialEvent(options: {
@@ -8563,53 +8739,38 @@ class NighttraceRuntime {
         break
       }
       case 'lunar-petals': {
-        const petals = Math.min(8, presentation.ornamentCount)
-        for (let petal = 0; petal < petals; petal += 1) {
-          const angle = rotation * 0.72 + (Math.PI * 2 * petal) / petals
-          const distance = radius * (0.55 + (petal % 2) * 0.18)
-          this.drawCrescentGlyph(
-            graphics,
-            effect.x + Math.cos(angle) * distance,
-            effect.y + Math.sin(angle) * distance,
-            angle + Math.PI * 0.5,
-            3.6 + rank * 0.72,
-            petal % 2 ? profile.secondaryColor : profile.coreColor,
-            energy * 0.56,
-          )
+        // The authored moonblades carry the silhouette. Keep this accent
+        // to sparse material motes so the old line-drawn crescents cannot
+        // reappear around the cast or impact.
+        const motes = Math.min(7, 2 + presentation.ornamentCount)
+        for (let mote = 0; mote < motes; mote += 1) {
+          const angle = rotation * 0.54 + (Math.PI * 2 * mote) / motes
+          const distance = radius * (0.42 + (mote % 3) * 0.12)
+          const moteRadius = (0.9 + (mote % 2) * 0.55 + rank * 0.08) * geometryScale
+          additiveGraphics
+            .circle(
+              effect.x + Math.cos(angle) * distance,
+              effect.y + Math.sin(angle) * distance,
+              moteRadius * 2.4,
+            )
+            .fill({ color: profile.glowColor, alpha: energy * 0.08 })
+          graphics
+            .ellipse(
+              effect.x + Math.cos(angle) * distance,
+              effect.y + Math.sin(angle) * distance,
+              moteRadius,
+              moteRadius * 0.48,
+            )
+            .fill({
+              color: mote % 2 ? profile.secondaryColor : profile.coreColor,
+              alpha: energy * 0.48,
+            })
         }
         break
       }
       case 'cathedral-branches': {
-        const points = effect.points ?? []
-        for (let index = 1; index < points.length; index += 1) {
-          const point = points[index]
-          const previous = points[index - 1]
-          const angle = Math.atan2(point.y - previous.y, point.x - previous.x)
-          const branchBudget = presentation.awakened
-            ? index % 2 === 0
-              ? 0
-              : 1
-            : Math.min(2, presentation.laneCount)
-          for (let branch = 0; branch < branchBudget; branch += 1) {
-            const side = branch % 2 ? 1 : -1
-            const forkAngle = angle + side * (0.64 + branch * 0.16)
-            const forkLength =
-              (9 + rank * 2.4 + branch * 3) * geometryScale
-            this.drawPolyline(
-              additiveGraphics,
-              [
-                { x: point.x, y: point.y },
-                {
-                  x: point.x - Math.cos(forkAngle) * forkLength,
-                  y: point.y - Math.sin(forkAngle) * forkLength,
-                },
-              ],
-              branch % 2 ? profile.secondaryColor : profile.glowColor,
-              (0.7 + rank * 0.13) * geometryScale,
-              energy * (presentation.awakened ? 0.3 : 0.38),
-            )
-          }
-        }
+        // The authored impact atlas now carries Arc Choir's target detail in
+        // every mode. Avoid reintroducing the rejected procedural line forks.
         break
       }
       case 'astral-verdict': {
@@ -8772,15 +8933,28 @@ class NighttraceRuntime {
           for (let blade = 0; blade < orbitCount; blade += 1) {
             const bladeAngle = rotation + (Math.PI * 2 * blade) / orbitCount
             const layerRadius = stage === 3 && blade % 2 ? orbitRadius * 0.62 : orbitRadius
-            this.drawCrescentGlyph(
-              graphics,
-              effect.x + Math.cos(bladeAngle) * layerRadius,
-              effect.y + Math.sin(bladeAngle) * layerRadius,
-              bladeAngle,
-              8 + stage * 1.4,
-              profile.accentColor,
-              motionAlpha * 0.92,
-            )
+            const bladeX = effect.x + Math.cos(bladeAngle) * layerRadius
+            const bladeY = effect.y + Math.sin(bladeAngle) * layerRadius
+            const drewAuthoredBlade = this.drawAuthoredCrescentMaterial({
+              x: bladeX,
+              y: bladeY,
+              angle: bladeAngle + Math.PI * 0.5,
+              size: 8.4 + stage * 1.5,
+              progress,
+              seed: effect.seed + blade * 17,
+              alpha: motionAlpha * 0.94,
+            })
+            if (!drewAuthoredBlade) {
+              this.drawCrescentGlyph(
+                graphics,
+                bladeX,
+                bladeY,
+                bladeAngle,
+                8 + stage * 1.4,
+                profile.accentColor,
+                motionAlpha * 0.92,
+              )
+            }
           }
           break
         }
@@ -8800,15 +8974,28 @@ class NighttraceRuntime {
           })
           for (let shard = 0; shard < shards; shard += 1) {
             const shardAngle = rotation + (Math.PI * 2 * shard) / shards
-            this.drawCrescentGlyph(
-              graphics,
-              effect.x + Math.cos(shardAngle) * radius * 0.72,
-              effect.y + Math.sin(shardAngle) * radius * 0.72,
-              shardAngle,
-              4.5 + stage,
-              profile.coreColor,
-              motionAlpha * 0.7,
-            )
+            const shardX = effect.x + Math.cos(shardAngle) * radius * 0.72
+            const shardY = effect.y + Math.sin(shardAngle) * radius * 0.72
+            const drewAuthoredShard = this.drawAuthoredCrescentMaterial({
+              x: shardX,
+              y: shardY,
+              angle: shardAngle + Math.PI * 0.5,
+              size: 4.8 + stage,
+              progress,
+              seed: effect.seed + shard * 23,
+              alpha: motionAlpha * 0.74,
+            })
+            if (!drewAuthoredShard) {
+              this.drawCrescentGlyph(
+                graphics,
+                shardX,
+                shardY,
+                shardAngle,
+                4.5 + stage,
+                profile.coreColor,
+                motionAlpha * 0.7,
+              )
+            }
           }
           break
         }
@@ -8824,18 +9011,31 @@ class NighttraceRuntime {
             const node = effect.points?.[nodeIndex]
             if (!node) continue
             const nodeRadius = 10 + stage * 2.7
-            this.drawHeroPowerMaterialEvent({
+            const impactTime = progress * effect.total - (nodeIndex - 1) * 0.03
+            const impactProgress = impactTime / 0.28
+            const impactScale = effect.pointScales?.[nodeIndex] ?? 1
+            const drewAuthoredImpact = this.drawAuthoredArcImpact({
               x: node.x,
               y: node.y,
-              radius: nodeRadius * 1.7,
-              progress,
-              stage: state.stage,
+              progress: impactProgress,
+              size: (32 + stage * 3.5) * impactScale,
               seed: effect.seed + nodeIndex * 97,
-              tint: profile.accentColor,
-              frame: HERO_MATERIAL_FRAME.impact,
-              angle: rotation + nodeIndex,
-              materialOpacity: 0.2,
+              alpha: motionAlpha * 0.96,
             })
+            if (!drewAuthoredImpact) {
+              this.drawHeroPowerMaterialEvent({
+                x: node.x,
+                y: node.y,
+                radius: nodeRadius * 1.7,
+                progress,
+                stage: state.stage,
+                seed: effect.seed + nodeIndex * 97,
+                tint: profile.accentColor,
+                frame: HERO_MATERIAL_FRAME.impact,
+                angle: rotation + nodeIndex,
+                materialOpacity: 0.2,
+              })
+            }
           }
           if (stage === 3) {
             this.drawHeroPowerMaterialEvent({
@@ -9964,23 +10164,141 @@ class NighttraceRuntime {
         break
       }
       case 'lunar-petals': {
-        const petals = Math.min(5, presentation.ornamentCount)
-        for (let petal = 0; petal < petals; petal += 1) {
-          const t = (petal + 1) / (petals + 1)
-          const sway =
-            Math.sin(phase + petal * 2.1) *
-            (5 + presentation.rank) *
-            geometryScale
-          this.drawCrescentGlyph(
-            graphics,
-            lerp(startX, x, t) + normalX * sway,
-            lerp(startY, y, t) + normalY * sway,
-            Math.atan2(dy, dx) + Math.PI * 0.5,
-            (2.8 + presentation.rank * 0.65) * geometryScale,
-            petal % 2 ? profile.secondaryColor : profile.coreColor,
-            (0.2 + t * 0.28) * energy,
+        // Authored moonblades shed a compact wake instead of a drawn trail:
+        // cold lunar haze, a bone-white core and the occasional violet shard.
+        // Keep the per-blade budget deliberately small because high ranks can
+        // launch ten crescents at once (and overlapping casts can briefly
+        // exceed that).
+        const isMobile = this.visualLod === 'mobile'
+        const rankedMoteBudget = isMobile
+          ? presentation.rank >= 5 || presentation.awakened
+            ? 3
+            : 2
+          : presentation.rank >= 5 || presentation.awakened
+            ? 4
+            : presentation.rank >= 3
+              ? 3
+              : 2
+        const activeCrescentBlades = this.projectiles.reduce(
+          (count, candidate) =>
+            count + Number(candidate.active && candidate.weaponId === 'crescent-array'),
+          0,
+        )
+        const crowdedMoteCap = activeCrescentBlades >= 12
+          ? 2
+          : activeCrescentBlades >= 8
+            ? isMobile
+              ? 2
+              : 3
+            : rankedMoteBudget
+        const motes = Math.min(rankedMoteBudget, crowdedMoteCap)
+        const maxReach = (isMobile ? 16 : 22) * geometryScale
+        const maxLateralDrift = 2.5 * geometryScale
+
+        for (let mote = 0; mote < motes; mote += 1) {
+          const t = (mote + 1) / (motes + 0.4)
+          const distance = maxReach * (0.22 + t * 0.72)
+          const lateralDrift =
+            Math.sin(phase * 1.14 + mote * 2.37) *
+            maxLateralDrift *
+            (0.72 + t * 0.28)
+          const moteX = x - dx * distance + normalX * lateralDrift
+          const moteY = y - dy * distance + normalY * lateralDrift
+          const fade = 1 - t * 0.48
+          const moteSize = (0.72 + (1 - t) * 0.52) * geometryScale
+          const cyanHazeAlpha = Math.min(
+            0.14,
+            (0.085 + (mote % 2) * 0.018) * energy * fade,
           )
+          const violetHazeAlpha = Math.min(
+            0.12,
+            (0.075 + ((mote + 1) % 2) * 0.016) * energy * fade,
+          )
+          const coreAlpha =
+            Math.min(0.52, (0.38 + presentation.rank * 0.022) * energy) *
+            (0.76 + fade * 0.24)
+
+          graphics
+            .ellipse(moteX, moteY, moteSize * 3.1, moteSize * 1.55)
+            .fill({ color: profile.glowColor, alpha: cyanHazeAlpha })
+          graphics
+            .ellipse(
+              moteX + normalX * moteSize * 0.42,
+              moteY + normalY * moteSize * 0.42,
+              moteSize * 2.15,
+              moteSize,
+            )
+            .fill({ color: profile.secondaryColor, alpha: violetHazeAlpha })
+          graphics
+            .poly(
+              [
+                moteX + dx * moteSize * 1.9,
+                moteY + dy * moteSize * 1.9,
+                moteX + normalX * moteSize * 0.5,
+                moteY + normalY * moteSize * 0.5,
+                moteX - dx * moteSize * 1.35,
+                moteY - dy * moteSize * 1.35,
+                moteX - normalX * moteSize * 0.5,
+                moteY - normalY * moteSize * 0.5,
+              ],
+              true,
+            )
+            .fill({ color: profile.coreColor, alpha: coreAlpha })
+
+          if (
+            (presentation.awakened || presentation.rank >= 3) &&
+            mote === motes - 1
+          ) {
+            const shardX = moteX - dx * moteSize * 2.8 - normalX * lateralDrift * 0.35
+            const shardY = moteY - dy * moteSize * 2.8 - normalY * lateralDrift * 0.35
+            graphics
+              .poly(
+                [
+                  shardX + dx * moteSize * 1.35,
+                  shardY + dy * moteSize * 1.35,
+                  shardX + normalX * moteSize * 0.42,
+                  shardY + normalY * moteSize * 0.42,
+                  shardX - dx * moteSize,
+                  shardY - dy * moteSize,
+                  shardX - normalX * moteSize * 0.42,
+                  shardY - normalY * moteSize * 0.42,
+                ],
+                true,
+              )
+              .fill({
+                color: profile.secondaryColor,
+                alpha: Math.min(0.34, 0.2 * energy * fade),
+              })
+          }
         }
+
+        const glintPulse = 0.72 + Math.sin(phase * 1.28) * 0.28
+        const glintSize =
+          (1.7 + Math.min(5, presentation.rank) * 0.12) * geometryScale
+        graphics
+          .ellipse(x, y, glintSize * 3.2, glintSize * 1.55)
+          .fill({
+            color: profile.glowColor,
+            alpha: Math.min(0.14, 0.095 * energy * glintPulse),
+          })
+        graphics
+          .poly(
+            [
+              x + dx * glintSize * 2.1,
+              y + dy * glintSize * 2.1,
+              x + normalX * glintSize * 0.62,
+              y + normalY * glintSize * 0.62,
+              x - dx * glintSize * 1.45,
+              y - dy * glintSize * 1.45,
+              x - normalX * glintSize * 0.62,
+              y - normalY * glintSize * 0.62,
+            ],
+            true,
+          )
+          .fill({
+            color: profile.coreColor,
+            alpha: Math.min(0.56, 0.44 * energy * glintPulse),
+          })
         break
       }
       case 'cathedral-branches': {
@@ -10078,6 +10396,13 @@ class NighttraceRuntime {
       width,
       profile,
     )
+
+    if (
+      projectile.weaponId === 'crescent-array' &&
+      this.crescentMoonbladeFrames.length > 0
+    ) {
+      return
+    }
 
     if (projectile.weaponId === 'rift-seeds') {
       const pulse = 1 + Math.sin(this.motionClock * 8 + projectile.visualSeed) * 0.08

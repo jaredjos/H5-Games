@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "generationId": "cadence-review-v3",
+  "source": {
+    "description": "Accepted live Nighttrace campaign narration, with v2 delivery diagnostics used only to correct pause shape",
+    "clipCount": 74,
+    "manifestSha256": "723bdc3ae162c60d2c21162915a453372dcebe419da791aa66de1dd95253af75"
+  },
+  "speakers": {
+    "Last Star": {
+      "sampleCount": 32,
+      "medianWpm": 140.5,
+      "targetWpm": [135.1, 165.9],
+      "acceptanceWpm": [135.1, 165.9],
+      "promptDirection": "Match the accepted Last Star: a poised young luminous woman, emotionally alive and conversational. Shape the feeling through vocal colour and emphasis, not long empty pauses. Her accepted delivery normally keeps one thought moving with two short meaningful breaths."
+    },
+    "Bearer": {
+      "sampleCount": 34,
+      "medianWpm": 154.4,
+      "targetWpm": [141.2, 173.3],
+      "acceptanceWpm": [141.2, 173.3],
+      "promptDirection": "Match the accepted Bearer: a young adult male warrior with grounded warmth, controlled emotion, full-value words, and decisive endings. Never machine-gun the line and never insert trailer pauses."
+    },
+    "Sun-Eater": {
+      "sampleCount": 5,
+      "medianWpm": 110.1,
+      "targetWpm": [104.2, 118.5],
+      "acceptanceWpm": [104.2, 118.5],
+      "promptDirection": "Match the accepted Sun-Eater: an ancient masculine void, heavy and damaged but continuously intelligible. Carry menace in timbre and stress, not in repeated gaps, growls, or drawn-out silence."
+    }
+  },
+  "lineDurationTargetsMs": {
+    "intro-star-01": [4890, 5960],
+    "intro-star-02": [5610, 6850],
+    "finale-star-03": [4520, 5510],
+    "finale-sun-eater-01": [4720, 5350],
+    "finale-star-04": [3440, 4180],
+    "finale-sun-eater-02": [4720, 5350],
+    "finale-star-05": [2350, 2850],
+    "finale-bearer-03": [1570, 1890],
+    "finale-bearer-04": [2610, 3160],
+    "finale-sun-eater-03": [5220, 5920]
+  },
+  "directionOverrides": {
+    "intro-star-01": "Speak as an intimate remembrance to one newly awakened person. Let daylight carry tender loss in a single flowing thought. Use only a light comma breath and one short sentence break; keep From beacon to beacon connected and warm.",
+    "intro-star-02": "Begin with warm certainty that hardens into remembered dread. Give could not destroy that light firm conviction, use one brief sentence beat, then reveal the closing horizon in one controlled flow. No extended suspense silence.",
+    "finale-star-03": "A free, certain choice in the quiet after victory turns into sudden awareness. Let one small hesitation live at the comma, then complete the warning with contained urgency. Measured, expressive, and not clipped.",
+    "finale-sun-eater-01": "Wounded certainty from a Crown-bound remnant. Strike You broke my body cleanly, take one compact beat at the period, then deliver the hunger is not flesh as an unbroken threat. No other gaps.",
+    "finale-star-04": "Immediate recognition of a dangerous afterimage. Give only its echo and the Crown distinct weight while keeping the sentence measured and connected; one natural comma breath, no snap delivery.",
+    "finale-sun-eater-02": "Compact defiance from a disintegrating remnant. Use one short comma breath after god, then drive every road still ends in me continuously to a hard finish. Do not linger between words.",
+    "finale-star-05": "A concise strategic realization arriving through fear. Speak all six words at full value, with quiet pressure on inward; urgent but not snapped, and without inserting silence.",
+    "finale-bearer-03": "Absolute calm as the solution becomes obvious. Give each of the four words full value and land turn with certainty. One measured phrase, neither rushed nor padded.",
+    "finale-bearer-04": "A forceful battle command. Keep the three fragments on one rising breath with only tiny punctuation catches: Ten memories; One closed line; then strike Outward, now. No dramatic gaps.",
+    "finale-sun-eater-03": "Horrified recognition from a collapsing remnant. Let No land, take one short beat, then carry There is no mouth left to hold the dawn as one continuous dying realization. Finish on dawn without trailing silence."
+  }
+}

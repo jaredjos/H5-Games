@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.23.1'
+const CACHE_VERSION = 'v1.23.2'
 const CINEMATIC_VOICE_REVISION = 'a23257d06b5fab73'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
@@ -54,6 +54,10 @@ const SHELL_URLS = [
   new URL('assets/spell-vfx/comet-orbit-v1-mobile.webp', SCOPE_URL).href,
   new URL('assets/spell-vfx/cinderwake-reaver-v1.webp', SCOPE_URL).href,
   new URL('assets/spell-vfx/cinderwake-reaver-v1-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/crescent-moonblade-v1.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/crescent-moonblade-v1-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/arc-choir-impact-v1.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/arc-choir-impact-v1-mobile.webp', SCOPE_URL).href,
 ]
 
 function isCacheable(response) {

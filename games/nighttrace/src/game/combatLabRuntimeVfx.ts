@@ -46,6 +46,7 @@ const TARGET_IDS = new Set<WeaponId>(COMBAT_LAB_RUNTIME_VFX_IDS)
 // These authored Lab treatments have graduated into the shipped modes. The
 // internal weapon ids stay stable so existing saves remain compatible.
 const LIVE_AUTHORED_IDS = new Set<WeaponId>([
+  'crescent-array',
   'arc-choir',
   'rift-seeds',
   'comet-swarm',
@@ -116,9 +117,10 @@ export function isCombatLabRuntimeVfxId(
 }
 
 /**
- * Gives the launched Combat Lab its authored presentation layer. Arc Choir,
- * Astral Verdict and Cinderwake Reavers have also graduated into Campaign and Boss
- * Trials; the remaining Lab experiments still cannot leak into shipped modes.
+ * Gives the launched Combat Lab its authored presentation layer. Crescent Array,
+ * Arc Choir, Astral Verdict and Cinderwake Reavers have also graduated into
+ * Campaign and Boss Trials; the remaining Lab experiments still cannot leak
+ * into shipped modes.
  */
 export function resolveCombatLabRuntimeVfx(
   mode: RunMode,

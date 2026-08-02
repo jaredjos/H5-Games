@@ -127,8 +127,9 @@ describe('launched Combat Lab runtime spell presentation', () => {
     }
   })
 
-  it('promotes the four approved authored identities outside Combat Lab', () => {
+  it('promotes the five approved authored identities outside Combat Lab', () => {
     const promotedIds: readonly WeaponId[] = [
+      'crescent-array',
       'arc-choir',
       'rift-seeds',
       'comet-swarm',
@@ -182,10 +183,7 @@ describe('launched Combat Lab runtime spell presentation', () => {
   })
 
   it('keeps the remaining Lab experiments isolated from shipped modes', () => {
-    const labOnlyIds: readonly WeaponId[] = [
-      'helio-lance',
-      'crescent-array',
-    ]
+    const labOnlyIds: readonly WeaponId[] = ['helio-lance']
     for (const mode of ['campaign', 'boss-trial'] as const) {
       for (const weaponId of labOnlyIds) {
         const state = resolveWeaponVfxState(4, 2, false)

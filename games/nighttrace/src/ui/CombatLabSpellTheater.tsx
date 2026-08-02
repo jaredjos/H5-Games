@@ -130,8 +130,13 @@ function HelioLanceEffect({ density, awakened }: { density: number; awakened: bo
 
 function CrescentArrayEffect({ density, awakened }: { density: number; awakened: boolean }) {
   const count = Math.max(2, density * 2 + (awakened ? 4 : 0))
+  const sheetUrl = appAssetUrl('assets/spell-vfx/crescent-moonblade-v1.webp')
   return (
-    <div className="spell-theater-effect spell-theater-effect--crescent" aria-hidden="true">
+    <div
+      className="spell-theater-effect spell-theater-effect--crescent"
+      aria-hidden="true"
+      style={{ '--crescent-sheet': `url("${sheetUrl}")` } as CSSProperties}
+    >
       {Array.from({ length: count }, (_, index) => (
         <i
           className="spell-theater-crescent"
@@ -153,8 +158,13 @@ function ArcChoirEffect({ density, awakened }: { density: number; awakened: bool
     ? Math.min(4, Math.max(3, 1 + Math.ceil(density / 2)))
     : Math.min(ARC_POSITIONS.length, Math.max(2, density + 1))
   const arcCount = awakened ? 2 : Math.max(1, count - 1)
+  const impactSheetUrl = appAssetUrl('assets/spell-vfx/arc-choir-impact-v1.webp')
   return (
-    <div className="spell-theater-effect spell-theater-effect--choir" aria-hidden="true">
+    <div
+      className="spell-theater-effect spell-theater-effect--choir"
+      aria-hidden="true"
+      style={{ '--arc-impact-sheet': `url("${impactSheetUrl}")` } as CSSProperties}
+    >
       {ARC_POSITIONS.slice(0, count).map(([left, top], index) => (
         <span
           className="spell-theater-choir-node"
@@ -207,8 +217,13 @@ function AstralVerdictEffect({ density, awakened }: { density: number; awakened:
 
 function CometSwarmEffect({ density, awakened }: { density: number; awakened: boolean }) {
   const count = Math.max(1, density + (awakened ? 3 : 0))
+  const sheetUrl = appAssetUrl('assets/spell-vfx/comet-orbit-v1.webp')
   return (
-    <div className="spell-theater-effect spell-theater-effect--comet" aria-hidden="true">
+    <div
+      className="spell-theater-effect spell-theater-effect--comet"
+      aria-hidden="true"
+      style={{ '--comet-sheet': `url("${sheetUrl}")` } as CSSProperties}
+    >
       {Array.from({ length: count }, (_, index) => (
         <span
           className="spell-theater-comet"

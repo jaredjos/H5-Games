@@ -24,8 +24,8 @@ describe('Nighttrace PWA delivery', () => {
     expect(navigationSource).not.toContain('if (installedIndex) return installedIndex')
   })
 
-  it('uses the v1.23.1 cache namespace and precaches title and cinematic art', () => {
-    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.23.1'")
+  it('uses the v1.23.2 cache namespace and precaches title and cinematic art', () => {
+    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.23.2'")
     expect(serviceWorkerSource).toContain(
       "new URL('assets/nighttrace-title-hero-v2.png', SCOPE_URL).href",
     )
@@ -42,6 +42,10 @@ describe('Nighttrace PWA delivery', () => {
       'comet-orbit-v1-mobile.webp',
       'cinderwake-reaver-v1.webp',
       'cinderwake-reaver-v1-mobile.webp',
+      'crescent-moonblade-v1.webp',
+      'crescent-moonblade-v1-mobile.webp',
+      'arc-choir-impact-v1.webp',
+      'arc-choir-impact-v1-mobile.webp',
     ]) {
       expect(serviceWorkerSource).toContain(
         `new URL('assets/spell-vfx/${atlas}', SCOPE_URL).href`,
@@ -117,7 +121,7 @@ describe('Nighttrace PWA delivery', () => {
 
     expect(reload).toHaveBeenCalledTimes(1)
     expect(storage.setItem).toHaveBeenCalledWith(
-      'nighttrace:pwa-controller-reload:v1.23.1',
+      'nighttrace:pwa-controller-reload:v1.23.2',
       '1',
     )
   })

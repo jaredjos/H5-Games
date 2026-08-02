@@ -44,7 +44,7 @@ jobs:
         working-directory: games/nighttrace
         run: pnpm install --frozen-lockfile
 
-      - name: Test, lint, and build stable v1.23.1
+      - name: Test, lint, and build stable v1.23.2
         working-directory: games/nighttrace
         run: |
           pnpm test

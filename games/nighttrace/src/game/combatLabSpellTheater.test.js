@@ -56,4 +56,27 @@ describe('Combat Lab spell review theater', () => {
     expect(stylesSource).toContain('@keyframes spell-theater-reaver-hunt-alpha')
     expect(stylesSource).toContain('@keyframes spell-theater-reaver-hunt-delta')
   })
+
+  it('previews authored Crescent blades and Arc impacts instead of CSS line substitutes', () => {
+    expect(theaterSource).toContain('assets/spell-vfx/crescent-moonblade-v1.webp')
+    expect(theaterSource).toContain('assets/spell-vfx/arc-choir-impact-v1.webp')
+    expect(theaterSource).toContain("'--crescent-sheet'")
+    expect(theaterSource).toContain("'--arc-impact-sheet'")
+    const crescentStart = stylesSource.indexOf('.spell-theater-crescent {')
+    const crescentEnd = stylesSource.indexOf('.spell-theater-moonmist', crescentStart)
+    const crescentStyles = stylesSource.slice(crescentStart, crescentEnd)
+    expect(crescentStyles).toContain('background-image: var(--crescent-sheet)')
+    expect(crescentStyles).not.toContain('border-right')
+    expect(stylesSource).toContain('background-image: var(--arc-impact-sheet)')
+    expect(stylesSource).toContain('@keyframes spell-theater-atlas-4x4')
+  })
+
+  it('previews authored Comet stones with a bright molten corona and compact wake', () => {
+    expect(theaterSource).toContain('assets/spell-vfx/comet-orbit-v1.webp')
+    expect(theaterSource).toContain("'--comet-sheet'")
+    expect(stylesSource).toContain('background-image: var(--comet-sheet)')
+    expect(stylesSource).toContain('@keyframes spell-theater-comet-corona')
+    expect(stylesSource).toContain('rgba(255, 104, 16, .95)')
+    expect(stylesSource).toContain('#ff6710 72%')
+  })
 })

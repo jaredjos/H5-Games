@@ -6,6 +6,7 @@ coverage/
 .pnpm-store/
 playwright-report/
 test-results/
+games/nighttrace/.cinematic-voice-batch/
 
 *.log
 *.zip
