@@ -16,6 +16,7 @@ export function cinematicVoiceWindowMs(line) {
 
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const HASH_PATTERN = /^[a-f0-9]{64}$/
+const DELIVERY_PROFILES = new Set(['standard', 'spacious'])
 
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex')
@@ -30,6 +31,7 @@ function normalizedPlanEntry(entry) {
     voiceName: entry.voiceName,
     maximumMs: entry.maximumMs,
     direction: entry.direction.trim().normalize('NFC'),
+    ...(entry.delivery ? { delivery: entry.delivery } : {}),
   }
 }
 
@@ -70,6 +72,9 @@ export function validateCinematicVoicePlan(value) {
     }
     if (typeof entry.direction !== 'string' || entry.direction.trim().length < 12) {
       throw new Error(`Missing performance direction for ${entry.id}.`)
+    }
+    if (entry.delivery !== undefined && !DELIVERY_PROFILES.has(entry.delivery)) {
+      throw new Error(`Invalid delivery profile for ${entry.id}.`)
     }
 
     const assignedVoice = voiceBySpeaker.get(entry.speaker)

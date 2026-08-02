@@ -37,6 +37,7 @@ import type {
   UpgradeOption,
   WeaponDefinition,
 } from '../shared/types'
+import { hasUnlimitedVitality } from '../game/combatLabProtocol'
 import { CrestButton, OrnamentRule, PanelFrame, RankPips, StarMark, WeaponGlyph } from './Primitives'
 
 function clampPercent(value: number, max: number) {
@@ -115,14 +116,14 @@ const moduleStatLines: Record<ModuleId, string> = {
   'grav-anchor': 'FIELD +12%  ·  HOLD +0.12s',
   'guidance-filament': 'HOMING +0.8  ·  SPEED +35',
   'thermal-mantle': 'DAMAGE +10%  ·  CLUSTER REACH +14',
-  'flux-mirror': 'PIERCE +1  ·  DAMAGE +8%',
+  'flux-mirror': 'FIELDS +1  ·  RADIUS +6',
   'deep-capacitor': 'DAMAGE +13%  ·  PREDICTION +0.04s',
 }
 
 const traceStatLines: Record<TraceModId, string> = {
   'closed-circuit': 'LOOP DAMAGE +35%',
   afterimage: 'TRACE MEMORY EXTENDED',
-  crossfire: 'MIRROR VOLLEY  ·  EVERY 4TH',
+  crossfire: 'ECHO CAST  ·  EVERY 4TH',
   nightglass: 'CRIT 6%  ·  CRIT DAMAGE +75%',
   faultline: 'FRACTURE 18%  ·  THRESHOLD 45',
   sunblood: 'HEAL 3.5%  ·  EVERY 20 KILLS',
@@ -286,7 +287,12 @@ function VitalityHud({
   snapshot: GameSnapshot
   reducedMotion: boolean
 }) {
-  const hasNoVitalityLimit = snapshot.runMode === 'combat-lab'
+  const hasNoVitalityLimit = hasUnlimitedVitality(
+    snapshot.runMode,
+    snapshot.invincible,
+  )
+  const isMortalCombatLab =
+    snapshot.runMode === 'combat-lab' && !snapshot.invincible
   const previousVitality = useRef({
     hp: snapshot.hp,
     shield: snapshot.shield,
@@ -329,14 +335,14 @@ function VitalityHud({
       <div className="vitality-bars">
         <div className="health-line">
           <span style={{ width: hasNoVitalityLimit ? '100%' : `${clampPercent(snapshot.hp, snapshot.maxHp)}%` }} />
-          <strong>{hasNoVitalityLimit ? '∞ VITALITY' : `${Math.ceil(snapshot.hp)} / ${snapshot.maxHp}`}</strong>
+          <strong>{hasNoVitalityLimit ? '∞ VITALITY' : `${Math.ceil(snapshot.hp)} / ${snapshot.maxHp}${isMortalCombatLab ? ' HP' : ''}`}</strong>
         </div>
         <div className="shield-line">
           <Shield size={14} />
           <span>
             <i style={{ width: hasNoVitalityLimit ? '100%' : `${clampPercent(snapshot.shield, snapshot.maxShield)}%` }} />
           </span>
-          <strong>{hasNoVitalityLimit ? 'NO LIMIT' : `${Math.ceil(snapshot.shield)} / ${snapshot.maxShield}`}</strong>
+          <strong>{hasNoVitalityLimit ? 'NO LIMIT' : `${Math.ceil(snapshot.shield)} / ${snapshot.maxShield}${isMortalCombatLab ? ' ARMOR' : ''}`}</strong>
         </div>
       </div>
     </div>
@@ -589,7 +595,9 @@ export function GameHud({
   const objectiveDetail = isCampaign
     ? 'Hold the light'
     : isCombatLab
-      ? 'No-limit calibration'
+      ? snapshot.invincible
+        ? 'No-limit calibration'
+        : 'Mortal calibration'
       : snapshot.boss?.name ?? level.bossName
 
   return (
@@ -597,7 +605,7 @@ export function GameHud({
       <div className="xp-rail">
         <span>{isCampaign ? 'XP' : isCombatLab ? 'LAB' : 'TRIAL'}</span>
         <i><b style={{ width: `${isCampaign ? xpPercent : 100}%` }} /></i>
-        <strong>{isCampaign ? `Lv. ${snapshot.level}` : isCombatLab ? 'No limits' : 'Sovereign'}</strong>
+        <strong>{isCampaign ? `Lv. ${snapshot.level}` : isCombatLab ? snapshot.invincible ? 'No limits' : 'Damage active' : 'Sovereign'}</strong>
       </div>
       <VitalityHud snapshot={snapshot} reducedMotion={settings.reducedShake} />
       <div className="timer-hud">

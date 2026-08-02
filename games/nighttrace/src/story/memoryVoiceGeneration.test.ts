@@ -78,6 +78,13 @@ describe('Unified campaign narration generation handoff', () => {
     expect(generatorSource).toContain('reusableClip(line, priorClipById.get(line.id))')
     expect(generatorSource).toContain('await writeCheckpoint(plan, clipById)')
     expect(generatorSource).toContain('const maximumRequestRetries = 4')
+    expect(generatorSource).toContain(
+      'const rateLimitRetryDelaysMs = Object.freeze([60_000, 120_000, 300_000, 600_000])',
+    )
+    expect(generatorSource).toContain('response?.status === 429')
+    expect(generatorSource).toContain('responseBody.match(')
+    expect(generatorSource).toContain("line.delivery === 'spacious'")
+    expect(generatorSource).toContain('Use a spacious, intimate mythic cadence')
     expect(generatorSource).toContain('AbortSignal.timeout(requestTimeoutMs)')
     expect(generatorSource).toContain("response.status === 429 || response.status >= 500")
     expect(generatorSource).toContain('Completed WAVs remain reusable.')

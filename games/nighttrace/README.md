@@ -44,7 +44,8 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 
 - `v1.21.0` — combat-feedback and laboratory-control milestone: all cinematic runtime actor duplicates are retired, discontinuous trace seams are discarded, accepted damage flashes the Bearer crimson, every Sovereign receives a staged death before **Level Complete**, hostile specials expose an extra 0.20-second reaction window with stronger crimson/violet energy, and a priority-managed SFX suite differentiates every hero spell, Sovereign release, and elite release. Combat Lab adds a true invincibility toggle, Rank 0/empty-arena testing, universal **Spell Rank** language, and six laboratory-only Rank I–V/Awakened visual signatures while preserving campaign spell art. The Memory narration pipeline is independently timed, resumable, hash-verified, and subtitle-safe until its 22 local takes are generated.
 
-- `v1.22.0` — story-and-arsenal milestone: the Prologue, nine Memories, and Finale expand to 84 clearly attributed exchanges with expressive portraits, richer beat-level environments, and a resumable same-origin Google narration set with natural-delivery timing headroom and complete caption fallback. Arc Choir now keeps its authored violet/lavender identity in every mode, Mirror Bow becomes refracted cyan-violet paleglass, and Rift Seeds is replaced in name and presentation by **Astral Verdict**, a multi-target storm judgment cast remotely from the sky.
+- `v1.22.0` — story-and-arsenal milestone: the Prologue, nine Memories, and Finale expand to 84 clearly attributed exchanges with expressive portraits, richer beat-level environments, and a resumable same-origin Google narration set with natural-delivery timing headroom and complete caption fallback. Arc Choir now keeps its authored violet/lavender identity in every mode, **Veilglass Reliquary** replaces the former Mirror Bow presentation with sealed remote cluster-prisons that implode into paleglass shard blooms, and Rift Seeds is replaced in name and presentation by **Astral Verdict**, a multi-target storm judgment cast remotely from the sky.
+- `v1.23.0` — Combat Lab and spell-fidelity release: mortal calibration exposes real vitality/armor, Full Sector opens with 48 hostiles and releases its Sovereign at 60 seconds, Helio Lance returns to its v1.16.3-relative footprint, and Comet Swarm gains visibly distinct ranks through additional faster ember-orange orbiting stones. Astral Verdict now uses authored sky-lightning material instead of cartoon linework, the retired Veilglass prison becomes the spinning, edge-ricocheting **Cinderwake Reavers** with the same crimson/violet material profile in Theater and live Pixi combat, and every Trace point independently fades out at twelve seconds. Dawnward Aegis shares the Bearer's visible-body center for rendering and damage. Seventy-four narration clips ship locally; complete subtitles cover the ten Prologue/Finale clips awaiting a later Google quota refresh.
 
 ## Runtime guide and visual evidence
 
@@ -161,12 +162,15 @@ least one filament and one mote for every footprint even at the runtime's
 maximum warning populations. Reduced-flash mode keeps that coverage with lower
 emission and motion.
 
-Each weapon has a full four-stage visual identity. Helio Lance builds from
+Each weapon has a rank-distinct visual identity across Spell Ranks I–V plus its
+Awakened state (the archival capture sheets still use the older four-stage
+Solo / Combined / Mastered / Final labels). Helio Lance builds from
 a focused solar rail into a crowned spear gate; Crescent Array grows into an
-eclipsed orbit wheel; Arc Choir forms cathedral-like lightning geometry; Rift
-Seeds compress into dark singularities; Comet Swarm gains ember-rich curved
-wakes; Graveglass Spires fractures the floor beneath the densest remote cluster;
-Mirror Bow refracts through prismatic lanes; and Eclipse Harrow stages
+eclipsed orbit wheel; Arc Choir forms cathedral-like lightning geometry; Astral
+Verdict calls authored blue star-lightning onto enemy clusters; Comet Swarm adds
+faster ember stones across widening orbits; Graveglass Spires fractures the floor
+beneath the densest remote cluster; Cinderwake Reavers deploy spinning obsidian
+hunting glaives that pursue prey and ricochet from arena edges; and Eclipse Harrow stages
 nightglass execution gates across predicted enemy lanes. Graveglass scales
 through 2 / 3 / 4 / 6-spire branches and Harrow through 1 / 2 / 3 / 4-lane
 formations across Solo, Combined, Mastered, and Final. Neither follows the

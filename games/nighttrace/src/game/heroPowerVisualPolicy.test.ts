@@ -96,9 +96,7 @@ describe('all eight hero-power renderers', () => {
     ['Astral Verdict', "        case 'astral-verdict':", "        case 'comet-launch':"],
     ['Comet launch', "        case 'comet-launch':", "        case 'comet-impact':"],
     ['Comet impact', "        case 'comet-impact':", "        case 'graveglass-eruption':"],
-    ['Graveglass', "        case 'graveglass-eruption':", "        case 'mirror-gate':"],
-    ['Mirror gate', "        case 'mirror-gate':", "        case 'mirror-impact':"],
-    ['Mirror impact', "        case 'mirror-impact':", "        case 'eclipse-harrow':"],
+    ['Graveglass', "        case 'graveglass-eruption':", "        case 'eclipse-harrow':"],
     [
       'Eclipse Harrow',
       "        case 'eclipse-harrow':",
@@ -117,11 +115,6 @@ describe('all eight hero-power renderers', () => {
     [
       'Astral Verdict legacy projectile fallback',
       "    if (projectile.weaponId === 'rift-seeds')",
-      "    if (projectile.weaponId === 'mirror-bow')",
-    ],
-    [
-      'Mirror projectile',
-      "    if (projectile.weaponId === 'mirror-bow')",
       '    const trailPoints: Vec2[] = []',
     ],
     [
@@ -178,7 +171,7 @@ describe('all eight hero-power renderers', () => {
     ['Astral Verdict legacy texture', "    create('rift-seeds'", "    create('comet-swarm'"],
     ['Comet texture', "    create('comet-swarm'", "    create('ash-halo'"],
     ['Graveglass texture', "    create('ash-halo'", "    create('mirror-bow'"],
-    ['Mirror texture', "    create('mirror-bow'", "    create('null-bell'"],
+    ['Cinderwake fallback texture', "    create('mirror-bow'", "    create('null-bell'"],
     ['Eclipse texture', "    create('null-bell'", '    const spark = new Graphics()'],
   ] as const
 
@@ -194,6 +187,14 @@ describe('all eight hero-power renderers', () => {
     expect(effects).not.toContain('this.ringGraphics')
     expect(effects).not.toContain('this.loopGraphics.stroke')
     expectPolicyClean('generic effects layer', effects)
+  })
+
+  it('keeps Cinderwake as a persistent authored projectile with no retired prison event', () => {
+    expect(runtimeSource).toContain('private armCinderwakeReavers(')
+    expect(runtimeSource).toContain('private drawPersistentSpellActors(')
+    expect(runtimeSource).toContain('this.cinderwakeReaverFrames')
+    expect(runtimeSource).not.toContain('private castVeilglassReliquary(')
+    expect(runtimeSource).not.toContain("kind: 'veilglass-reliquary'")
   })
 })
 

@@ -20,7 +20,9 @@ const SHOWCASE_CAPTURE_SECONDS: Readonly<Record<WeaponId, number>> = Object.free
   'helio-lance': 1.02,
   'crescent-array': 1.02,
   'arc-choir': 0.96,
-  'rift-seeds': 1.5,
+  // Freeze while the authored sky-strike body is fully released, rather than
+  // after its material sequence has already faded from the scene.
+  'rift-seeds': 1.04,
   'comet-swarm': 1.12,
   'ash-halo': 0.9,
   'mirror-bow': 1.08,

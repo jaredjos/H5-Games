@@ -24,13 +24,26 @@ const sampleRate = 24_000
 const requestSpacingMs = 7_000
 const requestTimeoutMs = 75_000
 const maximumRequestRetries = 4
+const rateLimitRetryDelaysMs = Object.freeze([60_000, 120_000, 300_000, 600_000])
 const fileReplaceRetries = 8
 
-const paceDirections = [
+const standardPaceDirections = [
   'Use a confident conversational pace with compact natural pauses.',
   'Use a brisk cinematic cadence around 175 words per minute. Keep punctuation pauses under 120 milliseconds and do not draw out words.',
   'Use a very brisk but fully intelligible cinematic cadence around 195 words per minute. Keep punctuation pauses under 60 milliseconds, avoid drawn-out consonants or breath gaps, and finish decisively.',
 ]
+
+const spaciousPaceDirections = [
+  'Use a spacious, intimate mythic cadence with deliberate breath and natural silence. Let each emotional image land; never rush.',
+  'Use an expressive cinematic cadence around 145 words per minute. Preserve one clear reflective pause, but tighten silence that does not serve the thought.',
+  'Use a measured but compact cinematic cadence around 165 words per minute. Preserve emotional emphasis while completing the line cleanly.',
+]
+
+function deliveryPaceDirections(line) {
+  return line.delivery === 'spacious'
+    ? spaciousPaceDirections
+    : standardPaceDirections
+}
 
 function usage() {
   return [
@@ -151,8 +164,8 @@ async function replaceGeneratedFile(destination, contents) {
   }
 }
 
-function retryDelayMs(response, retryIndex) {
-  const maximumWaitMs = 90_000
+function retryDelayMs(response, retryIndex, responseBody = '') {
+  const maximumWaitMs = 15 * 60_000
   const retryAfter = response?.headers?.get('retry-after')?.trim()
   if (retryAfter) {
     const seconds = Number(retryAfter)
@@ -163,6 +176,17 @@ function retryDelayMs(response, retryIndex) {
     if (Number.isFinite(retryAt)) {
       return Math.min(maximumWaitMs, Math.max(1_000, retryAt - Date.now()))
     }
+  }
+  const bodyDelay = responseBody.match(
+    /(?:retryDelay\s*[":=]+\s*"?|retry\s+in\s+)([0-9]+(?:\.[0-9]+)?)s/i,
+  )
+  if (bodyDelay) {
+    return Math.min(maximumWaitMs, Math.ceil(Number(bodyDelay[1]) * 1_000))
+  }
+  if (response?.status === 429) {
+    return rateLimitRetryDelaysMs[
+      Math.min(retryIndex, rateLimitRetryDelaysMs.length - 1)
+    ]
   }
   return Math.min(maximumWaitMs, 5_000 * 2 ** retryIndex)
 }
@@ -199,7 +223,7 @@ async function requestGoogleSpeech(line, performanceAttempt, ordinal, total, api
                   {
                     text: [
                       line.direction,
-                      paceDirections[performanceAttempt],
+                      deliveryPaceDirections(line)[performanceAttempt],
                       'Deliver natural cinematic speech with clear neutral English.',
                       'Do not add, omit, paraphrase, sing, whisper, or produce sound effects.',
                       `Finish comfortably within ${(cinematicVoiceWindowMs(line) / 1_000).toFixed(1)} seconds.`,
@@ -252,7 +276,7 @@ async function requestGoogleSpeech(line, performanceAttempt, ordinal, total, api
         `Google speech generation failed for ${line.id}: ${response.status} ${responseBody.slice(0, 240)}`,
       )
     }
-    const waitMs = retryDelayMs(response, retryIndex)
+    const waitMs = retryDelayMs(response, retryIndex, responseBody)
     console.warn(
       `${line.id}: Google is temporarily unavailable or rate-limited; retrying in ${Math.ceil(waitMs / 1_000)}s. Completed WAVs remain reusable.`,
     )
@@ -317,6 +341,7 @@ async function renderLine(line, ordinal, total, apiKey) {
   let pcm
   let durationMs = Number.POSITIVE_INFINITY
   const voiceWindowMs = cinematicVoiceWindowMs(line)
+  const paceDirections = deliveryPaceDirections(line)
   for (let attempt = 0; attempt < paceDirections.length; attempt += 1) {
     pcm = await requestGoogleSpeech(line, attempt, ordinal, total, apiKey)
     durationMs = Math.round((pcm.length / (sampleRate * 2)) * 1_000)

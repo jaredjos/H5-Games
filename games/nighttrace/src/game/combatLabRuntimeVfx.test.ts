@@ -54,7 +54,7 @@ describe('launched Combat Lab runtime spell presentation', () => {
     }
   })
 
-  it('materially separates Astral Verdict and Mirror Bow visual motifs', () => {
+  it('materially separates Astral Verdict and Cinderwake Reavers visual motifs', () => {
     const state = resolveWeaponVfxState(5, 3, true)
     const rift = resolveCombatLabRuntimeVfx(
       'combat-lab',
@@ -70,14 +70,68 @@ describe('launched Combat Lab runtime spell presentation', () => {
     )
 
     expect(rift.motif).toBe('astral-verdict')
-    expect(mirror.motif).toBe('prismatic-fletching')
+    expect(mirror.motif).toBe('cinderwake-reavers')
     expect(rift.profile).not.toEqual(mirror.profile)
   })
 
-  it('promotes the three approved authored identities outside Combat Lab', () => {
+  it('keeps Helio and Comet at their v1.16 projectile scale budget', () => {
+    const state = resolveWeaponVfxState(5, 3, true)
+    for (const weaponId of ['helio-lance', 'comet-swarm'] as const) {
+      const base = weaponVfxProfile(weaponId, state)
+      const presentation = resolveCombatLabRuntimeVfx(
+        'combat-lab',
+        weaponId,
+        state,
+        base,
+      )
+      expect(presentation.profile.projectileScale).toBe(base.projectileScale)
+      expect(presentation.profile.trailLengthScale).toBe(base.trailLengthScale)
+      expect(presentation.profile.trailWidthScale).toBe(base.trailWidthScale)
+      expect(presentation.geometryScale).toBeLessThanOrEqual(0.72)
+    }
+  })
+
+  it('keeps Awakened Comet warm orange and Astral Verdict entirely blue', () => {
+    const state = resolveWeaponVfxState(5, 3, true)
+    const comet = resolveCombatLabRuntimeVfx(
+      'combat-lab',
+      'comet-swarm',
+      state,
+      weaponVfxProfile('comet-swarm', state),
+    )
+    for (const color of [
+      comet.profile.coreColor,
+      comet.profile.glowColor,
+      comet.profile.accentColor,
+      comet.profile.secondaryColor,
+    ]) {
+      const { red, green, blue } = rgb(color)
+      expect(red).toBeGreaterThan(green)
+      expect(green).toBeGreaterThan(blue)
+    }
+
+    const verdict = resolveCombatLabRuntimeVfx(
+      'combat-lab',
+      'rift-seeds',
+      state,
+      weaponVfxProfile('rift-seeds', state),
+    )
+    for (const color of [
+      verdict.profile.coreColor,
+      verdict.profile.glowColor,
+      verdict.profile.accentColor,
+      verdict.profile.secondaryColor,
+    ]) {
+      const { red, blue } = rgb(color)
+      expect(blue).toBeGreaterThanOrEqual(red)
+    }
+  })
+
+  it('promotes the four approved authored identities outside Combat Lab', () => {
     const promotedIds: readonly WeaponId[] = [
       'arc-choir',
       'rift-seeds',
+      'comet-swarm',
       'mirror-bow',
     ]
     for (const mode of ['campaign', 'boss-trial'] as const) {
@@ -123,6 +177,7 @@ describe('launched Combat Lab runtime spell presentation', () => {
         const core = rgb(presentation.profile.coreColor)
         expect(Math.min(core.red, core.green, core.blue)).toBeGreaterThanOrEqual(0xe8)
       }
+      if (state.awakened) expect(presentations[0].laneCount).toBeLessThanOrEqual(2)
     }
   })
 
@@ -130,7 +185,6 @@ describe('launched Combat Lab runtime spell presentation', () => {
     const labOnlyIds: readonly WeaponId[] = [
       'helio-lance',
       'crescent-array',
-      'comet-swarm',
     ]
     for (const mode of ['campaign', 'boss-trial'] as const) {
       for (const weaponId of labOnlyIds) {
