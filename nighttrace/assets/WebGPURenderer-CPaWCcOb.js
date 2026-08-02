@@ -1,0 +1,1 @@
+import{n as e}from"./GameCanvas-2wqbMBgV.js";export{e as WebGPURenderer};
