@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { appAssetUrl } from '../assetUrl'
+import { INTERNAL_MODES_ENABLED, isScreenAvailable } from '../buildFeatures'
 import type { ModuleId, ScreenId, WeaponId } from '../shared/types'
 
 type ShellScreenId = Exclude<ScreenId, 'title' | 'cinematic' | 'game' | 'results'>
@@ -95,6 +96,9 @@ const NAV_ITEMS: Array<{ id: ShellScreenId; label: string }> = [
   { id: 'settings', label: 'Settings' },
 ]
 
+const VISIBLE_NAV_ITEMS = NAV_ITEMS.filter((item) =>
+  isScreenAvailable(item.id, INTERNAL_MODES_ENABLED))
+
 export function AppHeader({
   active,
   dawnShards,
@@ -111,7 +115,7 @@ export function AppHeader({
         <span className="sr-only">NIGHTTRACE</span>
       </button>
       <nav className="primary-nav" aria-label="Main navigation">
-        {NAV_ITEMS.map((item) => (
+        {VISIBLE_NAV_ITEMS.map((item) => (
           <button
             key={item.id}
             className={active === item.id ? 'is-active' : ''}

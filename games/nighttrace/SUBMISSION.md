@@ -2,7 +2,7 @@
 
 ## Shipping target
 
-NIGHTTRACE v1.23.2 is an installable mobile web app suitable for HTTPS static
+NIGHTTRACE v1.24.0 is an installable, campaign-only mobile web app suitable for HTTPS static
 hosting and Add to Home Screen on current Android and iOS browsers. Menus remain
 usable in portrait; combat is landscape-first and pauses behind an accessible
 rotate gate when required. It supports safe-area insets, 44 px minimum touch
@@ -63,11 +63,13 @@ or remote backend. Campaign progress and settings are stored locally under
   layers use boss-entry crossfades, lifecycle-safe pause/resume, and procedural
   fallback; cinematic audio is primed by the initiating player gesture and the
   visual sequence follows the playable audio clock without a startup delay
-- Public modes: Combat Lab validated with arbitrary arena/boss/loadout
-  selection, infinite vitality, all eleven story scenes, and the Lab-only
-  Dawnward Aegis prototype at ranks I–V plus Awakened; Boss Trials validated
-  with sequential locks, curated builds, boss-only start gates, and isolated
-  save progression
+- Distribution boundary: the submitted public artifact exposes only Campaign;
+  Boss Trials and Combat Lab are absent from public title actions, shell
+  navigation, launch paths, and screen resolution
+- Internal QA build: arbitrary arena/boss/loadout selection, finite or infinite
+  vitality, all eleven story scenes, Dawnward Aegis ranks I–V plus Awakened,
+  and the sequential Boss Trials ladder remain available only in the separate
+  no-index internal artifact and are excluded from this submission
 - Dialogue: each story beat supports an expressive speaker portrait beside its
   caption while preserving mobile-landscape readability and accessible controls
 - Damage readability: source-aware hero hit reactions distinguish hostile

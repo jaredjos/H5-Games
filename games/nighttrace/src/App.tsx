@@ -82,6 +82,12 @@ import {
   shouldRecordCinematicSeen,
   type CinematicProgressReturnScreen,
 } from './story/cinematicProgress'
+import {
+  INTERNAL_MODES_ENABLED,
+  RELEASE_CHANNEL,
+  isRunModeAvailable,
+  releaseSafeScreen,
+} from './buildFeatures'
 
 const WEAPON_LIST = Object.values(WEAPONS) as WeaponDefinition[]
 const MODULE_LIST = Object.values(MODULES) as ModuleDefinition[]
@@ -260,7 +266,7 @@ export default function App() {
   }, [announce, save.settings, updateSettings])
 
   const navigate = useCallback((destination: ShellScreen) => {
-    setScreen(destination)
+    setScreen(releaseSafeScreen(destination))
   }, [])
 
   const requestLandscapeMode = useCallback(async () => {
@@ -296,6 +302,7 @@ export default function App() {
     cinematicId: CinematicId,
     returnScreen: CinematicReturnScreen,
   ) => {
+    const safeReturnScreen = releaseSafeScreen(returnScreen)
     if (!getCinematic(cinematicId)) return
     void requestLandscapeMode()
     const sessionId = cinematicSessionRef.current + 1
@@ -303,7 +310,7 @@ export default function App() {
     completedCinematicSessionRef.current = null
     setActiveCinematicSessionId(sessionId)
     setActiveCinematicId(cinematicId)
-    setCinematicReturnScreen(returnScreen)
+    setCinematicReturnScreen(safeReturnScreen)
     setScreen('cinematic')
   }, [requestLandscapeMode])
 
@@ -330,7 +337,7 @@ export default function App() {
     }
 
     setActiveCinematicId(undefined)
-    setScreen(cinematicReturnScreen)
+    setScreen(releaseSafeScreen(cinematicReturnScreen))
   }, [
     activeCinematicId,
     activeCinematicSessionId,
@@ -361,6 +368,10 @@ export default function App() {
   ])
 
   const launchRun = useCallback((runConfig: RunConfig) => {
+    if (!isRunModeAvailable(runConfig.mode)) {
+      setScreen('campaign')
+      return
+    }
     void requestLandscapeMode()
     // React mounts Pixi after this click has returned. Arm the final encounter
     // tracks now so gameplay does not wait for the player's first movement.
@@ -398,13 +409,13 @@ export default function App() {
 
   const leaveGame = useCallback(() => {
     setSnapshot(undefined)
-    setScreen(
+    setScreen(releaseSafeScreen(
       activeRun.mode === 'combat-lab'
         ? 'combat-lab'
         : activeRun.mode === 'boss-trial'
           ? 'boss-trials'
           : 'campaign',
-    )
+    ))
   }, [activeRun.mode])
 
   const restartLevel = useCallback(() => {
@@ -651,10 +662,10 @@ export default function App() {
         reducedMotion={reducedMotion}
         muted={muted}
         onBegin={beginCampaign}
-        onBossTrials={() => setScreen('boss-trials')}
-        onCombatLab={() => setScreen('combat-lab')}
-        onCodex={() => setScreen('codex')}
-        onSettings={() => setScreen('settings')}
+        onBossTrials={() => navigate('boss-trials')}
+        onCombatLab={() => navigate('combat-lab')}
+        onCodex={() => navigate('codex')}
+        onSettings={() => navigate('settings')}
         onToggleMute={toggleMute}
       />
     )
@@ -671,7 +682,7 @@ export default function App() {
         masteryTargets={getMasteryTargets(selectedLevelId)}
       />
     )
-  } else if (screen === 'boss-trials') {
+  } else if (screen === 'boss-trials' && INTERNAL_MODES_ENABLED) {
     content = (
       <BossTrialsScreen
         save={save}
@@ -681,7 +692,7 @@ export default function App() {
         onNavigate={navigate}
       />
     )
-  } else if (screen === 'combat-lab') {
+  } else if (screen === 'combat-lab' && INTERNAL_MODES_ENABLED) {
     content = (
       <CombatLabScreen
         save={save}
@@ -855,13 +866,13 @@ export default function App() {
         nextGoal={nextGoal}
         earnedMastery={resultRewards.mastery}
         onReturn={() =>
-          setScreen(
+          setScreen(releaseSafeScreen(
             result.runMode === 'combat-lab'
               ? 'combat-lab'
               : result.runMode === 'boss-trial'
                 ? 'boss-trials'
                 : 'campaign',
-          )}
+          ))}
         onRetry={restartLevel}
         onNext={
           nextLevel
@@ -878,6 +889,7 @@ export default function App() {
 
   return (
     <div
+      data-release-channel={RELEASE_CHANNEL}
       className={[
         'nighttrace-app',
         reducedMotion ? 'reduce-motion' : '',
@@ -887,6 +899,11 @@ export default function App() {
         screen === 'cinematic' ? 'is-cinematic' : '',
       ].join(' ')}
     >
+      {INTERNAL_MODES_ENABLED ? (
+        <div className="internal-build-badge" role="status">
+          Internal test build
+        </div>
+      ) : null}
       {content}
       {(screen === 'game' || screen === 'cinematic') && isTouchDevicePortrait ? (
         <section

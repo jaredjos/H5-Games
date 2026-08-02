@@ -4,7 +4,7 @@
 
 NIGHTTRACE is an original browser horde-survival game built with React, TypeScript, Vite, and PixiJS. Auto-attacking weapons keep the controls approachable; every step paints a luminous trace, and closing a loop turns movement itself into a weapon.
 
-**Play the current HTTPS release:** [jaredjos.github.io/H5-Games/nighttrace](https://jaredjos.github.io/H5-Games/nighttrace/)
+**Play the current public campaign release:** [jaredjos.github.io/H5-Games/nighttrace](https://jaredjos.github.io/H5-Games/nighttrace/)
 
 ## Release lineage
 
@@ -45,6 +45,7 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.21.0` — combat-feedback and laboratory-control milestone: all cinematic runtime actor duplicates are retired, discontinuous trace seams are discarded, accepted damage flashes the Bearer crimson, every Sovereign receives a staged death before **Level Complete**, hostile specials expose an extra 0.20-second reaction window with stronger crimson/violet energy, and a priority-managed SFX suite differentiates every hero spell, Sovereign release, and elite release. Combat Lab adds a true invincibility toggle, Rank 0/empty-arena testing, universal **Spell Rank** language, and six laboratory-only Rank I–V/Awakened visual signatures while preserving campaign spell art. The Memory narration pipeline is independently timed, resumable, hash-verified, and subtitle-safe until its 22 local takes are generated.
 
 - `v1.22.0` — story-and-arsenal milestone: the Prologue, nine Memories, and Finale expand to 84 clearly attributed exchanges with expressive portraits, richer beat-level environments, and a resumable same-origin Google narration set with natural-delivery timing headroom and complete caption fallback. Arc Choir now keeps its authored violet/lavender identity in every mode, **Veilglass Reliquary** replaces the former Mirror Bow presentation with sealed remote cluster-prisons that implode into paleglass shard blooms, and Rift Seeds is replaced in name and presentation by **Astral Verdict**, a multi-target storm judgment cast remotely from the sky.
+- `v1.24.0` — distribution-safety release: the public build becomes a campaign-only experience with Boss Trials and Combat Lab removed from title actions, shell navigation, launch paths, and screen resolution. A separately built, no-index internal QA artifact retains Boss Trials, Combat Lab, their experimental spell tooling, and an unmistakable internal-channel banner without entering the public selector or release archive.
 - `v1.23.2` — authored-spell delivery fix: Crescent Array now ships its approved moonblade atlases in Campaign, Boss Trials, Combat Lab, and mobile landscape; Comet Swarm keeps its existing scale while gaining brighter broken molten-orange coronas, compact fiery wakes, and warm motes in gameplay and the Spell Theater.
 - `v1.23.1` — Complete local narration release: promotes the ten user-approved Prologue and Finale performances, preserves every approved take in full with aligned story timing, and brings the campaign to 84/84 independently voiced local clips.
 - `v1.23.0` — Combat Lab and spell-fidelity release: mortal calibration exposes real vitality/armor, Full Sector opens with 48 hostiles and releases its Sovereign at 60 seconds, Helio Lance returns to its v1.16.3-relative footprint, and Comet Swarm gains visibly distinct ranks through additional faster ember-orange orbiting stones. Astral Verdict now uses authored sky-lightning material instead of cartoon linework, the retired Veilglass prison becomes the spinning, edge-ricocheting **Cinderwake Reavers** with the same crimson/violet material profile in Theater and live Pixi combat, and every Trace point independently fades out at twelve seconds. Dawnward Aegis shares the Bearer's visible-body center for rendering and damage. Seventy-four narration clips ship locally; complete subtitles cover the ten Prologue/Finale clips awaiting a later Google quota refresh.
@@ -70,7 +71,7 @@ is included as an equivalent double-click shortcut to the launcher.
 
 ## Mobile install and offline play
 
-Deploy the `dist` folder over HTTPS at either a domain root or a nested path
+Deploy the public campaign-only `dist` folder over HTTPS at either a domain root or a nested path
 such as `/H5-Games/nighttrace/`, open it in a mobile browser, and use the
 browser's **Add to Home Screen** or **Install app** action. The installed game
 requests a landscape, fullscreen-capable presentation and includes standard,
@@ -196,18 +197,21 @@ seals, Dawn Shards, and Astrarium progression. All eight weapon patterns are
 available from the first descent, so campaign clears advance sectors and
 mastery rather than gating build variety.
 
-### Boss Trials
+### Boss Trials (internal QA build)
 
-Boss Trials is a separate, non-test ladder. Gloam Stag is open first; each
+Boss Trials is retained in the separate internal QA build and is not linked or
+reachable from the public campaign release. It remains a non-test ladder:
+Gloam Stag is open first; each
 victory unlocks exactly the next sovereign, through all ten bosses. Every trial
 uses a curated level and loadout, one real life bar, boss-only combat, and a
 dedicated crown-clear counter. Trial victories award a modest Dawn Shard
 stipend, but never unlock campaign sectors, weapons, or mastery seals. Cleared
 bosses remain available for rematches.
 
-### Combat Lab
+### Combat Lab (internal QA build)
 
-Combat Lab is the public no-limit test mode. It provides:
+Combat Lab is retained only in the separate no-index internal QA build. It
+provides:
 
 - unlimited vitality with hit feedback preserved
 - independent selection of any of the ten arenas and ten bosses
@@ -309,11 +313,18 @@ The Settings screen includes independent master, music, and effects volume contr
 
 ```powershell
 pnpm build
+pnpm build:internal
 pnpm verify:build
 pnpm test
 pnpm lint
 pnpm preview
+pnpm preview:internal
 ```
+
+`pnpm build` is fail-closed and emits the public campaign-only `dist/` artifact.
+`pnpm build:internal` emits `dist-internal/` with Boss Trials and Combat Lab.
+Only `dist/` is eligible for the public selector, GitHub Pages, mobile wrappers,
+or public Vercel projects.
 
 ### Development-only QA mode
 

@@ -1,11 +1,12 @@
 {
   "name": "nighttrace",
   "private": true,
-  "version": "1.23.2",
+  "version": "1.24.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "node scripts/verify-cinematic-audio.mjs && tsc -b && vite build && node scripts/verify-subpath-build.mjs",
+    "build:internal": "node scripts/verify-cinematic-audio.mjs && tsc -b && vite build --mode internal --outDir dist-internal && node scripts/verify-subpath-build.mjs dist-internal",
     "audio:render": "node scripts/render-original-music.mjs",
     "voice:campaign": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-cinematic-voices.ps1",
     "voice:campaign:dry-run": "node scripts/render-cinematic-voices.mjs --dry-run",
@@ -23,7 +24,8 @@
     "test": "vitest run",
     "verify:audio": "node scripts/verify-cinematic-audio.mjs",
     "verify:build": "node scripts/verify-subpath-build.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:internal": "vite preview --outDir dist-internal"
   },
   "dependencies": {
     "lucide-react": "^1.25.0",

@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current stable release: `v1.23.2` (approved Crescent delivery and molten Comet material pass; 84/84 independently voiced local campaign narration clips)
+- Current stable release: `v1.24.0` (public campaign-only distribution plus a separate no-index internal QA build; 84/84 independently voiced local campaign narration clips)
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -19,11 +19,24 @@ pnpm test
 pnpm lint
 pnpm build
 pnpm verify:build
+pnpm build:internal
 ```
 
 The release is acceptable only when the complete current unit-test suite passes,
 lint exits cleanly, the subpath verifier passes, no production source maps are
-emitted, and Vite produces `dist/index.html`.
+emitted, and Vite produces the public campaign-only `dist/index.html`. The
+separate internal validation pass must also produce `dist-internal/index.html`
+with its no-index directive and internal-channel marker.
+
+The v1.24.0 distribution gate additionally requires:
+
+- the public title, shell navigation, launch functions, and screen resolver
+  expose Campaign but cannot enter Boss Trials or Combat Lab
+- the internal build retains Boss Trials and Combat Lab behind an unmistakable
+  internal QA banner
+- plain `pnpm build` remains fail-closed to the public channel
+- only `dist/` enters GitHub Pages, public Vercel projects, mobile wrappers, and
+  the public version selector; `dist-internal/` is never linked publicly
 
 The v1.5.0 mode and hostile-presentation gate additionally requires:
 
@@ -207,10 +220,16 @@ THIRD_PARTY_NOTICES.txt
 dist/
 ```
 
-The web/mobile archive contains the deployable contents of `dist/` at its root
+The public web/mobile archive contains the deployable contents of the
+campaign-only `dist/` at its root
 plus `LICENSE.txt`, `THIRD_PARTY_NOTICES.txt`, and a short deployment readme.
 Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 `dist/`; it serves the same build only on the desktop loopback address.
+
+`dist-internal/` is a separate QA artifact, not a release archive. It may be
+deployed only to the protected internal-testing Vercel project, must remain
+absent from the public selector, and must never replace `dist/` in the public
+GitHub Pages or H5 launcher workflows.
 
 ## Versioning
 
@@ -248,6 +267,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 
 - `v1.21.0`: retires all cinematic runtime actor duplicates and discontinuous trace seams; adds a crimson Bearer damage flash, staged Sovereign death and Level Complete handoff, 0.20-second hostile-special reaction bonus, stronger grounded crimson/violet energy, priority-managed spell/Sovereign/elite SFX, Combat Lab invincibility and Rank 0 isolation, universal Spell Rank terminology, six Lab-only Rank I–V/Awakened runtime visual signatures, and a resumable hash-verified 22-line Memory narration pipeline whose explicit pre-generation fallback is complete subtitles.
 - `v1.22.0`: expands the complete Last Light story to 84 independently timed exchanges across all eleven scenes, adds six premium beat-level cinematic plates and exhaustive portrait expressions, unifies narration into a resumable local Google campaign set, restores Arc Choir's violet identity in live combat, differentiates Mirror Bow as refracted paleglass, and replaces Rift Seeds with the remote sky-lightning spell Astral Verdict.
+- `v1.24.0`: splits distribution into a fail-closed public campaign-only artifact and a separate no-index internal QA artifact. Boss Trials and Combat Lab remain fully available for protected testing but are removed from public title actions, shell navigation, launch paths, screen resolution, archives, and the public selector.
 - `v1.23.2`: ships the approved authored Crescent moonblade atlases across Campaign, Boss Trials, Combat Lab, and mobile landscape, and gives Comet Swarm brighter broken molten-orange coronas, compact fiery wakes, and warm motes without increasing its spell scale.
 - `v1.23.1`: promotes the ten user-approved Prologue and Finale performances without re-generation, retimes their authored dialogue windows so no approved take is clipped, and completes the local campaign narration set at 84/84 clips.
 - `v1.23.0`: adds finite-vitality Combat Lab calibration and a 48-hostile Full Sector opening with its Sovereign arriving at 60 seconds; restores v1.16.3-relative Helio Lance scale; rebuilds Comet Swarm as rank-distinct ember-orange orbiting stones; renders Astral Verdict from an authored sky-lightning atlas; replaces the retired Veilglass prison with edge-ricocheting **Cinderwake Reavers** whose native material now shares the Theater's crimson/violet profile; gives every Trace point an independent twelve-second lifetime; and centers Dawnward Aegis rendering and damage on the Bearer's visible body. The release ships with 74 local narration clips and complete subtitles for the ten clips still awaiting Google quota recovery.

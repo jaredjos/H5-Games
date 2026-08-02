@@ -4,7 +4,12 @@ import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const distRoot = join(projectRoot, 'dist')
+const distDirectory = process.argv[2] ?? 'dist'
+assert(
+  /^[a-z0-9][a-z0-9-]*$/i.test(distDirectory),
+  `Invalid build directory: ${distDirectory}`,
+)
+const distRoot = join(projectRoot, distDirectory)
 const nestedBase = new URL('https://example.test/H5-Games/nighttrace/')
 const manifestUrl = new URL('manifest.webmanifest', nestedBase)
 
@@ -38,7 +43,10 @@ function assertNestedRelative(label, value, base = nestedBase) {
   )
 }
 
-assert(existsSync(distRoot), 'dist/ does not exist; run the production build first')
+assert(
+  existsSync(distRoot),
+  `${distDirectory}/ does not exist; run the matching production build first`,
+)
 
 const indexPath = join(distRoot, 'index.html')
 const webManifestPath = join(distRoot, 'manifest.webmanifest')

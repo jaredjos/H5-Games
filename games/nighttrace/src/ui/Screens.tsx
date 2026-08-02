@@ -22,6 +22,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { appAssetUrl } from '../assetUrl'
+import { INTERNAL_MODES_ENABLED } from '../buildFeatures'
 import {
   LEVELS,
   MODULES,
@@ -158,14 +159,18 @@ export function TitleScreen({
         </p>
         <div className="title-actions">
           <CrestButton onClick={onBegin}>{hasProgress ? 'Continue the Wake' : 'Begin the Wake'}</CrestButton>
-          <CrestButton tone="gold" onClick={onBossTrials}>
-            <Crown size={17} />
-            Boss Trials
-          </CrestButton>
-          <button className="text-action" onClick={onCombatLab}>
-            <FlaskConical size={17} />
-            Combat Lab
-          </button>
+          {INTERNAL_MODES_ENABLED ? (
+            <>
+              <CrestButton tone="gold" onClick={onBossTrials}>
+                <Crown size={17} />
+                Boss Trials
+              </CrestButton>
+              <button className="text-action" onClick={onCombatLab}>
+                <FlaskConical size={17} />
+                Combat Lab
+              </button>
+            </>
+          ) : null}
           <button className="text-action" onClick={onCodex}>
             <BookOpen size={17} />
             Open Codex
@@ -183,7 +188,11 @@ export function TitleScreen({
           <span>Keyboard · Touch</span>
         </div>
       </section>
-      <div className="title-screen__edition">THE LAST LIGHT · CAMPAIGN I</div>
+      <div className="title-screen__edition">
+        {INTERNAL_MODES_ENABLED
+          ? 'INTERNAL QA · BOSS TRIALS + COMBAT LAB'
+          : 'THE LAST LIGHT · CAMPAIGN I'}
+      </div>
     </main>
   )
 }

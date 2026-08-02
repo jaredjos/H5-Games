@@ -1,4 +1,4 @@
-name: Deploy Nighttrace
+name: Deploy Nighttrace Public Campaign
 
 on:
   workflow_dispatch:
@@ -44,14 +44,14 @@ jobs:
         working-directory: games/nighttrace
         run: pnpm install --frozen-lockfile
 
-      - name: Test, lint, and build stable v1.23.2
+      - name: Test, lint, and build public campaign v1.24.0
         working-directory: games/nighttrace
         run: |
           pnpm test
           pnpm lint
           pnpm build
 
-      - name: Publish stable Nighttrace build and selector
+      - name: Publish public campaign build and selector
         shell: bash
         run: |
           STABLE_VERSION="$(node -p "require('./games/nighttrace/package.json').version")"
