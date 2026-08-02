@@ -69,9 +69,9 @@
       "_Geometry-DzB2TO-e.js"
     ]
   },
-  "_getPo2TextureFromSource-tZOpeQQp.js": {
-    "file": "assets/getPo2TextureFromSource-tZOpeQQp.js",
-    "name": "getPo2TextureFromSource",
+  "_defaultFilter.vert-C3V-Rqrx.js": {
+    "file": "assets/defaultFilter.vert-C3V-Rqrx.js",
+    "name": "defaultFilter.vert",
     "imports": [
       "_Geometry-DzB2TO-e.js",
       "_Filter-B_p90UOL.js",
@@ -86,13 +86,13 @@
       "_Geometry-DzB2TO-e.js"
     ]
   },
-  "_init-Cmui9Zl5.js": {
-    "file": "assets/init-Cmui9Zl5.js",
+  "_init-BedlKd5L.js": {
+    "file": "assets/init-BedlKd5L.js",
     "name": "init",
     "imports": [
       "_Geometry-DzB2TO-e.js",
       "_Filter-B_p90UOL.js",
-      "_getPo2TextureFromSource-tZOpeQQp.js",
+      "_defaultFilter.vert-C3V-Rqrx.js",
       "_canvasUtils-CDjWVGyl.js",
       "_CanvasPool-CGkbw3-w.js"
     ]
@@ -102,7 +102,7 @@
     "name": "rolldown-runtime"
   },
   "index.html": {
-    "file": "assets/index-kgDPJhTF.js",
+    "file": "assets/index-DPy4Hzpl.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -113,33 +113,33 @@
       "src/game/GameCanvas.tsx"
     ],
     "css": [
-      "assets/index-Do3heT_e.css"
+      "assets/index-CMw_qrJA.css"
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/environment-browser/browserAll.mjs": {
-    "file": "assets/browserAll-dF29trlt.js",
+    "file": "assets/browserAll-B6Dh6KAD.js",
     "name": "browserAll",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/environment-browser/browserAll.mjs",
     "isDynamicEntry": true,
     "imports": [
       "_Geometry-DzB2TO-e.js",
       "_Filter-B_p90UOL.js",
-      "_getPo2TextureFromSource-tZOpeQQp.js",
-      "_init-Cmui9Zl5.js"
+      "_defaultFilter.vert-C3V-Rqrx.js",
+      "_init-BedlKd5L.js"
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/environment-webworker/webworkerAll.mjs": {
-    "file": "assets/webworkerAll-B46HYmq1.js",
+    "file": "assets/webworkerAll-CjL5CAZX.js",
     "name": "webworkerAll",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/environment-webworker/webworkerAll.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_getPo2TextureFromSource-tZOpeQQp.js",
-      "_init-Cmui9Zl5.js"
+      "_defaultFilter.vert-C3V-Rqrx.js",
+      "_init-BedlKd5L.js"
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/canvas/CanvasRenderer.mjs": {
-    "file": "assets/CanvasRenderer-B8HTSGRt.js",
+    "file": "assets/CanvasRenderer-BzgJoYKu.js",
     "name": "CanvasRenderer",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/canvas/CanvasRenderer.mjs",
     "isDynamicEntry": true,
@@ -148,7 +148,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gl/WebGLRenderer.mjs": {
-    "file": "assets/WebGLRenderer-Bv9OW_uR.js",
+    "file": "assets/WebGLRenderer-fB8XvrBI.js",
     "name": "WebGLRenderer",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gl/WebGLRenderer.mjs",
     "isDynamicEntry": true,
@@ -157,7 +157,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gpu/WebGPURenderer.mjs": {
-    "file": "assets/WebGPURenderer-CAwZT6Cv.js",
+    "file": "assets/WebGPURenderer-DF2qChyX.js",
     "name": "WebGPURenderer",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gpu/WebGPURenderer.mjs",
     "isDynamicEntry": true,
@@ -166,7 +166,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/scene/text-bitmap/BitmapFont.mjs": {
-    "file": "assets/BitmapFont-BNO1bjmt.js",
+    "file": "assets/BitmapFont-BpvPctyw.js",
     "name": "BitmapFont",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/scene/text-bitmap/BitmapFont.mjs",
     "isDynamicEntry": true,
@@ -175,7 +175,7 @@
     ]
   },
   "src/game/GameCanvas.tsx": {
-    "file": "assets/GameCanvas-D7b1YK-U.js",
+    "file": "assets/GameCanvas-BHgIKTbM.js",
     "name": "GameCanvas",
     "src": "src/game/GameCanvas.tsx",
     "isDynamicEntry": true,
@@ -183,7 +183,7 @@
       "index.html",
       "_Geometry-DzB2TO-e.js",
       "_Filter-B_p90UOL.js",
-      "_getPo2TextureFromSource-tZOpeQQp.js",
+      "_defaultFilter.vert-C3V-Rqrx.js",
       "_Cache-C_n_yy8I.js",
       "_canvasUtils-CDjWVGyl.js",
       "_CanvasPool-CGkbw3-w.js",
