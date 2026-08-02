@@ -191,8 +191,8 @@ requires:
   covered by focused tests rather than inferred from the full character art
 - Dawnward Aegis remains hard-gated to Combat Lab and validates ranks I–V plus
   its Awakened state without entering Campaign or Boss Trial draft pools
-- the isolated v1.18.0 visual experiment retains separate source, storage,
-  cache, service-worker scope, and selector link
+- the retired v1.18.0 side branch is absent from source, deployment, storage,
+  service-worker scope, and the public version selector
 
 ## Release archives
 

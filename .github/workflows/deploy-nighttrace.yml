@@ -40,14 +40,6 @@ jobs:
           cache: pnpm
           cache-dependency-path: games/nighttrace/pnpm-lock.yaml
 
-      - name: Check out isolated v1.18.0 source
-        shell: bash
-        run: |
-          git fetch origin \
-            nighttrace-v1.18-playable:refs/remotes/origin/nighttrace-v1.18-playable
-          git worktree add --detach /tmp/nighttrace-v118 \
-            origin/nighttrace-v1.18-playable
-
       - name: Install stable dependencies
         working-directory: games/nighttrace
         run: pnpm install --frozen-lockfile
@@ -59,22 +51,10 @@ jobs:
           pnpm lint
           pnpm build
 
-      - name: Install isolated v1.18.0 dependencies
-        working-directory: /tmp/nighttrace-v118/games/nighttrace
-        run: pnpm install --frozen-lockfile
-
-      - name: Test, lint, and build isolated v1.18.0
-        working-directory: /tmp/nighttrace-v118/games/nighttrace
-        run: |
-          pnpm test
-          pnpm lint
-          pnpm build
-
-      - name: Publish both Nighttrace builds and selector
+      - name: Publish stable Nighttrace build and selector
         shell: bash
         run: |
           STABLE_VERSION="$(node -p "require('./games/nighttrace/package.json').version")"
-          ISOLATED_VERSION="$(node -p "require('/tmp/nighttrace-v118/games/nighttrace/package.json').version")"
           git fetch origin gh-pages:refs/remotes/origin/gh-pages
           git worktree add --detach /tmp/h5-pages origin/gh-pages
 
@@ -84,12 +64,9 @@ jobs:
             /tmp/h5-pages/nighttrace-versions
           mkdir -p \
             /tmp/h5-pages/nighttrace \
-            /tmp/h5-pages/nighttrace-v1.18.0 \
             /tmp/h5-pages/nighttrace-versions
 
           cp -a games/nighttrace/dist/. /tmp/h5-pages/nighttrace/
-          cp -a /tmp/nighttrace-v118/games/nighttrace/dist/. \
-            /tmp/h5-pages/nighttrace-v1.18.0/
           cp -a .github/pages/nighttrace-versions/. \
             /tmp/h5-pages/nighttrace-versions/
           touch /tmp/h5-pages/.nojekyll
@@ -104,10 +81,10 @@ jobs:
             .nojekyll
 
           if git diff --cached --quiet; then
-            echo "Both Nighttrace Pages builds are already current."
+            echo "The stable Nighttrace Pages build is already current."
             exit 0
           fi
 
           git commit -m \
-            "deploy(nighttrace): publish v${STABLE_VERSION} and v${ISOLATED_VERSION}"
+            "deploy(nighttrace): publish stable v${STABLE_VERSION}"
           git push origin HEAD:gh-pages
