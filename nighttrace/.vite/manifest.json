@@ -102,7 +102,7 @@
     "name": "rolldown-runtime"
   },
   "index.html": {
-    "file": "assets/index-DPy4Hzpl.js",
+    "file": "assets/index-C1d-L7N-.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -139,7 +139,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/canvas/CanvasRenderer.mjs": {
-    "file": "assets/CanvasRenderer-BzgJoYKu.js",
+    "file": "assets/CanvasRenderer-B1AqJMX9.js",
     "name": "CanvasRenderer",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/canvas/CanvasRenderer.mjs",
     "isDynamicEntry": true,
@@ -148,7 +148,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gl/WebGLRenderer.mjs": {
-    "file": "assets/WebGLRenderer-fB8XvrBI.js",
+    "file": "assets/WebGLRenderer-B5ScidFm.js",
     "name": "WebGLRenderer",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gl/WebGLRenderer.mjs",
     "isDynamicEntry": true,
@@ -157,7 +157,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gpu/WebGPURenderer.mjs": {
-    "file": "assets/WebGPURenderer-DF2qChyX.js",
+    "file": "assets/WebGPURenderer-DuU-43dj.js",
     "name": "WebGPURenderer",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/rendering/renderers/gpu/WebGPURenderer.mjs",
     "isDynamicEntry": true,
@@ -166,7 +166,7 @@
     ]
   },
   "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/scene/text-bitmap/BitmapFont.mjs": {
-    "file": "assets/BitmapFont-BpvPctyw.js",
+    "file": "assets/BitmapFont-CUlOM8vK.js",
     "name": "BitmapFont",
     "src": "node_modules/.pnpm/pixi.js@8.19.0/node_modules/pixi.js/lib/scene/text-bitmap/BitmapFont.mjs",
     "isDynamicEntry": true,
@@ -175,7 +175,7 @@
     ]
   },
   "src/game/GameCanvas.tsx": {
-    "file": "assets/GameCanvas-BHgIKTbM.js",
+    "file": "assets/GameCanvas-5gcHthsm.js",
     "name": "GameCanvas",
     "src": "src/game/GameCanvas.tsx",
     "isDynamicEntry": true,
