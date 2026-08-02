@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "reviewSet": "20260802-174919-cadence-review",
+  "approvedClipCount": 10,
+  "clips": [
+    {
+      "id": "intro-star-01",
+      "reviewFile": "01-intro-star-01__v2-fallback.wav",
+      "durationMs": 6698,
+      "sha256": "7aff8ba0804f2ad69dd544b77e96577fce78dbaa5039f0d41731e6074cfca846"
+    },
+    {
+      "id": "intro-star-02",
+      "reviewFile": "02-intro-star-02.wav",
+      "durationMs": 7753,
+      "sha256": "717c9617ffc4d748d0ccbc12aa67b870b2717b9e91c7a0c425e05988f34ba896"
+    },
+    {
+      "id": "finale-star-03",
+      "reviewFile": "03-finale-star-03.wav",
+      "durationMs": 6341,
+      "sha256": "a51239a019d4ebd6a6683b0f4f01f6c4ead90086dba5a6ae40c6ca178cc05dd2"
+    },
+    {
+      "id": "finale-sun-eater-01",
+      "reviewFile": "04-finale-sun-eater-01.wav",
+      "durationMs": 5925,
+      "sha256": "106d9a0c4c54dd0f727dbd0b6b2b7742ec4f3b98c0c9101dc77e6b15b54b6e9b"
+    },
+    {
+      "id": "finale-star-04",
+      "reviewFile": "05-finale-star-04.wav",
+      "durationMs": 3950,
+      "sha256": "d227e931ffe48daf9059ae6f7e3e293b60b885796cff4db822ccfb1f61d0bbdd"
+    },
+    {
+      "id": "finale-sun-eater-02",
+      "reviewFile": "06-finale-sun-eater-02.wav",
+      "durationMs": 5399,
+      "sha256": "26e4a2661ad79c669a0839a6c6b1dc2d5373dac5e1491871be490c040858c49a"
+    },
+    {
+      "id": "finale-star-05",
+      "reviewFile": "07-finale-star-05.wav",
+      "durationMs": 2195,
+      "sha256": "436c9e452beccada4b2d3b335a162329f4659c7a5625a297b18673bb6ff7ba3a"
+    },
+    {
+      "id": "finale-bearer-03",
+      "reviewFile": "08-finale-bearer-03.wav",
+      "durationMs": 3040,
+      "sha256": "8b1d44a60a6a58d5620bbbc9221c35dc55c930d7aa08c08d6a69e38f8a269538"
+    },
+    {
+      "id": "finale-bearer-04",
+      "reviewFile": "09-finale-bearer-04.wav",
+      "durationMs": 4459,
+      "sha256": "acc4f6e32d1ab014206d66d8fdc4f8ba778e593936de235990a8f8cec10d8b7f"
+    },
+    {
+      "id": "finale-sun-eater-03",
+      "reviewFile": "10-finale-sun-eater-03.wav",
+      "durationMs": 6636,
+      "sha256": "7da7d592cdbd94ea907006252ce7712f3b252424994af87489543d5827da2cc2"
+    }
+  ]
+}

@@ -1,13 +1,33 @@
 {
-  "status": "partial",
+  "status": "ready",
   "provider": "Google Gemini API",
   "model": "gemini-3.1-flash-tts-preview",
   "promptRevision": "nighttrace-campaign-v1",
   "set": "campaign",
   "expectedClipCount": 84,
-  "planSha256": "9c0579dee4c914e2c3255f23c1eb543c1f7687f271512bcabd590ba14aa4884a",
-  "generatedAt": "2026-08-02T02:56:15.836Z",
+  "planSha256": "d28a4fad11f55d430eb7746ab4f6373b41d38988c5747ebc822c9bcf419c8443",
+  "generatedAt": "2026-08-02T12:56:42.762Z",
   "clips": [
+    {
+      "id": "intro-star-01",
+      "sceneId": "intro-a-world-without-dawn",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "f0f94cba96e2de6a99970a2c38550d93da047abc284428d270bbec798e9af594",
+      "durationMs": 6698,
+      "bytes": 321566,
+      "sha256": "7aff8ba0804f2ad69dd544b77e96577fce78dbaa5039f0d41731e6074cfca846"
+    },
+    {
+      "id": "intro-star-02",
+      "sceneId": "intro-a-world-without-dawn",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "ad300350e2fc38dd85bb4ecabc5ebefc458278cfcb4c2415eaa62eb27074a836",
+      "durationMs": 7753,
+      "bytes": 372170,
+      "sha256": "717c9617ffc4d748d0ccbc12aa67b870b2717b9e91c7a0c425e05988f34ba896"
+    },
     {
       "id": "intro-star-03",
       "sceneId": "intro-a-world-without-dawn",
@@ -727,6 +747,86 @@
       "durationMs": 2801,
       "bytes": 134514,
       "sha256": "ead3d9ee2fddb9ac631a33606f29ebf896150da83f6c0a9bb0079676422dbc6c"
+    },
+    {
+      "id": "finale-star-03",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "454898271e2127701ccc4f8525f36b80f84ac25f25142e19dd5d3ac0e3164e4f",
+      "durationMs": 6341,
+      "bytes": 304412,
+      "sha256": "a51239a019d4ebd6a6683b0f4f01f6c4ead90086dba5a6ae40c6ca178cc05dd2"
+    },
+    {
+      "id": "finale-sun-eater-01",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "contentSha256": "b174679aba09f417dc3b2772c98aae0b80b1a062812152535c880c0172c976e2",
+      "durationMs": 5925,
+      "bytes": 284446,
+      "sha256": "106d9a0c4c54dd0f727dbd0b6b2b7742ec4f3b98c0c9101dc77e6b15b54b6e9b"
+    },
+    {
+      "id": "finale-star-04",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "5fc94056429a4e8b68aa904f73876610cfe2b061c545212eb763925930c0fc37",
+      "durationMs": 3950,
+      "bytes": 189636,
+      "sha256": "d227e931ffe48daf9059ae6f7e3e293b60b885796cff4db822ccfb1f61d0bbdd"
+    },
+    {
+      "id": "finale-sun-eater-02",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "contentSha256": "46e4716ee46e696eb9776c8dc789b67d77671b29601d07e0d013e97efeb8c23e",
+      "durationMs": 5399,
+      "bytes": 259214,
+      "sha256": "26e4a2661ad79c669a0839a6c6b1dc2d5373dac5e1491871be490c040858c49a"
+    },
+    {
+      "id": "finale-star-05",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Last Star",
+      "voiceName": "Aoede",
+      "contentSha256": "80aef7a83e404732894b42521b13511885a70afc1a43cf6861f7a1bd1e80702f",
+      "durationMs": 2195,
+      "bytes": 105420,
+      "sha256": "436c9e452beccada4b2d3b335a162329f4659c7a5625a297b18673bb6ff7ba3a"
+    },
+    {
+      "id": "finale-bearer-03",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "c1c8ab3dd7ac0b61097a9015d1c4337acc6059e74c420d7fc1feb68fb17db33a",
+      "durationMs": 3040,
+      "bytes": 145964,
+      "sha256": "8b1d44a60a6a58d5620bbbc9221c35dc55c930d7aa08c08d6a69e38f8a269538"
+    },
+    {
+      "id": "finale-bearer-04",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Bearer",
+      "voiceName": "Orus",
+      "contentSha256": "72f8704af3def06d25ba45f4361265897949fcccac45bf077acb49918c1b9927",
+      "durationMs": 4459,
+      "bytes": 214096,
+      "sha256": "acc4f6e32d1ab014206d66d8fdc4f8ba778e593936de235990a8f8cec10d8b7f"
+    },
+    {
+      "id": "finale-sun-eater-03",
+      "sceneId": "finale-the-first-light",
+      "speaker": "Sun-Eater",
+      "voiceName": "Algenib",
+      "contentSha256": "5d5968b8fa69b30a0da770c71b0b9c183c8214d08b17bda7e09b186ed4a33716",
+      "durationMs": 6636,
+      "bytes": 318580,
+      "sha256": "7da7d592cdbd94ea907006252ce7712f3b252424994af87489543d5827da2cc2"
     },
     {
       "id": "finale-star-06",

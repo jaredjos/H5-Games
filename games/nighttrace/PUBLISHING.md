@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current stable release: `v1.23.0` (74/84 local narration clips, with complete subtitle fallback for the remaining ten)
+- Current stable release: `v1.23.1` (84/84 independently voiced local campaign narration clips)
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -248,6 +248,7 @@ Deploy it over HTTPS at a domain root or nested path. Keep the launcher beside
 
 - `v1.21.0`: retires all cinematic runtime actor duplicates and discontinuous trace seams; adds a crimson Bearer damage flash, staged Sovereign death and Level Complete handoff, 0.20-second hostile-special reaction bonus, stronger grounded crimson/violet energy, priority-managed spell/Sovereign/elite SFX, Combat Lab invincibility and Rank 0 isolation, universal Spell Rank terminology, six Lab-only Rank I–V/Awakened runtime visual signatures, and a resumable hash-verified 22-line Memory narration pipeline whose explicit pre-generation fallback is complete subtitles.
 - `v1.22.0`: expands the complete Last Light story to 84 independently timed exchanges across all eleven scenes, adds six premium beat-level cinematic plates and exhaustive portrait expressions, unifies narration into a resumable local Google campaign set, restores Arc Choir's violet identity in live combat, differentiates Mirror Bow as refracted paleglass, and replaces Rift Seeds with the remote sky-lightning spell Astral Verdict.
+- `v1.23.1`: promotes the ten user-approved Prologue and Finale performances without re-generation, retimes their authored dialogue windows so no approved take is clipped, and completes the local campaign narration set at 84/84 clips.
 - `v1.23.0`: adds finite-vitality Combat Lab calibration and a 48-hostile Full Sector opening with its Sovereign arriving at 60 seconds; restores v1.16.3-relative Helio Lance scale; rebuilds Comet Swarm as rank-distinct ember-orange orbiting stones; renders Astral Verdict from an authored sky-lightning atlas; replaces the retired Veilglass prison with edge-ricocheting **Cinderwake Reavers** whose native material now shares the Theater's crimson/violet profile; gives every Trace point an independent twelve-second lifetime; and centers Dawnward Aegis rendering and damage on the Bearer's visible body. The release ships with 74 local narration clips and complete subtitles for the ten clips still awaiting Google quota recovery.
 
 Release archives and executable launchers are generated artifacts and are

@@ -144,6 +144,22 @@ describe('NIGHTTRACE campaign cinematics', () => {
     )).toBe(true)
   })
 
+  it('keeps the Prologue opening on the accepted campaign cadence without desynchronizing later cues', () => {
+    const intro = getCinematic(INTRO_CINEMATIC_ID)
+    const first = intro?.lines[0]
+    const second = intro?.lines[1]
+    const third = intro?.lines[2]
+
+    expect(first?.audioEndMs).toBe(7_200)
+    expect(second?.audioEndMs).toBe(7_800)
+    expect(first?.duration).toBe(7_420)
+    expect(second?.duration).toBe(8_020)
+    expect(second?.startMs).toBe((first?.endMs ?? 0) + CINEMATIC_DIALOGUE_GAP_MS)
+    expect(third?.startMs).toBe((second?.endMs ?? 0) + CINEMATIC_DIALOGUE_GAP_MS)
+    expect(intro?.durationMs).toBe(60_210)
+    expect(intro?.beats.at(-1)?.endMs).toBe(intro?.durationMs)
+  })
+
   it('uses contiguous beats with no gaps, overlaps, or out-of-bounds frames', () => {
     for (const scene of CAMPAIGN_CINEMATICS) {
       expect(scene.lines[0].startMs).toBe(CINEMATIC_LEAD_IN_MS)
