@@ -6,7 +6,8 @@
     "1.4.0",
     "1.6.0"
   ],
-  "capture_version_note": "Graveglass Spires and Eclipse Harrow were recaptured from v1.6.0 after replacing the former area-power designs. The other six unchanged weapon proofs retain their original v1.4.0 production frames.",
+  "capture_version_note": "Graveglass Spires and Eclipse Harrow were recaptured from v1.6.0 after replacing the former area-power designs. Earlier weapon proofs retain their original v1.4.0 archival production frames. The mirror-bow captures are historical and predate both Veilglass Reliquary and the current Cinderwake Reavers choreography.",
+  "public_identity_note": "Cinderwake Reavers deploys spinning obsidian hunting glaives that pursue enemies and ricochet from arena edges. Its internal weapon_id remains mirror-bow for save compatibility; the v1.4 mirror-bow images below are archival, not current v1.23 visual proof.",
   "manifest_generated_at_utc": "2026-07-25T17:35:36.583535+00:00",
   "renderer": "production Pixi gameplay renderer",
   "viewport": {
@@ -478,7 +479,7 @@
     },
     {
       "weapon_id": "mirror-bow",
-      "weapon_name": "Mirror Bow",
+      "weapon_name": "Mirror Bow (archival v1.4 capture)",
       "state": "solo",
       "capture_version": "1.4.0",
       "loadout": {
@@ -496,7 +497,7 @@
     },
     {
       "weapon_id": "mirror-bow",
-      "weapon_name": "Mirror Bow",
+      "weapon_name": "Mirror Bow (archival v1.4 capture)",
       "state": "combined",
       "capture_version": "1.4.0",
       "loadout": {
@@ -514,7 +515,7 @@
     },
     {
       "weapon_id": "mirror-bow",
-      "weapon_name": "Mirror Bow",
+      "weapon_name": "Mirror Bow (archival v1.4 capture)",
       "state": "mastered",
       "capture_version": "1.4.0",
       "loadout": {
@@ -532,7 +533,7 @@
     },
     {
       "weapon_id": "mirror-bow",
-      "weapon_name": "Mirror Bow",
+      "weapon_name": "Mirror Bow (archival v1.4 capture)",
       "state": "final",
       "capture_version": "1.4.0",
       "loadout": {

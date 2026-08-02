@@ -3,6 +3,7 @@ import {
   CloudLightning,
   Gem,
   HeartPulse,
+  KeyRound,
   Orbit,
   Radio,
   RefreshCw,
@@ -138,7 +139,7 @@ const weaponIcons: Record<WeaponId, typeof Zap> = {
   'rift-seeds': CloudLightning,
   'comet-swarm': Sparkles,
   'ash-halo': Gem,
-  'mirror-bow': Aperture,
+  'mirror-bow': RefreshCw,
   'null-bell': ScanLine,
 }
 
@@ -149,7 +150,7 @@ const moduleIcons: Record<ModuleId, typeof Zap> = {
   'grav-anchor': Radio,
   'guidance-filament': Target,
   'thermal-mantle': Gem,
-  'flux-mirror': Sparkles,
+  'flux-mirror': KeyRound,
   'deep-capacitor': ScanLine,
 }
 

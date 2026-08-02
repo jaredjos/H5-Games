@@ -11,7 +11,7 @@ describe('Combat Lab Pixi runtime VFX integration', () => {
     expect(runtimeSource).toContain('this.drawCombatLabWeaponEffectAccent(')
   })
 
-  it('ships materially separate live Verdict and Mirror signatures', () => {
+  it('ships authored live Verdict and persistent Cinderwake signatures', () => {
     const projectileStart = runtimeSource.indexOf(
       '  private drawCombatLabProjectileSignature(',
     )
@@ -32,11 +32,49 @@ describe('Combat Lab Pixi runtime VFX integration', () => {
     )
     const effectPresentation = runtimeSource.slice(effectStart, effectEnd)
 
-    for (const section of [projectilePresentation, effectPresentation]) {
-      expect(section).toContain("case 'astral-verdict'")
-      expect(section).toContain("case 'prismatic-fletching'")
-      expect(section).toContain('this.drawPolyline(')
-    }
+    expect(projectilePresentation).not.toContain("case 'veilglass-reliquary'")
+    expect(effectPresentation).toContain("case 'astral-verdict'")
+    expect(effectPresentation).not.toContain("case 'veilglass-reliquary'")
+    expect(runtimeSource).toContain('private drawPersistentSpellActors(')
+    expect(runtimeSource).toContain('this.cinderwakeReavers')
+  })
+
+  it('arms persistent Cinderwake projectiles and renders their authored desktop/mobile atlas', () => {
+    expect(runtimeSource).toContain('private armCinderwakeReavers(')
+    expect(runtimeSource).toContain('private syncCinderwakeReavers(')
+    expect(runtimeSource).toContain('assets/spell-vfx/cinderwake-reaver-v1.webp')
+    expect(runtimeSource).toContain('assets/spell-vfx/cinderwake-reaver-v1-mobile.webp')
+    expect(runtimeSource).not.toContain('private castVeilglassReliquary(')
+    expect(runtimeSource).not.toContain("kind: 'veilglass-reliquary'")
+  })
+
+  it('renders Astral Verdict from authored material rather than vector lightning rails', () => {
+    expect(runtimeSource).toContain('assets/spell-vfx/astral-verdict-v1.webp')
+    expect(runtimeSource).toContain('assets/spell-vfx/astral-verdict-v1-mobile.webp')
+    expect(runtimeSource).toContain('this.astralVerdictFrames')
+  })
+
+  it('keeps hero-originating Lab geometry within the historical projectile bounds', () => {
+    expect(runtimeSource).toContain("'helio-lance': [54, 18]")
+    expect(runtimeSource).toContain("'comet-swarm': [38, 22]")
+    const signatureStart = runtimeSource.indexOf(
+      '  private drawCombatLabProjectileSignature(',
+    )
+    const signatureEnd = runtimeSource.indexOf(
+      '  private drawProjectileTrail(',
+      signatureStart,
+    )
+    const signature = runtimeSource.slice(signatureStart, signatureEnd)
+    expect(signature).toContain('const geometryScale = presentation.geometryScale')
+    expect(signature.match(/geometryScale/g)?.length).toBeGreaterThanOrEqual(10)
+    expect(runtimeSource).toContain('color: 0xffc166')
+  })
+
+  it('caps Arc Choir target chains and thins awakened ornamental forks', () => {
+    expect(runtimeSource).toContain(
+      'Math.min(6, 2 + rank + moduleRank + (owned.awakened ? 1 : 0))',
+    )
+    expect(runtimeSource).toContain('? index % 2 === 0')
   })
 
   it('renders Arc Choir as violet bloom, lavender body and a narrow white core', () => {

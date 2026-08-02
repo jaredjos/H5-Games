@@ -10,14 +10,20 @@ upgrade-states-01.png
   Arc Choir, and Rift Seeds at Solo, Combined, Mastered, and Final.
 
 upgrade-states-02.png
-  Real PixiJS gameplay frames for Comet Swarm, Graveglass Spires, Mirror Bow,
-  and Eclipse Harrow at Solo, Combined, Mastered, and Final.
+  Archival PixiJS gameplay frames for Comet Swarm, Graveglass Spires, the
+  mirror-bow compatibility slot, and Eclipse Harrow at Solo, Combined,
+  Mastered, and Final. The mirror-bow frames predate the current Cinderwake
+  Reavers projectile choreography and should not be treated as v1.23 proof.
 
 capture-manifest.json
   State definitions, local-only reproduction routes, renderer timing, exact
   dimensions, file sizes, SHA-256 hashes, and source versions for every frame.
   Graveglass Spires and Eclipse Harrow are v1.6.0 recaptures; the other six
-  unchanged weapon plates retain their verified v1.4.0 runtime frames.
+  earlier weapon plates retain their verified v1.4.0 archival runtime frames.
+  Cinderwake Reavers supersedes the former Mirror Bow and Veilglass art while
+  intentionally preserving the internal mirror-bow route and save-compatible
+  weapon id. A fresh v1.23 capture set is still required before this archival
+  document can claim visual proof of the new projectile choreography.
 
 Graveglass Spires and Eclipse Harrow are remote-world powers. They do not follow
 the bearer, use concentric damage bands, or apply repeated damage where their

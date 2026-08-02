@@ -24,8 +24,8 @@ describe('Nighttrace PWA delivery', () => {
     expect(navigationSource).not.toContain('if (installedIndex) return installedIndex')
   })
 
-  it('uses the v1.22.0 cache namespace and precaches title and cinematic art', () => {
-    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.22.0'")
+  it('uses the v1.23.0 cache namespace and precaches title and cinematic art', () => {
+    expect(serviceWorkerSource).toContain("const CACHE_VERSION = 'v1.23.0'")
     expect(serviceWorkerSource).toContain(
       "new URL('assets/nighttrace-title-hero-v2.png', SCOPE_URL).href",
     )
@@ -35,6 +35,19 @@ describe('Nighttrace PWA delivery', () => {
     expect(serviceWorkerSource).toContain(
       "new URL('assets/cinematics/finale-the-first-light.webp', SCOPE_URL).href",
     )
+    for (const atlas of [
+      'astral-verdict-v1.webp',
+      'astral-verdict-v1-mobile.webp',
+      'comet-orbit-v1.webp',
+      'comet-orbit-v1-mobile.webp',
+      'cinderwake-reaver-v1.webp',
+      'cinderwake-reaver-v1-mobile.webp',
+    ]) {
+      expect(serviceWorkerSource).toContain(
+        `new URL('assets/spell-vfx/${atlas}', SCOPE_URL).href`,
+      )
+    }
+    expect(serviceWorkerSource).not.toContain('veilglass-reliquary-v1')
     for (const plate of [
       'interlude-03-shattered-arcade',
       'interlude-04-prism-garden',
@@ -104,7 +117,7 @@ describe('Nighttrace PWA delivery', () => {
 
     expect(reload).toHaveBeenCalledTimes(1)
     expect(storage.setItem).toHaveBeenCalledWith(
-      'nighttrace:pwa-controller-reload:v1.22.0',
+      'nighttrace:pwa-controller-reload:v1.23.0',
       '1',
     )
   })

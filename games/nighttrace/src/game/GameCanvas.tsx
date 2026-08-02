@@ -9,6 +9,7 @@ import {
   Application,
   Assets,
   BlurFilter,
+  ColorMatrixFilter,
   Container,
   Graphics,
   Rectangle,
@@ -87,6 +88,11 @@ import {
   initialFreeRevives,
   revivedHealth,
 } from './revivePolicy'
+import { distributeRemoteCastDamage } from './remoteSpellDamage'
+import {
+  bossArrivalSeconds,
+  openingHordeSize,
+} from './combatLabProtocol'
 import {
   BOSS_DEATH_MOTION_SECONDS,
   runEndingCompletionVisible,
@@ -176,8 +182,13 @@ import {
 import {
   weaponCastDamageBudget,
   weaponCooldownSeconds,
-  weightedFalloffTotal,
 } from './weaponBalance'
+import {
+  cinderwakeReaverPresentationProfile,
+  cinderwakeReaverProfile,
+  orbitingCometProfile,
+  persistentWindowDamage,
+} from './persistentSpellChoreography'
 import {
   groundedVfxCosmeticUnit,
   groundedVfxMaterialProfile,
@@ -236,6 +247,11 @@ import {
   traceSegmentIsDiscontinuous,
 } from './tracePulse'
 import {
+  pruneExpiredTracePoints,
+  traceSegmentAlpha,
+  type TimestampedTracePoint,
+} from './traceLifetime'
+import {
   LIGHT_RING_AWAKENING_NAME,
   LIGHT_RING_SKILL_NAME,
   lightRingProfile,
@@ -276,7 +292,6 @@ const DAWNCASTER_WEAPON_IDS = new Set<WeaponId>([
   'arc-choir',
   'rift-seeds',
   'comet-swarm',
-  'mirror-bow',
 ])
 const GRID_SIZE = 112
 const HERO_RUNTIME_FRAME_SIZE = 512
@@ -406,6 +421,59 @@ interface ProjectileEntity {
   sprite: Sprite
 }
 
+interface OrbitingCometEntity {
+  active: boolean
+  slot: number
+  x: number
+  y: number
+  previousX: number
+  previousY: number
+  angle: number
+  orbitRadius: number
+  angularSpeed: number
+  direction: -1 | 1
+  footprint: number
+  visualState: WeaponVfxState
+  frameOffset: number
+  sprite: Sprite
+}
+
+interface CinderwakeReaverEntity {
+  active: boolean
+  slot: number
+  x: number
+  y: number
+  previousX: number
+  previousY: number
+  vx: number
+  vy: number
+  speed: number
+  turnRate: number
+  spin: number
+  spinRate: number
+  flightMode: 'seeking' | 'receding'
+  flightTimer: number
+  bounceLock: number
+  curveSign: -1 | 1
+  outboundX: number
+  outboundY: number
+  footprint: number
+  scale: number
+  visualState: WeaponVfxState
+  frameOffset: number
+  wakeGlow: Graphics
+  impactGlow: Graphics
+  auraSprite: Sprite
+  edgeSprite: Sprite
+  materialFilter: ColorMatrixFilter
+  sprite: Sprite
+}
+
+interface PersistentSpellDamageWindow {
+  remaining: number
+  expiresAt: number
+}
+
 interface PickupEntity {
   active: boolean
   kind: 'xp' | SupportPickupKind
@@ -499,8 +567,6 @@ type WeaponEffectKind =
   | 'comet-launch'
   | 'comet-impact'
   | 'graveglass-eruption'
-  | 'mirror-gate'
-  | 'mirror-impact'
   | 'eclipse-harrow'
 
 interface WeaponEffectEntity {
@@ -576,6 +642,7 @@ class NighttraceRuntime {
   private readonly hostileBoundaryGlowGraphics = new Graphics()
   private readonly hostileBoundaryCoreGraphics = new Graphics()
   private readonly motionGraphics = new Graphics()
+  private readonly cinderwakeFleetGlow = new Graphics()
   private readonly projectileTrailGraphics = new Graphics()
   private readonly hostileProjectileGraphics = new Graphics()
   private readonly lightRingAdditiveGraphics = new Graphics()
@@ -622,6 +689,9 @@ class NighttraceRuntime {
   private hostileGroundFieldTexture?: Texture
   private hostileGroundLaneTexture?: Texture
   private heroPowerMaterialFrames: Texture[] = []
+  private astralVerdictFrames: Texture[] = []
+  private cometOrbitFrames: Texture[] = []
+  private cinderwakeReaverFrames: Texture[] = []
   private readonly authoredSpellMaterialSprites: Sprite[] = []
   private authoredSpellMaterialCursor = 0
   private readonly groundedVfxMaterialSprites: Sprite[] = []
@@ -683,7 +753,11 @@ class NighttraceRuntime {
   private readonly rings: RingEffect[] = []
   private readonly loopEffects: LoopEffect[] = []
   private readonly weaponEffects: WeaponEffectEntity[] = []
-  private readonly trace: Vec2[] = []
+  private readonly orbitingComets: OrbitingCometEntity[] = []
+  private readonly cinderwakeReavers: CinderwakeReaverEntity[] = []
+  private cometDamageWindow?: PersistentSpellDamageWindow
+  private reaverDamageWindow?: PersistentSpellDamageWindow
+  private readonly trace: TimestampedTracePoint[] = []
   private readonly weaponCooldowns = new Map<WeaponId, number>()
   private enemyUid = 0
   private spawnBudget = 0
@@ -794,6 +868,14 @@ class NighttraceRuntime {
         kernelSize: 5,
       }),
     ]
+    this.cinderwakeFleetGlow.blendMode = 'add'
+    this.cinderwakeFleetGlow.filters = [
+      new BlurFilter({
+        strength: this.visualLod === 'mobile' ? 6 : 9,
+        quality: this.visualLod === 'cinematic' ? 2 : 1,
+        kernelSize: 5,
+      }),
+    ]
     this.rerollLimit =
       runConfig.mode === 'campaign'
         ? BASE_FREE_REFRESHES_PER_RUN +
@@ -850,7 +932,7 @@ class NighttraceRuntime {
     for (const id of ALL_WEAPON_IDS) {
       this.weaponCooldowns.set(id, this.showcase ? 0.75 : this.random.range(0.08, 0.32))
     }
-    this.trace.push({ x: this.player.x, y: this.player.y })
+    this.trace.push({ x: this.player.x, y: this.player.y, bornAt: this.elapsed })
   }
 
   async init() {
@@ -879,6 +961,21 @@ class NighttraceRuntime {
       this.visualLod === 'mobile'
         ? 'assets/character-vfx/hero-material-vfx-atlas-v1-mobile.webp'
         : 'assets/character-vfx/hero-material-vfx-atlas-v1-desktop.webp',
+    )
+    const astralVerdictAtlas = appAssetUrl(
+      this.visualLod === 'mobile'
+        ? 'assets/spell-vfx/astral-verdict-v1-mobile.webp'
+        : 'assets/spell-vfx/astral-verdict-v1.webp',
+    )
+    const cometOrbitAtlas = appAssetUrl(
+      this.visualLod === 'mobile'
+        ? 'assets/spell-vfx/comet-orbit-v1-mobile.webp'
+        : 'assets/spell-vfx/comet-orbit-v1.webp',
+    )
+    const cinderwakeReaverAtlas = appAssetUrl(
+      this.visualLod === 'mobile'
+        ? 'assets/spell-vfx/cinderwake-reaver-v1-mobile.webp'
+        : 'assets/spell-vfx/cinderwake-reaver-v1.webp',
     )
     const assetLoad = Promise.all([
       Assets.load<Texture>(backgroundForLevel(this.level.id)),
@@ -917,6 +1014,9 @@ class NighttraceRuntime {
         ],
       ),
       Assets.load<Texture>(heroPowerMaterialAtlas),
+      Assets.load<Texture>(astralVerdictAtlas),
+      Assets.load<Texture>(cometOrbitAtlas),
+      Assets.load<Texture>(cinderwakeReaverAtlas),
     ])
     try {
       const [
@@ -938,6 +1038,9 @@ class NighttraceRuntime {
           hostileGroundFieldTexture,
           hostileGroundLaneTexture,
           heroPowerMaterialSheet,
+          astralVerdictSheet,
+          cometOrbitSheet,
+          cinderwakeReaverSheet,
         ],
       ] = await Promise.all([applicationInit, assetLoad])
 
@@ -983,6 +1086,7 @@ class NighttraceRuntime {
       this.pickupLayer.addChild(this.pickupAuraGraphics)
       this.enemyLayer.addChild(this.motionGraphics)
       this.projectileLayer.addChild(
+        this.cinderwakeFleetGlow,
         this.projectileTrailGraphics,
         this.hostileProjectileGraphics,
       )
@@ -1052,6 +1156,9 @@ class NighttraceRuntime {
         4,
         4,
       )
+      this.astralVerdictFrames = this.sliceTexture(astralVerdictSheet, 4, 4)
+      this.cometOrbitFrames = this.sliceTexture(cometOrbitSheet, 4, 4)
+      this.cinderwakeReaverFrames = this.sliceTexture(cinderwakeReaverSheet, 4, 4)
       this.createVfxTextures()
       const initialHeroTexture =
         this.heroChargeFrames[0] ?? this.heroWalkFrames[0] ?? Texture.WHITE
@@ -1082,6 +1189,9 @@ class NighttraceRuntime {
       const lightRing = lightRingProfile(this.lightRingRank)
       this.host.dataset.lightRingRank = String(this.lightRingRank)
       this.host.dataset.lightRingDiameter = String(lightRing?.diameter ?? 0)
+      this.host.dataset.lightRingCenterOffsetY = String(
+        HERO_BODY_CENTER_OFFSET_Y,
+      )
       this.host.dataset.lightRingState = lightRing?.awakened
         ? LIGHT_RING_AWAKENING_NAME
         : lightRing
@@ -1104,7 +1214,10 @@ class NighttraceRuntime {
       }
       if (this.showcase) this.spawnShowcaseTargets()
       else if (!this.runConfig.bossOnly) {
-        for (let index = 0; index < 4; index += 1) this.spawnEnemy()
+        const openingEnemies = openingHordeSize(this.runConfig)
+        for (let index = 0; index < openingEnemies; index += 1) {
+          this.spawnEnemy()
+        }
       }
       this.emitSnapshot(true)
     } catch (error) {
@@ -1162,7 +1275,7 @@ class NighttraceRuntime {
     this.playerHitFeedbackRemaining = 0
     this.combatTextQueue.clear()
     this.trace.length = 0
-    this.trace.push({ x: this.player.x, y: this.player.y })
+    this.trace.push({ x: this.player.x, y: this.player.y, bornAt: this.elapsed })
     this.clearReviveSanctuary()
     this.spawnBurst(this.player.x, this.player.y, 0xffe5a3, 38, 330)
     this.screenFlashAlpha = this.settings.reducedFlash ? 0.04 : 0.18
@@ -1567,6 +1680,7 @@ class NighttraceRuntime {
     if (this.showcase) {
       this.updateEnemies(delta)
       this.rebuildEnemyGrid()
+      this.updatePersistentSpells(delta)
       this.updateWeapons(delta)
       this.updateProjectiles(delta)
       this.updateTelegraphs(delta)
@@ -1639,6 +1753,7 @@ class NighttraceRuntime {
     }
     this.rebuildEnemyGrid()
     this.updateLightRing(delta)
+    this.updatePersistentSpells(delta)
     this.updateWeapons(delta)
     this.updateProjectiles(delta)
     if (!this.runConfig.bossOnly) {
@@ -1650,9 +1765,11 @@ class NighttraceRuntime {
     this.updateTelegraphs(delta)
     this.updateVisualEffects(delta)
 
-    const bossAt = this.qaMode
-      ? Math.min(45, this.level.duration * 0.2)
-      : Math.max(45, this.level.duration - 38)
+    const bossAt = bossArrivalSeconds(
+      this.runConfig,
+      this.level.duration,
+      this.qaMode,
+    )
     if (!this.runConfig.bossOnly && !this.bossSpawned && this.elapsed >= bossAt) this.spawnBoss()
 
     if (!this.runConfig.bossOnly) {
@@ -1887,6 +2004,7 @@ class NighttraceRuntime {
         projectileAlpha * Math.max(0.58, sceneVfxScale + 0.08)
       this.drawProjectileTrail(projectile, renderX, renderY)
     }
+    this.drawPersistentSpellActors(sceneVfxScale)
     this.drawHostileProjectiles()
 
     this.pickupAuraGraphics.clear()
@@ -2755,9 +2873,14 @@ class NighttraceRuntime {
     if (this.lightRingTickRemaining > 0) return
     this.lightRingTickRemaining = profile.tickSeconds
 
+    // The authored hero root is planted at the boots. Center the skill on the
+    // visible body/hitbox instead of that ground-contact root so its damage
+    // footprint and its rendered corona remain concentric with the Bearer.
+    const ringCenterX = this.player.x
+    const ringCenterY = this.player.y + HERO_BODY_CENTER_OFFSET_Y
     const candidates = this.queryEnemyGrid(
-      this.player.x,
-      this.player.y,
+      ringCenterX,
+      ringCenterY,
       profile.radius + 150,
     )
     let hitCount = 0
@@ -2766,8 +2889,8 @@ class NighttraceRuntime {
         !enemy.active ||
         !lightRingTouchesTarget(
           this.lightRingRank,
-          this.player.x,
-          this.player.y,
+          ringCenterX,
+          ringCenterY,
           enemy.x,
           enemy.y,
           enemy.radius,
@@ -2884,20 +3007,16 @@ class NighttraceRuntime {
         .map((enemy) => [enemy.uid, enemy] as const),
     )
     const impacts: Vec2[] = []
-    const ordinaryHits = hits.reduce((count, hit) => {
-      const enemy = enemiesById.get(hit.targetId)
-      return count + (enemy?.active && !enemy.isBoss ? 1 : 0)
-    }, 0)
-    for (const hit of hits) {
-      const enemy = enemiesById.get(hit.targetId)
-      if (!enemy?.active) continue
-      this.damageEnemy(
-        enemy,
-        enemy.isBoss
-          ? castDamageBudget
-          : castDamageBudget / Math.max(1, ordinaryHits),
-        weaponId,
-      )
+    const connectedEnemies = hits
+      .map((hit) => enemiesById.get(hit.targetId))
+      .filter((enemy): enemy is EnemyEntity => Boolean(enemy?.active))
+    const damageShares = distributeRemoteCastDamage(
+      castDamageBudget,
+      connectedEnemies,
+    )
+    for (let index = 0; index < connectedEnemies.length; index += 1) {
+      const enemy = connectedEnemies[index]
+      this.damageEnemy(enemy, damageShares[index] ?? 0, weaponId)
       if (impacts.length < 12) impacts.push({ x: enemy.x, y: enemy.y })
     }
 
@@ -2991,7 +3110,7 @@ class NighttraceRuntime {
             1.45,
             visualState,
             visualSeed + index,
-            damage,
+            damage / blades,
           )
         }
         break
@@ -3000,7 +3119,7 @@ class NighttraceRuntime {
         this.chainLightning(
           target,
           damage,
-          Math.min(10, 2 + rank + moduleRank + (owned.awakened ? 2 : 0)),
+          Math.min(6, 2 + rank + moduleRank + (owned.awakened ? 1 : 0)),
           owned.id,
           visualState,
           visualSeed,
@@ -3018,23 +3137,15 @@ class NighttraceRuntime {
         )
         break
       case 'comet-swarm': {
-        const count = Math.min(7, 1 + Math.ceil(rank / 2) + (owned.awakened ? 2 : 0))
-        this.emitWeaponCastVfx(owned.id, visualState, angle, 52 + count * 5, visualSeed)
-        for (let index = 0; index < count; index += 1) {
-          this.spawnProjectile(
-            owned.id,
-            angle + (index - (count - 1) / 2) * 0.19,
-            385 + moduleRank * 35,
-            damage / count,
-            0,
-            3.2 + moduleRank * 0.8,
-            definition.color,
-            1.45,
-            visualState,
-            visualSeed + index,
-            damage / count,
-          )
-        }
+        const profile = orbitingCometProfile(rank, Boolean(owned.awakened))
+        this.emitWeaponCastVfx(
+          owned.id,
+          visualState,
+          angle,
+          profile.outerRadius,
+          visualSeed,
+        )
+        this.armOrbitingComets(owned, visualState, damage, visualSeed)
         break
       }
       case 'ash-halo': {
@@ -3059,38 +3170,7 @@ class NighttraceRuntime {
         break
       }
       case 'mirror-bow': {
-        this.emitWeaponCastVfx(owned.id, visualState, angle, 128, visualSeed)
-        const frontPierce = 3 + Math.floor(rank / 2) + moduleRank
-        this.spawnProjectile(
-          owned.id,
-          angle,
-          620,
-          (damage * 0.65) / (frontPierce + 1),
-          frontPierce,
-          0,
-          definition.color,
-          1.45,
-          visualState,
-          visualSeed,
-          damage,
-        )
-        this.spawnProjectile(
-          owned.id,
-          angle + Math.PI,
-          620,
-          (damage * 0.35) / 3,
-          2,
-          0,
-          0xdaf6ff,
-          1.45,
-          visualState,
-          visualSeed + 1,
-          damage * 0.35,
-        )
-        if (owned.awakened) {
-          const origin = this.currentHeroWeaponOrigin()
-          this.spawnBurst(origin.x, origin.y, 0xe9f8ff, 10, 130)
-        }
+        this.armCinderwakeReavers(owned, visualState, damage, visualSeed, target)
         break
       }
       case 'null-bell': {
@@ -3125,6 +3205,21 @@ class NighttraceRuntime {
           moduleRank,
           Boolean(owned.awakened),
           visualState,
+          visualSeed + 41,
+        )
+      } else if (owned.id === 'mirror-bow') {
+        this.armCinderwakeReavers(
+          owned,
+          visualState,
+          damage * 0.72,
+          visualSeed + 41,
+          target,
+        )
+      } else if (owned.id === 'comet-swarm') {
+        this.armOrbitingComets(
+          owned,
+          visualState,
+          damage * 0.72,
           visualSeed + 41,
         )
       } else if (owned.id === 'ash-halo' || owned.id === 'null-bell') {
@@ -3197,10 +3292,10 @@ class NighttraceRuntime {
       let shortestIndex = -1
       for (let index = 0; index < this.weaponEffects.length; index += 1) {
         const candidate = this.weaponEffects[index]
-        const pendingAstralStrikes =
+        const pendingRemoteStrikes =
           candidate.kind === 'astral-verdict' &&
           (candidate.triggeredStrikeCount ?? 0) < (candidate.points?.length ?? 0)
-        if (pendingAstralStrikes) continue
+        if (pendingRemoteStrikes) continue
         if (
           shortestIndex < 0 ||
           candidate.life < this.weaponEffects[shortestIndex].life
@@ -3210,9 +3305,9 @@ class NighttraceRuntime {
       }
       if (shortestIndex >= 0) {
         this.weaponEffects.splice(shortestIndex, 1)
-      } else if (effect.kind !== 'astral-verdict') {
-        return
-      }
+        } else if (effect.kind !== 'astral-verdict') {
+          return
+        }
     }
     this.weaponEffects.push(effect)
   }
@@ -3233,7 +3328,7 @@ class NighttraceRuntime {
       'rift-seeds': undefined,
       'comet-swarm': 'comet-launch',
       'ash-halo': 'graveglass-eruption',
-      'mirror-bow': 'mirror-gate',
+      'mirror-bow': undefined,
       'null-bell': 'eclipse-harrow',
     }
     const effectKind = kind[weaponId]
@@ -3292,7 +3387,6 @@ class NighttraceRuntime {
       'helio-lance': 'helio-impact',
       'crescent-array': 'crescent-impact',
       'comet-swarm': 'comet-impact',
-      'mirror-bow': 'mirror-impact',
     }
     const effectKind = kind[projectile.weaponId]
     if (!effectKind) return
@@ -3301,11 +3395,7 @@ class NighttraceRuntime {
       projectile.visualState,
     )
     const radius =
-      projectile.weaponId === 'helio-lance'
-          ? 56
-          : projectile.weaponId === 'mirror-bow'
-            ? 66
-            : 48
+      projectile.weaponId === 'helio-lance' ? 56 : 48
     const duration =
       projectile.visualState.stage === 'final'
           ? 0.46
@@ -3467,6 +3557,921 @@ class NighttraceRuntime {
           break
         }
       }
+    }
+  }
+
+  private armOrbitingComets(
+    owned: OwnedWeapon,
+    visualState: WeaponVfxState,
+    castDamageBudget: number,
+    visualSeed: number,
+  ) {
+    const profile = orbitingCometProfile(owned.rank, Boolean(owned.awakened))
+    this.syncOrbitingComets(profile.count, owned, visualState, visualSeed)
+    const moduleRank =
+      this.modules.find((module) => module.id === WEAPONS[owned.id].moduleId)
+        ?.rank ?? 0
+    const baseCastDamageBudget = weaponCastDamageBudget(owned, moduleRank)
+    const windowDuration = Math.max(
+      0.72,
+      weaponCooldownSeconds(
+        owned.id,
+        owned.rank,
+        moduleRank,
+        Boolean(owned.awakened),
+      ) * 1.3,
+    )
+    const previous =
+      this.cometDamageWindow && this.cometDamageWindow.expiresAt > this.elapsed
+        ? this.cometDamageWindow.remaining
+        : 0
+    this.cometDamageWindow = {
+      // Crossfire can add 72% in the same volley. Capping at 1.72 casts avoids
+      // banking a large burst when no enemy is close enough to be touched.
+      remaining: Math.min(
+        baseCastDamageBudget * 1.72,
+        previous + castDamageBudget,
+      ),
+      expiresAt: this.elapsed + windowDuration,
+    }
+  }
+
+  private syncOrbitingComets(
+    count: number,
+    owned: OwnedWeapon,
+    visualState: WeaponVfxState,
+    visualSeed: number,
+  ) {
+    const profile = orbitingCometProfile(owned.rank, Boolean(owned.awakened))
+    const centerY = this.player.y + HERO_BODY_CENTER_OFFSET_Y
+    while (this.orbitingComets.length < count) {
+      const sprite = new Sprite(this.cometOrbitFrames[0] ?? Texture.WHITE)
+      sprite.anchor.set(0.5)
+      sprite.visible = false
+      sprite.blendMode = 'add'
+      this.projectileLayer.addChild(sprite)
+      this.orbitingComets.push({
+        active: false,
+        slot: this.orbitingComets.length,
+        x: this.player.x,
+        y: centerY,
+        previousX: this.player.x,
+        previousY: centerY,
+        angle: 0,
+        orbitRadius: profile.innerRadius,
+        angularSpeed: profile.angularSpeed,
+        direction: 1,
+        footprint: profile.footprint,
+        visualState,
+        frameOffset: 0,
+        sprite,
+      })
+    }
+
+    for (let index = 0; index < this.orbitingComets.length; index += 1) {
+      const comet = this.orbitingComets[index]
+      if (index >= count) {
+        comet.active = false
+        comet.sprite.visible = false
+        continue
+      }
+      const laneT = count <= 1 ? 0 : index / (count - 1)
+      const radius = lerp(profile.innerRadius, profile.outerRadius, laneT)
+      if (!comet.active) {
+        comet.angle =
+          (Math.PI * 2 * index) / Math.max(1, count) +
+          replacementCosmeticUnit(visualSeed, index, 811) * 0.32
+        comet.x = this.player.x + Math.cos(comet.angle) * radius
+        comet.y = centerY + Math.sin(comet.angle) * radius * 0.56
+        comet.previousX = comet.x
+        comet.previousY = comet.y
+      }
+      comet.active = true
+      comet.slot = index
+      comet.orbitRadius = radius
+      comet.angularSpeed = profile.angularSpeed * (1 + laneT * 0.08)
+      comet.direction =
+        profile.counterRotating && index % 2 === 1 ? -1 : 1
+      comet.footprint = profile.footprint
+      comet.visualState = visualState
+      comet.frameOffset = (visualSeed + index * 5) % 16
+      comet.sprite.visible = true
+    }
+  }
+
+  private armCinderwakeReavers(
+    owned: OwnedWeapon,
+    visualState: WeaponVfxState,
+    castDamageBudget: number,
+    visualSeed: number,
+    target: EnemyEntity,
+  ) {
+    const profile = cinderwakeReaverProfile(owned.rank, Boolean(owned.awakened))
+    this.syncCinderwakeReavers(
+      profile.count,
+      owned,
+      visualState,
+      visualSeed,
+      target,
+    )
+    const moduleRank =
+      this.modules.find((module) => module.id === WEAPONS[owned.id].moduleId)
+        ?.rank ?? 0
+    const baseCastDamageBudget = weaponCastDamageBudget(owned, moduleRank)
+    const windowDuration = Math.max(
+      0.9,
+      weaponCooldownSeconds(
+        owned.id,
+        owned.rank,
+        moduleRank,
+        Boolean(owned.awakened),
+      ) * 1.45,
+    )
+    const previous =
+      this.reaverDamageWindow && this.reaverDamageWindow.expiresAt > this.elapsed
+        ? this.reaverDamageWindow.remaining
+        : 0
+    this.reaverDamageWindow = {
+      remaining: Math.min(
+        baseCastDamageBudget * 1.72,
+        previous + castDamageBudget,
+      ),
+      expiresAt: this.elapsed + windowDuration,
+    }
+  }
+
+  private syncCinderwakeReavers(
+    count: number,
+    owned: OwnedWeapon,
+    visualState: WeaponVfxState,
+    visualSeed: number,
+    target: EnemyEntity,
+  ) {
+    const profile = cinderwakeReaverProfile(owned.rank, Boolean(owned.awakened))
+    const origin = this.currentHeroWeaponOrigin()
+    while (this.cinderwakeReavers.length < count) {
+      const wakeGlow = new Graphics()
+      wakeGlow
+        .ellipse(-16, 0, 36, 8)
+        .fill({ color: 0x432258, alpha: 0.46 })
+        .ellipse(-8, 0, 29, 5.8)
+        .fill({ color: 0x811d2b, alpha: 0.76 })
+        .ellipse(7, 0, 10, 2.8)
+        .fill({ color: 0xea7467, alpha: 0.62 })
+      wakeGlow.visible = false
+      wakeGlow.blendMode = 'add'
+      wakeGlow.filters = [
+        new BlurFilter({
+          strength: this.visualLod === 'mobile' ? 5 : 7,
+          quality: 1,
+          kernelSize: 5,
+        }),
+      ]
+      this.projectileLayer.addChild(wakeGlow)
+      const impactGlow = new Graphics()
+      impactGlow
+        .ellipse(0, 0, 29, 21)
+        .fill({ color: 0x481e55, alpha: 0.5 })
+        .ellipse(5, 2, 17, 11)
+        .fill({ color: 0x852939, alpha: 0.72 })
+        .ellipse(-9, -3, 7, 5)
+        .fill({ color: 0xea7467, alpha: 0.9 })
+      impactGlow.visible = false
+      impactGlow.blendMode = 'add'
+      impactGlow.filters = [
+        new BlurFilter({
+          strength: this.visualLod === 'mobile' ? 2.4 : 3,
+          quality: 1,
+          kernelSize: 5,
+        }),
+      ]
+      this.projectileLayer.addChild(impactGlow)
+      const auraSprite = new Sprite(this.cinderwakeReaverFrames[0] ?? Texture.WHITE)
+      auraSprite.anchor.set(0.5)
+      auraSprite.visible = false
+      auraSprite.blendMode = 'add'
+      auraSprite.filters = [
+        new BlurFilter({
+          strength: this.visualLod === 'mobile' ? 3 : 4.8,
+          quality: 1,
+          kernelSize: 5,
+        }),
+      ]
+      this.projectileLayer.addChild(auraSprite)
+      const edgeSprite = new Sprite(this.cinderwakeReaverFrames[0] ?? Texture.WHITE)
+      edgeSprite.anchor.set(0.5)
+      edgeSprite.visible = false
+      edgeSprite.blendMode = 'add'
+      edgeSprite.filters = [
+        new BlurFilter({
+          strength: this.visualLod === 'mobile' ? 1.2 : 1.8,
+          quality: 1,
+          kernelSize: 5,
+        }),
+      ]
+      this.projectileLayer.addChild(edgeSprite)
+      const sprite = new Sprite(this.cinderwakeReaverFrames[0] ?? Texture.WHITE)
+      sprite.anchor.set(0.5)
+      sprite.visible = false
+      sprite.blendMode = 'normal'
+      const materialFilter = new ColorMatrixFilter()
+      materialFilter.saturate(0.08, false)
+      materialFilter.contrast(0.13, true)
+      sprite.filters = [materialFilter]
+      this.projectileLayer.addChild(sprite)
+      this.cinderwakeReavers.push({
+        active: false,
+        slot: this.cinderwakeReavers.length,
+        x: origin.x,
+        y: origin.y,
+        previousX: origin.x,
+        previousY: origin.y,
+        vx: profile.speed,
+        vy: 0,
+        speed: profile.speed,
+        turnRate: profile.turnRate,
+        spin: 0,
+        spinRate: profile.spinRate,
+        flightMode: 'seeking',
+        flightTimer: 0,
+        bounceLock: 0,
+        curveSign: 1,
+        outboundX: origin.x,
+        outboundY: origin.y,
+        footprint: profile.footprint,
+        scale: profile.scale,
+        visualState,
+        frameOffset: 0,
+        wakeGlow,
+        impactGlow,
+        auraSprite,
+        edgeSprite,
+        materialFilter,
+        sprite,
+      })
+    }
+
+    for (let index = 0; index < this.cinderwakeReavers.length; index += 1) {
+      const reaver = this.cinderwakeReavers[index]
+      if (index >= count) {
+        reaver.active = false
+        reaver.wakeGlow.visible = false
+        reaver.impactGlow.visible = false
+        reaver.auraSprite.visible = false
+        reaver.edgeSprite.visible = false
+        reaver.sprite.visible = false
+        continue
+      }
+      if (!reaver.active) {
+        const aim = Math.atan2(target.y - origin.y, target.x - origin.x)
+        const spread =
+          (index - (count - 1) * 0.5) * 0.3 +
+          (replacementCosmeticUnit(visualSeed, index, 821) - 0.5) * 0.12
+        reaver.x = origin.x
+        reaver.y = origin.y
+        reaver.previousX = origin.x
+        reaver.previousY = origin.y
+        reaver.vx = Math.cos(aim + spread) * profile.speed
+        reaver.vy = Math.sin(aim + spread) * profile.speed
+        reaver.spin = replacementCosmeticUnit(visualSeed, index, 823) * Math.PI * 2
+        reaver.flightMode = 'seeking'
+        reaver.flightTimer = -index * 0.16
+        reaver.bounceLock = 0
+        reaver.curveSign = index % 2 === 0 ? 1 : -1
+        reaver.outboundX = origin.x
+        reaver.outboundY = origin.y
+      }
+      reaver.active = true
+      reaver.slot = index
+      reaver.speed = profile.speed
+      reaver.turnRate = profile.turnRate
+      reaver.spinRate = profile.spinRate * (index % 2 === 0 ? 1 : -1)
+      reaver.footprint = profile.footprint
+      reaver.scale = profile.scale
+      reaver.visualState = visualState
+      reaver.frameOffset = (visualSeed + index * 7) % 16
+      reaver.wakeGlow.visible = true
+      reaver.impactGlow.visible = true
+      reaver.auraSprite.visible = true
+      reaver.edgeSprite.visible = true
+      reaver.sprite.visible = true
+    }
+  }
+
+  private updatePersistentSpells(delta: number) {
+    const cometWeapon = this.weapons.find(
+      (weapon) => weapon.id === 'comet-swarm' && weapon.rank > 0,
+    )
+    if (cometWeapon) {
+      const moduleRank =
+        this.modules.find(
+          (module) => module.id === WEAPONS[cometWeapon.id].moduleId,
+        )?.rank ?? 0
+      const visualState = resolveWeaponVfxState(
+        cometWeapon.rank,
+        moduleRank,
+        Boolean(cometWeapon.awakened),
+      )
+      const profile = orbitingCometProfile(
+        cometWeapon.rank,
+        Boolean(cometWeapon.awakened),
+      )
+      this.syncOrbitingComets(
+        profile.count,
+        cometWeapon,
+        visualState,
+        this.attackVolley,
+      )
+      const centerX = this.player.x
+      const centerY = this.player.y + HERO_BODY_CENTER_OFFSET_Y
+      for (const comet of this.orbitingComets) {
+        if (!comet.active) continue
+        comet.previousX = comet.x
+        comet.previousY = comet.y
+        comet.angle += comet.angularSpeed * comet.direction * delta
+        comet.x = centerX + Math.cos(comet.angle) * comet.orbitRadius
+        comet.y = centerY + Math.sin(comet.angle) * comet.orbitRadius * 0.56
+      }
+      this.consumePersistentSpellWindow(
+        this.cometDamageWindow,
+        this.persistentContacts(this.orbitingComets),
+        'comet-swarm',
+      )
+      if (
+        this.cometDamageWindow &&
+        (this.cometDamageWindow.remaining <= 0 ||
+          this.cometDamageWindow.expiresAt <= this.elapsed)
+      ) {
+        this.cometDamageWindow = undefined
+      }
+    } else {
+      this.cometDamageWindow = undefined
+      for (const comet of this.orbitingComets) {
+        comet.active = false
+        comet.sprite.visible = false
+      }
+    }
+
+    const reaverWeapon = this.weapons.find(
+      (weapon) => weapon.id === 'mirror-bow' && weapon.rank > 0,
+    )
+    if (reaverWeapon) {
+      const target = this.nearestEnemy(this.player.x, this.player.y)
+      // A Reaver is a cast projectile: it must visibly leave the weapon before
+      // becoming a persistent hunter. Only maintain an already-launched fleet
+      // here; `armCinderwakeReavers` performs the initial spawn on the cast.
+      if (target && this.cinderwakeReavers.some((reaver) => reaver.active)) {
+        const moduleRank =
+          this.modules.find(
+            (module) => module.id === WEAPONS[reaverWeapon.id].moduleId,
+          )?.rank ?? 0
+        const visualState = resolveWeaponVfxState(
+          reaverWeapon.rank,
+          moduleRank,
+          Boolean(reaverWeapon.awakened),
+        )
+        const profile = cinderwakeReaverProfile(
+          reaverWeapon.rank,
+          Boolean(reaverWeapon.awakened),
+        )
+        this.syncCinderwakeReavers(
+          profile.count,
+          reaverWeapon,
+          visualState,
+          this.attackVolley,
+          target,
+        )
+      }
+      const margin = 34
+      const claimedTargets: number[] = []
+      const activeReavers = this.cinderwakeReavers.filter(
+        (reaver) => reaver.active,
+      )
+      for (const reaver of this.cinderwakeReavers) {
+        if (!reaver.active) continue
+        reaver.previousX = reaver.x
+        reaver.previousY = reaver.y
+        reaver.flightTimer += delta
+        reaver.bounceLock = Math.max(0, reaver.bounceLock - delta)
+        const target =
+          this.nearestEnemy(reaver.x, reaver.y, claimedTargets) ??
+          this.nearestEnemy(reaver.x, reaver.y)
+        if (target && reaver.bounceLock <= 0) {
+          claimedTargets.push(target.uid)
+          const targetDx = target.x - reaver.x
+          const targetDy = target.y - reaver.y
+          const targetDistance = Math.hypot(targetDx, targetDy)
+          const contactDistance = target.radius + reaver.footprint * 0.72
+
+          if (
+            reaver.flightMode === 'seeking' &&
+            (targetDistance <= contactDistance + 18 ||
+              reaver.flightTimer >= 1.14 + reaver.slot * 0.08)
+          ) {
+            reaver.flightMode = 'receding'
+            reaver.flightTimer = 0
+            const directAway =
+              targetDistance > 0.001
+                ? Math.atan2(reaver.y - target.y, reaver.x - target.x)
+                : Math.atan2(-reaver.vy, -reaver.vx)
+            const outboundAngle =
+              directAway +
+              reaver.curveSign * (0.24 + reaver.slot * 0.045)
+            const outboundReach = Math.hypot(WORLD_WIDTH, WORLD_HEIGHT) * 1.2
+            reaver.outboundX = reaver.x + Math.cos(outboundAngle) * outboundReach
+            reaver.outboundY = reaver.y + Math.sin(outboundAngle) * outboundReach
+          }
+
+          const laneAngle =
+            (Math.PI * 2 * reaver.slot) / Math.max(1, activeReavers.length) +
+            this.motionClock * 0.22 * reaver.curveSign
+          const approachRadius = target.isBoss
+            ? target.radius * 0.62 + 18 + reaver.slot * 7
+            : 8 + reaver.slot * 5
+          let aimX = target.x + Math.cos(laneAngle) * approachRadius
+          let aimY = target.y + Math.sin(laneAngle) * approachRadius * 0.72
+
+          if (reaver.flightMode === 'receding') {
+            // Hold a fixed destination beyond the arena so each blade commits
+            // to an unmistakable outbound leg and can visibly ricochet from a
+            // wall before its homing turn resumes.
+            aimX = reaver.outboundX
+            aimY = reaver.outboundY
+          }
+
+          const desired = Math.atan2(aimY - reaver.y, aimX - reaver.x)
+          const current = Math.atan2(reaver.vy, reaver.vx)
+          let difference = desired - current
+          while (difference > Math.PI) difference -= Math.PI * 2
+          while (difference < -Math.PI) difference += Math.PI * 2
+          const phaseTurnScale = reaver.flightMode === 'receding' ? 0.72 : 1
+          const next =
+            current +
+            clamp(
+              difference,
+              -reaver.turnRate * phaseTurnScale * delta,
+              reaver.turnRate * phaseTurnScale * delta,
+            )
+          reaver.vx = Math.cos(next) * reaver.speed
+          reaver.vy = Math.sin(next) * reaver.speed
+        }
+
+        // Maintain independent flight lanes even when a lone boss is the only
+        // target. This soft repulsion is positional choreography, not damage.
+        for (const other of activeReavers) {
+          if (other === reaver) continue
+          const separationX = reaver.x - other.x
+          const separationY = reaver.y - other.y
+          const separationDistance = Math.hypot(separationX, separationY)
+          const reaverSize =
+            (88 + this.vfxStageIndex(reaver.visualState.stage) * 4) *
+            reaver.scale
+          const otherSize =
+            (88 + this.vfxStageIndex(other.visualState.stage) * 4) *
+            other.scale
+          const separationRadius = Math.max(
+            108,
+            (reaverSize + otherSize) * 0.55,
+          )
+          if (separationDistance >= separationRadius) continue
+          let normalX: number
+          let normalY: number
+          if (separationDistance <= 0.001) {
+            const pairAngle = (Math.min(reaver.slot, other.slot) + 1) * 2.39996
+            const direction = reaver.slot < other.slot ? 1 : -1
+            normalX = Math.cos(pairAngle) * direction
+            normalY = Math.sin(pairAngle) * direction
+          } else {
+            normalX = separationX / separationDistance
+            normalY = separationY / separationDistance
+          }
+          const separationForce =
+            (separationRadius - separationDistance) * 2.35
+          reaver.vx += normalX * separationForce
+          reaver.vy += normalY * separationForce
+        }
+        const separatedSpeed = Math.max(0.001, Math.hypot(reaver.vx, reaver.vy))
+        reaver.vx = (reaver.vx / separatedSpeed) * reaver.speed
+        reaver.vy = (reaver.vy / separatedSpeed) * reaver.speed
+
+        reaver.x += reaver.vx * delta
+        reaver.y += reaver.vy * delta
+        let bounced = false
+        if (reaver.x <= margin || reaver.x >= WORLD_WIDTH - margin) {
+          reaver.x = clamp(reaver.x, margin, WORLD_WIDTH - margin)
+          reaver.vx *= -1
+          bounced = true
+        }
+        if (reaver.y <= margin || reaver.y >= WORLD_HEIGHT - margin) {
+          reaver.y = clamp(reaver.y, margin, WORLD_HEIGHT - margin)
+          reaver.vy *= -1
+          bounced = true
+        }
+        if (bounced) {
+          // Briefly suspend homing so the reflected travel is clearly visible
+          // instead of being cancelled by steering on the next frame.
+          reaver.bounceLock = 0.34
+          reaver.flightMode = 'seeking'
+          reaver.flightTimer = 0
+          reaver.curveSign = reaver.curveSign === 1 ? -1 : 1
+        }
+        reaver.spin += reaver.spinRate * delta
+      }
+      this.consumePersistentSpellWindow(
+        this.reaverDamageWindow,
+        this.persistentContacts(this.cinderwakeReavers),
+        'mirror-bow',
+      )
+      if (
+        this.reaverDamageWindow &&
+        (this.reaverDamageWindow.remaining <= 0 ||
+          this.reaverDamageWindow.expiresAt <= this.elapsed)
+      ) {
+        this.reaverDamageWindow = undefined
+      }
+    } else {
+      this.reaverDamageWindow = undefined
+      for (const reaver of this.cinderwakeReavers) {
+        reaver.active = false
+        reaver.wakeGlow.visible = false
+        reaver.impactGlow.visible = false
+        reaver.auraSprite.visible = false
+        reaver.edgeSprite.visible = false
+        reaver.sprite.visible = false
+      }
+    }
+
+    this.host.dataset.activeOrbitingComets = String(
+      this.orbitingComets.filter((comet) => comet.active).length,
+    )
+    this.host.dataset.activeCinderwakeReavers = String(
+      this.cinderwakeReavers.filter((reaver) => reaver.active).length,
+    )
+  }
+
+  private persistentContacts(
+    actors: ReadonlyArray<OrbitingCometEntity | CinderwakeReaverEntity>,
+  ) {
+    const contacts = new Map<number, EnemyEntity>()
+    for (const actor of actors) {
+      if (!actor.active) continue
+      const candidates = this.queryEnemyGrid(
+        actor.x,
+        actor.y,
+        actor.footprint + 72,
+      )
+      for (const enemy of candidates) {
+        if (!enemy.active) continue
+        const combined = actor.footprint + enemy.radius
+        if (distanceSquared(actor, enemy) > combined ** 2) continue
+        contacts.set(enemy.uid, enemy)
+      }
+    }
+    return [...contacts.values()]
+  }
+
+  private consumePersistentSpellWindow(
+    window: PersistentSpellDamageWindow | undefined,
+    contacts: EnemyEntity[],
+    weaponId: 'comet-swarm' | 'mirror-bow',
+  ) {
+    if (
+      !window ||
+      window.remaining <= 0 ||
+      window.expiresAt <= this.elapsed ||
+      contacts.length === 0
+    ) {
+      return
+    }
+    const shares = contacts.some((enemy) => enemy.isBoss)
+      ? distributeRemoteCastDamage(window.remaining, contacts)
+      : persistentWindowDamage(window.remaining, contacts.length)
+    for (let index = 0; index < contacts.length; index += 1) {
+      this.damageEnemy(contacts[index], shares[index] ?? 0, weaponId)
+    }
+    window.remaining = 0
+  }
+
+  private drawPersistentSpellActors(sceneVfxScale: number) {
+    for (const comet of this.orbitingComets) {
+      if (!comet.active) continue
+      const frame = this.cometOrbitFrames[
+        (Math.floor(this.motionClock * 14) + comet.frameOffset) %
+          Math.max(1, this.cometOrbitFrames.length)
+      ]
+      if (frame) comet.sprite.texture = frame
+      const renderX = lerp(comet.previousX, comet.x, this.interpolation)
+      const renderY = lerp(comet.previousY, comet.y, this.interpolation)
+      comet.sprite.position.set(renderX, renderY)
+      comet.sprite.rotation = -comet.angle * 0.32
+      const stage = this.vfxStageIndex(comet.visualState.stage)
+      const size = (62 + stage * 4) * (comet.visualState.awakened ? 1.06 : 1)
+      const motionX = comet.x - comet.previousX
+      const motionY = comet.y - comet.previousY
+      const motionLength = Math.max(0.001, Math.hypot(motionX, motionY))
+      const trailX = -motionX / motionLength
+      const trailY = -motionY / motionLength
+      const trailNormalX = -trailY
+      const trailNormalY = trailX
+      const trailEnergy = Math.max(0.58, sceneVfxScale)
+
+      // A compact, tapered ember wake makes the orbit readable without
+      // turning each basalt stone into a large projectile or a neon ring.
+      for (let wake = 1; wake <= 3; wake += 1) {
+        const distance = 3 + wake * (3.4 + stage * 0.28)
+        const drift = Math.sin(
+          this.motionClock * 8 + comet.frameOffset * 0.31 + wake * 1.9,
+        ) * (0.7 + wake * 0.22)
+        const wakeX = renderX + trailX * distance + trailNormalX * drift
+        const wakeY = renderY + trailY * distance + trailNormalY * drift
+        const wakeScale = 1 - wake * 0.19
+        this.projectileTrailGraphics
+          .circle(wakeX, wakeY, Math.max(1.2, size * 0.075 * wakeScale))
+          .fill({
+            color: wake === 1 ? 0xffc15a : wake === 2 ? 0xff6a1d : 0x8f2b19,
+            alpha: (0.24 - wake * 0.045) * trailEnergy,
+          })
+      }
+      this.projectileTrailGraphics
+        .ellipse(renderX, renderY, size * 0.23, size * 0.18)
+        .fill({ color: 0xff5a18, alpha: 0.085 * trailEnergy })
+      this.projectileTrailGraphics
+        .ellipse(renderX, renderY, size * 0.1, size * 0.08)
+        .fill({ color: 0xffb13b, alpha: 0.16 * trailEnergy })
+      comet.sprite.width = size
+      comet.sprite.height = size
+      comet.sprite.alpha = Math.max(0.58, sceneVfxScale) * 0.94
+      comet.sprite.visible = true
+    }
+    this.cinderwakeFleetGlow.clear()
+    const activeReavers = this.cinderwakeReavers.filter((reaver) => reaver.active)
+    const fleetEnergy = Math.max(0.62, sceneVfxScale)
+    if (activeReavers.length > 0) {
+      const fleetState = activeReavers[0].visualState
+      const fleetProfile = cinderwakeReaverPresentationProfile(
+        fleetState.rank,
+        fleetState.awakened,
+      )
+      const renderedReavers = activeReavers.map((reaver) => ({
+        reaver,
+        x: lerp(reaver.previousX, reaver.x, this.interpolation),
+        y: lerp(reaver.previousY, reaver.y, this.interpolation),
+      }))
+      const fleetCenter = renderedReavers.reduce(
+        (center, actor) => ({
+          x: center.x + actor.x / renderedReavers.length,
+          y: center.y + actor.y / renderedReavers.length,
+        }),
+        { x: 0, y: 0 },
+      )
+      const pressurePhase =
+        0.5 + Math.sin((this.motionClock / 3.7) * Math.PI * 2) * 0.5
+      const pressureScale = lerp(0.96, 1.06, pressurePhase)
+      const pressureAlpha = lerp(0.19, 0.42, pressurePhase) * fleetEnergy
+
+      // Theater parity: three broad crimson/violet pressure pools breathe
+      // behind the whole fleet. They are deliberately soft fields, not rings.
+      this.cinderwakeFleetGlow
+        .ellipse(
+          lerp(this.player.x, fleetCenter.x, 0.38) - 72,
+          lerp(this.player.y, fleetCenter.y, 0.38) - 28,
+          118 * pressureScale,
+          58 * pressureScale,
+        )
+        .fill({ color: 0x691928, alpha: pressureAlpha * 0.28 })
+        .ellipse(
+          lerp(this.player.x, fleetCenter.x, 0.7) + 78,
+          lerp(this.player.y, fleetCenter.y, 0.7) - 18,
+          132 * pressureScale,
+          66 * pressureScale,
+        )
+        .fill({ color: 0x341948, alpha: pressureAlpha * 0.3 })
+        .ellipse(
+          fleetCenter.x + 18,
+          fleetCenter.y + 78,
+          142 * pressureScale,
+          72 * pressureScale,
+        )
+        .fill({ color: 0x53101d, alpha: pressureAlpha * 0.24 })
+
+      if (fleetState.awakened) {
+        const vortexPhase =
+          0.5 + Math.sin((this.motionClock / 2.4) * Math.PI * 2) * 0.5
+        const vortexScale = lerp(0.9, 1.08, vortexPhase)
+        this.cinderwakeFleetGlow
+          .ellipse(
+            this.player.x - 9,
+            this.player.y + 3,
+            95 * vortexScale,
+            64 * vortexScale,
+          )
+          .fill({ color: 0x441f58, alpha: lerp(0.055, 0.13, vortexPhase) })
+          .ellipse(
+            this.player.x + 16,
+            this.player.y - 7,
+            66 * vortexScale,
+            41 * vortexScale,
+          )
+          .fill({ color: 0x79182a, alpha: lerp(0.045, 0.11, vortexPhase) })
+      }
+      this.cinderwakeFleetGlow.alpha = fleetEnergy
+
+      // Theater cinders are a small, fleet-wide budget. They drift irregularly
+      // around the blades instead of forming a dotted orbit on every actor.
+      for (let cinder = 0; cinder < fleetProfile.cinders; cinder += 1) {
+        const actor = renderedReavers[cinder % renderedReavers.length]
+        const cycle =
+          (((this.motionClock - cinder * 0.31) % 2.2) + 2.2) % 2.2 / 2.2
+        let driftX: number
+        let driftY: number
+        let cinderAlpha: number
+        let cinderScale: number
+        if (cycle < 0.38) {
+          const progress = cycle / 0.38
+          driftX = lerp(-7, 5, progress)
+          driftY = lerp(12, -8, progress)
+          cinderAlpha = lerp(0.06, 0.84, progress)
+          cinderScale = lerp(0.55, 1, progress)
+        } else if (cycle < 0.72) {
+          const progress = (cycle - 0.38) / 0.34
+          driftX = lerp(5, 13, progress)
+          driftY = lerp(-8, -21, progress)
+          cinderAlpha = lerp(0.84, 0.23, progress)
+          cinderScale = lerp(1, 0.7, progress)
+        } else {
+          const progress = (cycle - 0.72) / 0.28
+          driftX = lerp(13, -7, progress)
+          driftY = lerp(-21, 12, progress)
+          cinderAlpha = lerp(0.23, 0.06, progress)
+          cinderScale = lerp(0.7, 0.55, progress)
+        }
+        const offsetAngle = cinder * 2.399963 + actor.reaver.slot * 0.67
+        const offsetRadius =
+          fleetProfile.visualDiameter * (0.24 + (cinder % 3) * 0.08)
+        const x = actor.x + Math.cos(offsetAngle) * offsetRadius + driftX
+        const y = actor.y + Math.sin(offsetAngle) * offsetRadius * 0.62 + driftY
+        const radius = Math.max(1.15, 1.45 * cinderScale)
+        this.projectileTrailGraphics
+          .circle(x, y, radius * 5.2)
+          .fill({ color: 0x57296b, alpha: cinderAlpha * 0.12 * fleetEnergy })
+          .circle(x, y, radius * 2.8)
+          .fill({ color: 0xbb2a39, alpha: cinderAlpha * 0.24 * fleetEnergy })
+          .circle(x, y, radius)
+          .fill({ color: 0xd96361, alpha: cinderAlpha * fleetEnergy })
+      }
+
+      // Sparse arena particles make fast paths readable without outlining
+      // them. Their positions trail velocity and never resolve into a circle.
+      for (
+        let particle = 0;
+        particle < fleetProfile.ambientParticleBudget;
+        particle += 1
+      ) {
+        const actor = renderedReavers[particle % renderedReavers.length]
+        const velocity = Math.max(
+          1,
+          Math.hypot(actor.reaver.vx, actor.reaver.vy),
+        )
+        const trailX = -actor.reaver.vx / velocity
+        const trailY = -actor.reaver.vy / velocity
+        const normalX = -trailY
+        const normalY = trailX
+        const phase =
+          ((this.motionClock * 0.54 + particle * 0.137) % 1 + 1) % 1
+        const distance = 8 + phase * (32 + (particle % 4) * 7)
+        const side = ((particle * 29) % 11 - 5) * 1.8
+        const shimmer = Math.sin(Math.PI * phase) ** 2
+        const x = actor.x + trailX * distance + normalX * side
+        const y = actor.y + trailY * distance + normalY * side
+        this.projectileTrailGraphics
+          .circle(x, y, 3.4 + (particle % 2) * 0.8)
+          .fill({ color: 0x57296b, alpha: shimmer * 0.09 * fleetEnergy })
+          .circle(x, y, 1.55)
+          .fill({ color: 0xbb2a39, alpha: shimmer * 0.24 * fleetEnergy })
+          .circle(x, y, 0.72)
+          .fill({ color: 0xea7467, alpha: shimmer * 0.7 * fleetEnergy })
+      }
+    }
+
+    for (const reaver of activeReavers) {
+      const presentation = cinderwakeReaverPresentationProfile(
+        reaver.visualState.rank,
+        reaver.visualState.awakened,
+      )
+      const frame = this.cinderwakeReaverFrames[
+        (Math.floor(this.motionClock * (16 / 0.72)) + reaver.frameOffset) %
+          Math.max(1, this.cinderwakeReaverFrames.length)
+      ]
+      if (frame) {
+        reaver.auraSprite.texture = frame
+        reaver.edgeSprite.texture = frame
+        reaver.sprite.texture = frame
+      }
+      const renderX = lerp(reaver.previousX, reaver.x, this.interpolation)
+      const renderY = lerp(reaver.previousY, reaver.y, this.interpolation)
+      reaver.auraSprite.position.set(renderX, renderY)
+      reaver.edgeSprite.position.set(renderX, renderY)
+      reaver.sprite.position.set(renderX, renderY)
+      reaver.auraSprite.rotation = reaver.spin
+      reaver.edgeSprite.rotation = reaver.spin
+      reaver.sprite.rotation = reaver.spin
+      const tier = reaver.visualState.awakened
+        ? 6
+        : Math.max(1, Math.min(5, reaver.visualState.rank))
+      const size = presentation.visualDiameter
+      const travelAngle = Math.atan2(reaver.vy, reaver.vx)
+
+      const wakeCycle =
+        (((this.motionClock - reaver.slot * 0.17) % 1.1) + 1.1) % 1.1 / 1.1
+      const wakeRise = wakeCycle <= 0.45
+        ? wakeCycle / 0.45
+        : 1 - (wakeCycle - 0.45) / 0.55
+      const wakeLength = lerp(0.72, 1.12, wakeRise)
+      reaver.wakeGlow.position.set(renderX, renderY)
+      reaver.wakeGlow.rotation = travelAngle - Math.PI / 15
+      reaver.wakeGlow.scale.set(
+        presentation.scale * wakeLength,
+        presentation.scale,
+      )
+      reaver.wakeGlow.alpha = lerp(0.08, 0.47, wakeRise) * fleetEnergy
+      reaver.wakeGlow.blendMode = 'add'
+      reaver.wakeGlow.visible = true
+
+      const impactCycle =
+        (((this.motionClock - reaver.slot * 0.19) % 1.16) + 1.16) % 1.16 /
+        1.16
+      let impactAlpha = 0.04
+      let impactScale = 0.32
+      let impactRotation = -Math.PI / 22.5
+      if (impactCycle >= 0.62 && impactCycle < 0.74) {
+        const progress = (impactCycle - 0.62) / 0.12
+        impactAlpha = lerp(0.04, 0.65, progress)
+        impactScale = lerp(0.32, 1.18, progress)
+        impactRotation = lerp(-Math.PI / 22.5, Math.PI / 45, progress)
+      } else if (impactCycle >= 0.74 && impactCycle < 0.88) {
+        const progress = (impactCycle - 0.74) / 0.14
+        impactAlpha = lerp(0.65, 0.13, progress)
+        impactScale = lerp(1.18, 1.52, progress)
+        impactRotation = lerp(Math.PI / 45, Math.PI / 20, progress)
+      }
+      reaver.impactGlow.position.set(renderX, renderY)
+      reaver.impactGlow.rotation = impactRotation
+      reaver.impactGlow.scale.set(impactScale * presentation.scale)
+      reaver.impactGlow.alpha = impactAlpha * fleetEnergy
+      reaver.impactGlow.blendMode = 'add'
+      reaver.impactGlow.visible = true
+
+      this.projectileTrailGraphics
+        .ellipse(renderX, renderY, size * 0.19, size * 0.13)
+        .fill({ color: 0x811d2b, alpha: 0.1 * fleetEnergy })
+
+      // Apply the Theater's material progression directly from spell rank;
+      // named VFX stages intentionally do not collapse Ranks I-IV here.
+      reaver.materialFilter.reset()
+      reaver.materialFilter.saturate(
+        reaver.visualState.awakened ? 0.24 : tier >= 2 ? 0.14 : 0.08,
+        false,
+      )
+      reaver.materialFilter.contrast(
+        reaver.visualState.awakened ? 0.18 : tier >= 2 ? 0.16 : 0.13,
+        true,
+      )
+      if (reaver.visualState.awakened) {
+        reaver.materialFilter.brightness(1.08, true)
+      }
+
+      // Additive copies follow the authored blade alpha, yielding the same
+      // crimson material edge and restrained awakened violet bloom as Theater.
+      reaver.auraSprite.width = size * 1.23
+      reaver.auraSprite.height = size * 1.23
+      reaver.auraSprite.tint = reaver.visualState.awakened
+        ? 0x4b2869
+        : tier >= 4
+          ? 0xa52632
+          : 0x811d2b
+      reaver.auraSprite.alpha =
+        (0.14 + tier * 0.012 + (reaver.visualState.awakened ? 0.055 : 0)) *
+        fleetEnergy
+      reaver.auraSprite.blendMode = 'add'
+      reaver.auraSprite.visible = true
+      reaver.edgeSprite.width = size * 1.11
+      reaver.edgeSprite.height = size * 1.11
+      reaver.edgeSprite.tint = reaver.visualState.awakened
+        ? 0xf07178
+        : tier >= 4
+          ? 0xe95a68
+          : 0xd94655
+      reaver.edgeSprite.alpha =
+        (0.28 + tier * 0.018 + (reaver.visualState.awakened ? 0.05 : 0)) *
+        fleetEnergy
+      reaver.edgeSprite.blendMode = 'add'
+      reaver.edgeSprite.visible = true
+      reaver.sprite.width = size
+      reaver.sprite.height = size
+      reaver.sprite.alpha =
+        Math.min(0.98, 0.76 + tier * 0.035) * fleetEnergy
+      reaver.sprite.blendMode = 'normal'
+      reaver.sprite.visible = true
     }
   }
 
@@ -3968,8 +4973,21 @@ class NighttraceRuntime {
   }
 
   private updateTrace() {
+    const liveTrace = pruneExpiredTracePoints(this.trace, this.elapsed)
+    if (liveTrace.length !== this.trace.length) {
+      this.trace.splice(0, this.trace.length, ...liveTrace)
+    }
+
     const last = this.trace[this.trace.length - 1]
-    const point = { x: this.player.x, y: this.player.y }
+    const point: TimestampedTracePoint = {
+      x: this.player.x,
+      y: this.player.y,
+      bornAt: this.elapsed,
+    }
+    if (!last) {
+      this.trace.push(point)
+      return
+    }
     if (traceSegmentIsDiscontinuous(last, point)) {
       this.trace.length = 0
       this.trace.push(point)
@@ -4696,7 +5714,7 @@ class NighttraceRuntime {
   ) {
     const strikeCount = Math.min(
       8,
-      1 + Math.floor((rank - 1) / 2) + moduleRank + (awakened ? 2 : 0),
+      rank + moduleRank + (awakened ? 2 : 0),
     )
     const strikeRadius =
       72 + rank * 7 + moduleRank * 7 + (awakened ? 12 : 0)
@@ -4716,16 +5734,14 @@ class NighttraceRuntime {
         return { enemy, strikeIndex }
       })
       .filter(({ strikeIndex }) => strikeIndex >= 0)
-    const ordinaryHitCount = covered.reduce(
-      (count, { enemy }) => count + (enemy.isBoss ? 0 : 1),
-      0,
+    const distributedDamage = distributeRemoteCastDamage(
+      castDamageBudget,
+      covered.map(({ enemy }) => enemy),
     )
-    const strikeHits = covered.map(({ enemy, strikeIndex }) => ({
+    const strikeHits = covered.map(({ enemy, strikeIndex }, index) => ({
       targetUid: enemy.uid,
       strikeIndex,
-      damage: enemy.isBoss
-        ? castDamageBudget
-        : castDamageBudget / Math.max(1, ordinaryHitCount),
+      damage: distributedDamage[index] ?? 0,
     }))
 
     const duration = 0.72 + Math.min(0.24, points.length * 0.035)
@@ -4758,21 +5774,26 @@ class NighttraceRuntime {
     const hit: number[] = []
     const origin = this.currentHeroWeaponOrigin()
     const points: Vec2[] = [{ ...origin }]
-    const falloffTotal = weightedFalloffTotal(jumps)
+    const chain: EnemyEntity[] = []
     let current: EnemyEntity | undefined = first
     for (let jump = 0; jump < jumps && current; jump += 1) {
       hit.push(current.uid)
+      chain.push(current)
       points.push({ x: current.x, y: current.y })
-      const falloff = Math.max(0.48, 1 - jump * 0.09)
-      this.damageEnemy(
-        current,
-        current.isBoss && jump === 0
-          ? damage
-          : (damage * falloff) / falloffTotal,
-        weaponId,
-      )
       current = this.nearestEnemy(current.x, current.y, hit)
       if (current && distanceSquared(current, { x: first.x, y: first.y }) > 320 ** 2) break
+    }
+    const weights = chain.map(
+      (enemy, index) =>
+        Math.max(0.48, 1 - index * 0.09) * (enemy.isBoss ? 3 : 1),
+    )
+    const totalWeight = weights.reduce((total, weight) => total + weight, 0)
+    for (let index = 0; index < chain.length; index += 1) {
+      this.damageEnemy(
+        chain[index],
+        totalWeight > 0 ? (damage * weights[index]) / totalWeight : 0,
+        weaponId,
+      )
     }
     if (points.length > 1) {
       this.pushWeaponEffect({
@@ -5342,14 +6363,103 @@ class NighttraceRuntime {
     this.trailGlow.clear()
     this.trailCore.clear()
     if (this.trace.length < 2) return
-    this.trailGlow.moveTo(this.trace[0].x, this.trace[0].y)
-    this.trailCore.moveTo(this.trace[0].x, this.trace[0].y)
+
+    // The Trace keeps the readable continuity of the original wake, but its
+    // layered cyan bloom, blue energy body, white-hot core and drifting motes
+    // give it physical depth. Each segment still expires independently.
     for (let index = 1; index < this.trace.length; index += 1) {
-      this.trailGlow.lineTo(this.trace[index].x, this.trace[index].y)
-      this.trailCore.lineTo(this.trace[index].x, this.trace[index].y)
+      const start = this.trace[index - 1]
+      const end = this.trace[index]
+      const segmentAlpha = traceSegmentAlpha(start, end, this.elapsed)
+      if (segmentAlpha <= 0.01) continue
+      const dx = end.x - start.x
+      const dy = end.y - start.y
+      const length = Math.hypot(dx, dy)
+      if (length <= 0.001) continue
+      const normalX = -dy / length
+      const normalY = dx / length
+      const flow =
+        (replacementCosmeticUnit(Math.floor(start.bornAt * 1000), index, 991) -
+          0.5) *
+        3.2
+      const controlX = (start.x + end.x) * 0.5 + normalX * flow
+      const controlY = (start.y + end.y) * 0.5 + normalY * flow
+      const pulse =
+        0.88 +
+        Math.sin(this.motionClock * 4.2 - index * 0.58 + end.bornAt * 1.7) * 0.12
+
+      this.trailGlow
+        .moveTo(start.x, start.y)
+        .quadraticCurveTo(controlX, controlY, end.x, end.y)
+        .stroke({
+          color: 0x173c8d,
+          width: 15,
+          alpha: 0.095 * segmentAlpha * pulse,
+          cap: 'round',
+        })
+      this.trailGlow
+        .moveTo(start.x, start.y)
+        .quadraticCurveTo(controlX, controlY, end.x, end.y)
+        .stroke({
+          color: 0x1f9ec7,
+          width: 7.5,
+          alpha: 0.18 * segmentAlpha * pulse,
+          cap: 'round',
+        })
+      this.trailCore
+        .moveTo(start.x, start.y)
+        .quadraticCurveTo(controlX, controlY, end.x, end.y)
+        .stroke({
+          color: 0x55d9ef,
+          width: 3.1,
+          alpha: 0.5 * segmentAlpha * pulse,
+          cap: 'round',
+        })
+      this.trailCore
+        .moveTo(start.x, start.y)
+        .quadraticCurveTo(controlX, controlY, end.x, end.y)
+        .stroke({
+          color: 0xe5fbff,
+          width: 0.9,
+          alpha: 0.82 * segmentAlpha,
+          cap: 'round',
+        })
+
+      if (index % 3 === 0) {
+        const moteT =
+          0.26 +
+          replacementCosmeticUnit(Math.floor(end.bornAt * 1000), index, 997) *
+            0.48
+        const moteDrift =
+          Math.sin(this.motionClock * 3.8 + index * 1.7) * (2.5 + (index % 2))
+        const moteX = lerp(start.x, end.x, moteT) + normalX * moteDrift
+        const moteY = lerp(start.y, end.y, moteT) + normalY * moteDrift
+        this.trailGlow
+          .circle(moteX, moteY, 3.6)
+          .fill({ color: 0x3dbbdc, alpha: 0.12 * segmentAlpha })
+        this.trailCore
+          .ellipse(moteX, moteY, 1.45, 0.72)
+          .fill({ color: 0xe7fcff, alpha: 0.58 * segmentAlpha })
+      }
     }
-    this.trailGlow.stroke({ color: 0x63f7df, width: 18, alpha: 0.08 })
-    this.trailCore.stroke({ color: 0xb9fff3, width: 3, alpha: 0.72 })
+
+    const newest = this.trace[this.trace.length - 1]
+    const newestAlpha = traceSegmentAlpha(
+      this.trace[this.trace.length - 2],
+      newest,
+      this.elapsed,
+    )
+    if (newestAlpha > 0.01) {
+      const headPulse = 0.88 + Math.sin(this.motionClock * 5.2) * 0.12
+      this.trailGlow
+        .circle(newest.x, newest.y, 10 * headPulse)
+        .fill({ color: 0x178bc4, alpha: 0.1 * newestAlpha })
+        .circle(newest.x, newest.y, 5.2 * headPulse)
+        .fill({ color: 0x50dff1, alpha: 0.19 * newestAlpha })
+      this.trailCore
+        .circle(newest.x, newest.y, 1.8 * headPulse)
+        .fill({ color: 0xedfeff, alpha: 0.9 * newestAlpha })
+    }
   }
 
   private vfxStageIndex(stage: WeaponVfxStage) {
@@ -6966,9 +8076,21 @@ class NighttraceRuntime {
       (count, echo) => count + (echo.active ? 1 : 0),
       0,
     )
+    const persistentActorCount =
+      this.orbitingComets.reduce(
+        (count, comet) => count + (comet.active ? 1 : 0),
+        0,
+      ) +
+      this.cinderwakeReavers.reduce(
+        (count, reaver) => count + (reaver.active ? 1 : 0),
+        0,
+      )
     return sceneVfxEnergyScale(
       activeWeaponCount,
-      this.weaponEffects.length + activeProjectileCount + activeEchoCount,
+      this.weaponEffects.length +
+        activeProjectileCount +
+        activeEchoCount +
+        persistentActorCount,
     )
   }
 
@@ -7011,7 +8133,9 @@ class NighttraceRuntime {
     if (!profile) return
 
     const x = lerp(this.player.previousX, this.player.x, this.interpolation)
-    const y = lerp(this.player.previousY, this.player.y, this.interpolation)
+    const y =
+      lerp(this.player.previousY, this.player.y, this.interpolation) +
+      HERO_BODY_CENTER_OFFSET_Y
     const stage: WeaponVfxStage = profile.awakened
       ? 'final'
       : profile.rank >= 4
@@ -7428,32 +8552,14 @@ class NighttraceRuntime {
 
     const energy = presentation.energyScale * motionAlpha
     const rank = presentation.rank
+    const geometryScale = presentation.geometryScale
     const pulse = 0.82 + Math.sin(this.motionClock * 5.2 + effect.seed) * 0.18
 
     switch (presentation.motif) {
       case 'solar-filaments': {
-        const rayCount = Math.min(8, presentation.ornamentCount + 1)
-        for (let ray = 0; ray < rayCount; ray += 1) {
-          const rayAngle = effect.angle + (ray - (rayCount - 1) * 0.5) * 0.12
-          const inner = 10 + rank * 2
-          const outer = inner + (20 + rank * 5) * (0.55 + progress * 0.45)
-          this.drawPolyline(
-            additiveGraphics,
-            [
-              {
-                x: effect.x + Math.cos(rayAngle) * inner,
-                y: effect.y + Math.sin(rayAngle) * inner,
-              },
-              {
-                x: effect.x + Math.cos(rayAngle) * outer,
-                y: effect.y + Math.sin(rayAngle) * outer,
-              },
-            ],
-            ray % 2 ? profile.secondaryColor : profile.glowColor,
-            0.8 + rank * 0.18,
-            energy * 0.42,
-          )
-        }
+        // Preserve the v1.16.3 Lance silhouette. The previous Lab overlay
+        // added a fan of rays around the authored 54x18 projectile, making the
+        // weapon appear several times larger than the hero.
         break
       }
       case 'lunar-petals': {
@@ -7479,10 +8585,16 @@ class NighttraceRuntime {
           const point = points[index]
           const previous = points[index - 1]
           const angle = Math.atan2(point.y - previous.y, point.x - previous.x)
-          for (let branch = 0; branch < Math.min(3, presentation.laneCount); branch += 1) {
+          const branchBudget = presentation.awakened
+            ? index % 2 === 0
+              ? 0
+              : 1
+            : Math.min(2, presentation.laneCount)
+          for (let branch = 0; branch < branchBudget; branch += 1) {
             const side = branch % 2 ? 1 : -1
             const forkAngle = angle + side * (0.64 + branch * 0.16)
-            const forkLength = 9 + rank * 2.4 + branch * 3
+            const forkLength =
+              (9 + rank * 2.4 + branch * 3) * geometryScale
             this.drawPolyline(
               additiveGraphics,
               [
@@ -7493,8 +8605,8 @@ class NighttraceRuntime {
                 },
               ],
               branch % 2 ? profile.secondaryColor : profile.glowColor,
-              0.7 + rank * 0.13,
-              energy * 0.38,
+              (0.7 + rank * 0.13) * geometryScale,
+              energy * (presentation.awakened ? 0.3 : 0.38),
             )
           }
         }
@@ -7539,7 +8651,8 @@ class NighttraceRuntime {
         for (let flare = 0; flare < flareCount; flare += 1) {
           const spread = (flare - (flareCount - 1) * 0.5) * 0.17
           const angle = effect.angle + Math.PI + spread
-          const length = (18 + rank * 5 + (flare % 2) * 8) * pulse
+          const length =
+            (18 + rank * 5 + (flare % 2) * 8) * pulse * geometryScale
           additiveGraphics
             .moveTo(effect.x, effect.y)
             .quadraticCurveTo(
@@ -7550,58 +8663,9 @@ class NighttraceRuntime {
             )
             .stroke({
               color: flare % 2 ? profile.secondaryColor : profile.accentColor,
-              width: 1.2 + rank * 0.32,
+              width: (1.2 + rank * 0.32) * geometryScale,
               alpha: energy * 0.46,
               cap: 'round',
-            })
-        }
-        break
-      }
-      case 'prismatic-fletching': {
-        const bowRadius = Math.max(18, radius * (0.38 + rank * 0.02)) * pulse
-        const tangentX = -Math.sin(effect.angle)
-        const tangentY = Math.cos(effect.angle)
-        for (const side of [-1, 1] as const) {
-          const rootX = effect.x + tangentX * side * bowRadius * 0.2
-          const rootY = effect.y + tangentY * side * bowRadius * 0.2
-          const tipX = effect.x + tangentX * side * bowRadius
-          const tipY = effect.y + tangentY * side * bowRadius
-          additiveGraphics
-            .moveTo(rootX, rootY)
-            .quadraticCurveTo(
-              effect.x - Math.cos(effect.angle) * bowRadius * 0.74,
-              effect.y - Math.sin(effect.angle) * bowRadius * 0.74,
-              tipX,
-              tipY,
-            )
-            .stroke({
-              color: side > 0 ? profile.glowColor : profile.secondaryColor,
-              width: 1.4 + rank * 0.32,
-              alpha: energy * 0.58,
-              cap: 'round',
-            })
-        }
-        const paneCount = Math.min(7, presentation.ornamentCount)
-        for (let pane = 0; pane < paneCount; pane += 1) {
-          const angle = rotation * 0.42 + (Math.PI * 2 * pane) / paneCount
-          const distance = bowRadius * (0.72 + (pane % 2) * 0.3)
-          const paneX = effect.x + Math.cos(angle) * distance
-          const paneY = effect.y + Math.sin(angle) * distance * 0.62
-          const size = 2.1 + rank * 0.42
-          graphics
-            .poly([
-              paneX,
-              paneY - size,
-              paneX + size * 0.72,
-              paneY,
-              paneX,
-              paneY + size,
-              paneX - size * 0.72,
-              paneY,
-            ], true)
-            .fill({
-              color: pane % 2 ? profile.secondaryColor : profile.coreColor,
-              alpha: energy * 0.52,
             })
         }
         break
@@ -7802,19 +8866,10 @@ class NighttraceRuntime {
             const release = clamp((localTime - 0.07) / 0.08, 0, 1)
             const fade = 1 - clamp((localTime - 0.34) / 0.3, 0, 1)
             const strikeAlpha = gather * fade * (this.settings.reducedFlash ? 0.7 : 1)
-            const cloudY = point.y - 246 - stage * 16
-            const sourceX =
-              point.x +
+            const cloudY = point.y - 224 - stage * 10
+            const sourceX = point.x +
               (replacementCosmeticUnit(effect.seed, strikeIndex, 367) - 0.5) *
-                (36 + stage * 8)
-            const bolt = this.buildLightningPoints(
-              [
-                { x: sourceX, y: cloudY },
-                { x: point.x, y: point.y },
-              ],
-              effect.seed + strikeIndex * 109,
-              clamp(localTime / 0.42, 0, 1),
-            )
+                (18 + stage * 4)
 
             this.drawHeroPowerMaterialEvent({
               x: sourceX,
@@ -7844,64 +8899,61 @@ class NighttraceRuntime {
               stretchX: 1.16,
               stretchY: 0.78,
             })
+            if (state.awakened) {
+              this.drawHeroPowerMaterialEvent({
+                x: point.x,
+                y: point.y,
+                radius: effect.maxRadius * (0.9 + release * 0.2),
+                progress: clamp(localTime / 0.62, 0, 1),
+                stage: state.stage,
+                seed: effect.seed + strikeIndex * 131,
+                tint: profile.glowColor,
+                frame: HERO_MATERIAL_FRAME.impact,
+                angle: -rotation + strikeIndex * 0.41,
+                materialOpacity: 0.18,
+                stretchX: 1.28,
+                stretchY: 0.7,
+              })
+            }
 
             if (release > 0) {
-              this.drawPolyline(
-                additiveGraphics,
-                bolt,
-                profile.glowColor,
-                24 + stage * 4.5,
-                strikeAlpha * 0.2,
+              const frameIndex = Math.min(
+                this.astralVerdictFrames.length - 1,
+                Math.max(
+                  0,
+                  Math.floor(clamp(localTime / 0.5, 0, 0.999) * 16),
+                ),
               )
-              this.drawPolyline(
-                graphics,
-                bolt,
-                profile.accentColor,
-                6.8 + stage * 1.05,
-                strikeAlpha * 0.84,
-              )
-              this.drawPolyline(
-                graphics,
-                bolt,
-                profile.coreColor,
-                1.25 + stage * 0.28,
-                strikeAlpha,
-              )
-
-              const branchCount = 2 + stage
-              for (let branchIndex = 0; branchIndex < branchCount; branchIndex += 1) {
-                const branchY = lerp(
-                  cloudY,
-                  point.y,
-                  0.26 + branchIndex * (0.5 / Math.max(1, branchCount - 1)),
-                )
-                const branchX = lerp(sourceX, point.x, (branchY - cloudY) / Math.max(1, point.y - cloudY))
-                const side = branchIndex % 2 ? 1 : -1
-                const fork = this.buildLightningPoints(
-                  [
-                    { x: branchX, y: branchY },
-                    {
-                      x: branchX + side * (18 + stage * 6 + branchIndex * 4),
-                      y: branchY + 17 + branchIndex * 4,
-                    },
-                  ],
-                  effect.seed + strikeIndex * 139 + branchIndex * 17,
-                  clamp(localTime / 0.42, 0, 1),
-                )
-                this.drawPolyline(
-                  additiveGraphics,
-                  fork,
-                  profile.glowColor,
-                  4.2 + stage * 0.6,
-                  strikeAlpha * 0.2,
-                )
-                this.drawPolyline(
-                  graphics,
-                  fork,
-                  branchIndex % 2 ? profile.secondaryColor : profile.glowColor,
-                  1.2 + stage * 0.24,
-                  strikeAlpha * 0.78,
-                )
+              const frame = this.astralVerdictFrames[frameIndex]
+              if (frame) {
+                const boltHeight = 218 + stage * 14 + (state.awakened ? 20 : 0)
+                const boltWidth = 82 + stage * 8 + (state.awakened ? 16 : 0)
+                if (state.awakened) {
+                  const stormBody = this.acquireAuthoredSpellMaterialSprite(frame)
+                  stormBody.anchor.set(0.5, 0.86)
+                  stormBody.position.set(point.x, point.y + 4)
+                  stormBody.width = boltWidth * 1.14
+                  stormBody.height = boltHeight * 1.05
+                  stormBody.rotation =
+                    (replacementCosmeticUnit(effect.seed, strikeIndex, 137) - 0.5) *
+                    0.035
+                  stormBody.tint = 0x7656b7
+                  stormBody.alpha = strikeAlpha * 0.34
+                  stormBody.blendMode = 'add'
+                  stormBody.zIndex = Math.round(point.y * 10) - 3
+                }
+                const authoredBolt = this.acquireAuthoredSpellMaterialSprite(frame)
+                authoredBolt.anchor.set(0.5, 0.86)
+                authoredBolt.position.set(point.x, point.y + 4)
+                authoredBolt.width = boltWidth
+                authoredBolt.height = boltHeight
+                authoredBolt.rotation =
+                  (replacementCosmeticUnit(effect.seed, strikeIndex, 139) - 0.5) *
+                  0.024
+                authoredBolt.tint = 0xffffff
+                authoredBolt.alpha = strikeAlpha * 0.96
+                authoredBolt.blendMode = 'add'
+                authoredBolt.zIndex = Math.round(point.y * 10) - 2
               }
             }
           }
@@ -7948,39 +9000,6 @@ class NighttraceRuntime {
             if (localTime < 0) continue
             this.drawGraveglassPresentation(effect, strike, localTime)
           }
-          break
-        }
-        case 'mirror-gate': {
-          const gateRadius = 30 + stage * 10
-          this.drawHeroPowerMaterialEvent({
-            x: effect.x,
-            y: effect.y,
-            radius: gateRadius * 1.35,
-            progress,
-            stage: state.stage,
-            seed: effect.seed,
-            tint: profile.accentColor,
-            frame: HERO_MATERIAL_FRAME.fragments,
-            angle: effect.angle,
-            materialOpacity: 0.27,
-            stretchX: 1.24 + stage * 0.08,
-            stretchY: 0.78,
-          })
-          break
-        }
-        case 'mirror-impact': {
-          this.drawHeroPowerMaterialEvent({
-            x: effect.x,
-            y: effect.y,
-            radius,
-            progress,
-            stage: state.stage,
-            seed: effect.seed,
-            tint: profile.coreColor,
-            frame: HERO_MATERIAL_FRAME.fracture,
-            angle: rotation,
-            materialOpacity: 0.25,
-          })
           break
         }
         case 'eclipse-harrow': {
@@ -8933,61 +9952,31 @@ class NighttraceRuntime {
       projectile.visualSeed * 0.19
     const energy =
       presentation.energyScale * (this.settings.reducedFlash ? 0.72 : 1)
+    const geometryScale = presentation.geometryScale
     const startX = x - dx * length
     const startY = y - dy * length
 
     switch (presentation.motif) {
       case 'solar-filaments': {
-        for (let lane = 0; lane < presentation.laneCount; lane += 1) {
-          const laneOffset =
-            (lane - (presentation.laneCount - 1) * 0.5) *
-            (2.8 + presentation.rank * 0.72)
-          const wave = Math.sin(phase + lane * 1.7) * (1.4 + presentation.rank * 0.32)
-          this.drawPolyline(
-            graphics,
-            [
-              {
-                x: startX + normalX * laneOffset,
-                y: startY + normalY * laneOffset,
-              },
-              {
-                x: lerp(startX, x, 0.55) + normalX * (laneOffset + wave),
-                y: lerp(startY, y, 0.55) + normalY * (laneOffset + wave),
-              },
-              { x: x + normalX * laneOffset * 0.24, y: y + normalY * laneOffset * 0.24 },
-            ],
-            lane % 2 ? profile.secondaryColor : profile.accentColor,
-            0.65 + presentation.rank * 0.14,
-            0.34 * energy,
-          )
-        }
-        if (presentation.awakened) {
-          graphics
-            .poly([
-              x + dx * 11,
-              y + dy * 11,
-              x + normalX * 7,
-              y + normalY * 7,
-              x - dx * 5,
-              y - dy * 5,
-              x - normalX * 7,
-              y - normalY * 7,
-            ], true)
-            .fill({ color: profile.coreColor, alpha: 0.48 * energy })
-        }
+        // The normal projectile trail below already matches the v1.16.3
+        // authored scale. Do not inflate it with rank-dependent lanes or a
+        // large awakened crown.
         break
       }
       case 'lunar-petals': {
         const petals = Math.min(5, presentation.ornamentCount)
         for (let petal = 0; petal < petals; petal += 1) {
           const t = (petal + 1) / (petals + 1)
-          const sway = Math.sin(phase + petal * 2.1) * (5 + presentation.rank)
+          const sway =
+            Math.sin(phase + petal * 2.1) *
+            (5 + presentation.rank) *
+            geometryScale
           this.drawCrescentGlyph(
             graphics,
             lerp(startX, x, t) + normalX * sway,
             lerp(startY, y, t) + normalY * sway,
             Math.atan2(dy, dx) + Math.PI * 0.5,
-            2.8 + presentation.rank * 0.65,
+            (2.8 + presentation.rank * 0.65) * geometryScale,
             petal % 2 ? profile.secondaryColor : profile.coreColor,
             (0.2 + t * 0.28) * energy,
           )
@@ -9005,100 +9994,41 @@ class NighttraceRuntime {
             [
               { x: branchX, y: branchY },
               {
-                x: branchX - dx * (10 + presentation.rank * 2) + normalX * side * 9,
-                y: branchY - dy * (10 + presentation.rank * 2) + normalY * side * 9,
+                x: branchX - dx * (10 + presentation.rank * 2) * geometryScale + normalX * side * 9 * geometryScale,
+                y: branchY - dy * (10 + presentation.rank * 2) * geometryScale + normalY * side * 9 * geometryScale,
               },
             ],
             branch % 2 ? profile.secondaryColor : profile.glowColor,
-            0.8 + presentation.rank * 0.16,
+            (0.8 + presentation.rank * 0.16) * geometryScale,
             0.38 * energy,
           )
         }
         break
       }
       case 'astral-verdict': {
-        const branchCount = Math.min(5, presentation.laneCount + 1)
-        for (let branch = 0; branch < branchCount; branch += 1) {
-          const side = branch % 2 ? 1 : -1
-          const t = 0.2 + branch * 0.14
-          const branchX = lerp(startX, x, Math.min(0.82, t))
-          const branchY = lerp(startY, y, Math.min(0.82, t))
-          this.drawPolyline(
-            graphics,
-            [
-              { x: branchX, y: branchY },
-              {
-                x: branchX - dx * (8 + presentation.rank * 2) + normalX * side * 10,
-                y: branchY - dy * (8 + presentation.rank * 2) + normalY * side * 10,
-              },
-            ],
-            branch % 2 ? profile.secondaryColor : profile.glowColor,
-            0.8 + presentation.rank * 0.16,
-            0.4 * energy,
-          )
-        }
+        // Astral Verdict is authored as a textured sky-strike sequence. It
+        // never falls back to generated branch lines, which read as UI rather
+        // than physical storm material.
         break
       }
       case 'plasma-embers': {
         const embers = Math.min(8, presentation.ornamentCount + 1)
         for (let ember = 0; ember < embers; ember += 1) {
           const t = (ember + 1) / (embers + 1)
-          const turbulence = Math.sin(phase * 1.8 + ember * 2.37) * (4 + presentation.rank)
+          const turbulence =
+            Math.sin(phase * 1.8 + ember * 2.37) *
+            (4 + presentation.rank) *
+            geometryScale
           graphics
             .ellipse(
               lerp(x, startX, t) + normalX * turbulence,
               lerp(y, startY, t) + normalY * turbulence,
-              1.2 + (1 - t) * 2.1 + presentation.rank * 0.16,
-              0.7 + (1 - t) * 0.8,
+              (1.2 + (1 - t) * 2.1 + presentation.rank * 0.16) * geometryScale,
+              (0.7 + (1 - t) * 0.8) * geometryScale,
             )
             .fill({
               color: ember % 2 ? profile.secondaryColor : profile.accentColor,
               alpha: (0.22 + (1 - t) * 0.38) * energy,
-            })
-        }
-        break
-      }
-      case 'prismatic-fletching': {
-        const forks = presentation.laneCount
-        for (let fork = 0; fork < forks; fork += 1) {
-          const side = fork - (forks - 1) * 0.5
-          const offset = side * (4.5 + presentation.rank * 0.75)
-          const split = (10 + presentation.rank * 2.5) * Math.sign(side || 1)
-          this.drawPolyline(
-            graphics,
-            [
-              { x: startX + normalX * offset, y: startY + normalY * offset },
-              {
-                x: lerp(startX, x, 0.7) + normalX * (offset + split * 0.35),
-                y: lerp(startY, y, 0.7) + normalY * (offset + split * 0.35),
-              },
-              { x: x + normalX * split, y: y + normalY * split },
-            ],
-            fork % 2 ? profile.secondaryColor : profile.accentColor,
-            Math.max(0.7, width * 0.28),
-            0.34 * energy,
-          )
-        }
-        const shardCount = Math.min(6, presentation.ornamentCount)
-        for (let shard = 0; shard < shardCount; shard += 1) {
-          const t = (shard + 1) / (shardCount + 1)
-          const shardX = lerp(startX, x, t)
-          const shardY = lerp(startY, y, t)
-          const size = 1.6 + presentation.rank * 0.26
-          graphics
-            .poly([
-              shardX + dx * size,
-              shardY + dy * size,
-              shardX + normalX * size * 0.62,
-              shardY + normalY * size * 0.62,
-              shardX - dx * size,
-              shardY - dy * size,
-              shardX - normalX * size * 0.62,
-              shardY - normalY * size * 0.62,
-            ], true)
-            .fill({
-              color: shard % 2 ? profile.secondaryColor : profile.coreColor,
-              alpha: 0.46 * energy,
             })
         }
         break
@@ -9174,68 +10104,6 @@ class NighttraceRuntime {
           .fill({
             color: debris % 2 ? profile.secondaryColor : profile.accentColor,
             alpha: 0.34,
-          })
-      }
-      return
-    }
-
-    if (projectile.weaponId === 'mirror-bow') {
-      const shardCount = 5 + stage
-      const refractedPath: Vec2[] = []
-      for (let index = 0; index < 7; index += 1) {
-        const t = index / 6
-        const taper = Math.sin(t * Math.PI)
-        const facet =
-          (index % 2 ? 1 : -1) *
-          taper *
-          (3.4 + stage * 0.85)
-        refractedPath.push({
-          x: lerp(startX, x, t) + normalX * facet,
-          y: lerp(startY, y, t) + normalY * facet,
-        })
-      }
-      this.drawPolyline(
-        graphics,
-        refractedPath,
-        profile.secondaryColor,
-        width * 4.2,
-        0.09,
-      )
-      this.drawPolyline(
-        graphics,
-        refractedPath,
-        profile.accentColor,
-        width * 1.55,
-        0.5,
-      )
-      this.drawPolyline(
-        graphics,
-        refractedPath,
-        profile.coreColor,
-        Math.max(0.8, width * 0.3),
-        0.9,
-      )
-      for (let shard = 0; shard < shardCount; shard += 1) {
-        const t = (shard + 1) / (shardCount + 1)
-        const side = shard % 2 ? 1 : -1
-        const offset = side * (5 + stage * 1.4 + Math.sin(t * Math.PI) * 4)
-        const shardX = lerp(startX, x, t) + normalX * offset
-        const shardY = lerp(startY, y, t) + normalY * offset
-        const size = 1.6 + stage * 0.35
-        graphics
-          .poly([
-            shardX + dx * size * 1.7,
-            shardY + dy * size * 1.7,
-            shardX + normalX * size,
-            shardY + normalY * size,
-            shardX - dx * size * 1.7,
-            shardY - dy * size * 1.7,
-            shardX - normalX * size,
-            shardY - normalY * size,
-          ], true)
-          .fill({
-            color: shard % 3 === 0 ? profile.secondaryColor : profile.coreColor,
-            alpha: 0.48,
           })
       }
       return
@@ -9358,9 +10226,9 @@ class NighttraceRuntime {
     })
     create('comet-swarm', (graphics, color) => {
       graphics.poly([0, 16, 31, 3, 52, 16, 31, 29], true).fill({ color, alpha: 0.28 })
-      graphics.poly([6, 16, 34, 8, 50, 16, 34, 24], true).fill({ color: 0xffd25d, alpha: 0.62 })
+      graphics.poly([6, 16, 34, 8, 50, 16, 34, 24], true).fill({ color: 0xf58a28, alpha: 0.72 })
       graphics.ellipse(43, 16, 12, 10).fill({ color, alpha: 0.9 })
-      graphics.ellipse(46, 13, 6, 5).fill({ color: 0xfff4de, alpha: 0.98 })
+      graphics.ellipse(46, 13, 6, 5).fill({ color: 0xffc166, alpha: 0.98 })
     })
     create('ash-halo', (graphics, color) => {
       graphics
@@ -9375,20 +10243,20 @@ class NighttraceRuntime {
     })
     create('mirror-bow', (graphics, color) => {
       graphics
-        .poly([1, 18, 15, 3, 29, 18, 15, 33], true)
-        .fill({ color, alpha: 0.22 })
+        .poly([18, 1, 30, 8, 32, 27, 18, 37, 4, 27, 6, 8], true)
+        .fill({ color: 0x110e1d, alpha: 0.98 })
       graphics
-        .poly([14, 18, 31, 6, 50, 18, 31, 30], true)
-        .fill({ color: 0xb178eb, alpha: 0.48 })
+        .poly([18, 4, 27, 10, 27, 24, 18, 32, 9, 24, 9, 10], true)
+        .fill({ color, alpha: 0.48 })
       graphics
-        .poly([7, 18, 16, 9, 25, 18, 16, 27], true)
-        .fill({ color: 0x75dff2, alpha: 0.84 })
+        .poly([18, 7, 24, 12, 22, 24, 18, 29, 14, 24, 12, 12], true)
+        .fill({ color: 0xc9c3d3, alpha: 0.62 })
       graphics
-        .poly([22, 18, 33, 11, 46, 18, 33, 25], true)
-        .fill({ color: 0xf7feff, alpha: 0.96 })
+        .poly([18, 11, 21, 15, 20, 22, 18, 25, 16, 22, 15, 15], true)
+        .fill({ color: 0xe8e3ed, alpha: 0.9 })
       graphics
-        .poly([13, 6, 18, 18, 13, 30, 9, 18], true)
-        .fill({ color: 0x8f6be8, alpha: 0.58 })
+        .circle(18, 18, 3.2)
+        .fill({ color: 0x8872ac, alpha: 0.78 })
     })
     create('null-bell', (graphics, color) => {
       graphics

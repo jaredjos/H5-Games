@@ -45,6 +45,24 @@ describe('Dawnward Aegis presentation', () => {
     expect(runtimeSource).toContain('quadraticCurveTo(controlX, controlY, endX, endY)')
   })
 
+  it('centers both the rendered aura and damage query on the visible hero body', () => {
+    const damageSource = section(
+      '  private updateLightRing(delta: number) {',
+      '  private updateWeapons(delta: number) {',
+    )
+    const auraSource = section(
+      '  private drawLightRingAura(',
+      '  private drawCombatLabWeaponEffectAccent(',
+    )
+
+    expect(damageSource).toContain(
+      'const ringCenterY = this.player.y + HERO_BODY_CENTER_OFFSET_Y',
+    )
+    expect(damageSource).toContain('ringCenterX,\n      ringCenterY,')
+    expect(auraSource).toContain('+\n      HERO_BODY_CENTER_OFFSET_Y')
+    expect(runtimeSource).toContain('dataset.lightRingCenterOffsetY')
+  })
+
   it('uses broken physical corona fragments instead of one closed HUD circle', () => {
     const auraSource = runtimeSource.slice(
       runtimeSource.indexOf('private drawLightRingAura('),

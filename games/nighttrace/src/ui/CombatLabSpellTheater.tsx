@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react'
+import { appAssetUrl } from '../assetUrl'
 import { WEAPONS } from '../game/content'
+import { cinderwakeReaverPresentationProfile } from '../game/persistentSpellChoreography'
 import type { OwnedWeapon, WeaponId } from '../shared/types'
 import { AtlasSprite, WeaponGlyph } from './Primitives'
 
@@ -61,12 +63,12 @@ const RANK_TITLES: Record<WeaponId, readonly string[]> = {
   'ash-halo': ['Campaign-authored', 'Campaign-authored'],
   'mirror-bow': [
     'Dormant',
-    'Paleglass Nock',
-    'Twin Reflection',
-    'Prismatic Hunt',
-    'Refracted Volley',
-    'Infinite Draw',
-    'Infinite Refrain',
+    'First Reaver',
+    'Tempered Pursuit',
+    'Twin Cinder Hunt',
+    'Bloodglass Ricochet',
+    'Reaver Procession',
+    'Ravenous Eventide',
   ],
   'null-bell': ['Campaign-authored', 'Campaign-authored'],
 }
@@ -90,6 +92,8 @@ const ARC_POSITIONS = [
   [51, 17],
   [52, 79],
 ] as const
+
+const CINDERWAKE_PATHS = ['alpha', 'beta', 'gamma', 'delta'] as const
 
 function particleStyle(index: number, count: number): CSSProperties {
   const angle = (index / Math.max(1, count)) * Math.PI * 2
@@ -145,7 +149,10 @@ function CrescentArrayEffect({ density, awakened }: { density: number; awakened:
 }
 
 function ArcChoirEffect({ density, awakened }: { density: number; awakened: boolean }) {
-  const count = Math.min(ARC_POSITIONS.length, Math.max(2, density + 1))
+  const count = awakened
+    ? Math.min(4, Math.max(3, 1 + Math.ceil(density / 2)))
+    : Math.min(ARC_POSITIONS.length, Math.max(2, density + 1))
+  const arcCount = awakened ? 2 : Math.max(1, count - 1)
   return (
     <div className="spell-theater-effect spell-theater-effect--choir" aria-hidden="true">
       {ARC_POSITIONS.slice(0, count).map(([left, top], index) => (
@@ -157,12 +164,12 @@ function ArcChoirEffect({ density, awakened }: { density: number; awakened: bool
           <i />
         </span>
       ))}
-      {Array.from({ length: Math.max(1, count - 1) }, (_, index) => (
+      {Array.from({ length: arcCount }, (_, index) => (
         <i
           className="spell-theater-choir-arc"
           key={index}
           style={{
-            '--arc-angle': `${-46 + index * (92 / Math.max(1, count - 2))}deg`,
+            '--arc-angle': `${-38 + index * (76 / Math.max(1, arcCount - 1))}deg`,
             '--arc-delay': `${-index * 0.17}s`,
           } as CSSProperties}
         />
@@ -220,30 +227,47 @@ function CometSwarmEffect({ density, awakened }: { density: number; awakened: bo
   )
 }
 
-function MirrorBowEffect({ density, awakened }: { density: number; awakened: boolean }) {
-  const echoCount = Math.max(1, density + (awakened ? 3 : 0))
+function CinderwakeReaversEffect({ density, awakened }: { density: number; awakened: boolean }) {
+  const tier = awakened ? 6 : Math.max(1, Math.min(5, density))
+  const profile = cinderwakeReaverPresentationProfile(density, awakened)
+  const sheetUrl = appAssetUrl('assets/spell-vfx/cinderwake-reaver-v1.webp')
   return (
-    <div className="spell-theater-effect spell-theater-effect--mirror" aria-hidden="true">
-      <span className="spell-theater-mirror-bow">
-        <i className="spell-theater-mirror-bow__upper" />
-        <i className="spell-theater-mirror-bow__lower" />
-        <i className="spell-theater-mirror-bow__nock" />
-      </span>
-      {Array.from({ length: echoCount }, (_, index) => (
+    <div
+      className="spell-theater-effect spell-theater-effect--cinderwake"
+      aria-hidden="true"
+      data-cinderwake-tier={tier}
+      style={{
+        '--cinderwake-sheet': `url("${sheetUrl}")`,
+        '--reaver-duration': `${profile.duration}s`,
+        '--reaver-scale': profile.scale,
+      } as CSSProperties}
+    >
+      <span className="spell-theater-cinderwake-pressure" />
+      {CINDERWAKE_PATHS.slice(0, profile.count).map((path, index) => (
         <span
-          className="spell-theater-pale-bolt"
-          key={index}
+          className={`spell-theater-reaver-flight spell-theater-reaver-flight--${path}`}
+          key={path}
           style={{
-            '--bolt-angle': `${-18 + index * (36 / Math.max(1, echoCount - 1))}deg`,
-            '--bolt-delay': `${-index * 0.13}s`,
-            '--bolt-offset': `${(index - (echoCount - 1) / 2) * 7}px`,
+            '--reaver-delay': `${-index * (profile.duration / Math.max(1, profile.count))}s`,
+            '--reaver-phase': index,
           } as CSSProperties}
         >
-          <i />
+          <i className="spell-theater-reaver-wake" />
+          <i className="spell-theater-reaver-blade" />
+          <i className="spell-theater-reaver-impact" />
         </span>
       ))}
-      {density >= 3 ? <span className="spell-theater-prism-fan" /> : null}
-      {awakened ? <span className="spell-theater-infinite-arch" /> : null}
+      {Array.from({ length: profile.cinders }, (_, index) => (
+        <i
+          className="spell-theater-cinderwake-mote"
+          key={index}
+          style={{
+            '--cinder-index': index,
+            '--cinder-delay': `${-index * 0.31}s`,
+          } as CSSProperties}
+        />
+      ))}
+      {awakened ? <span className="spell-theater-eventide-vortex" /> : null}
     </div>
   )
 }
@@ -259,7 +283,7 @@ function SpellEffect({ weaponId, density, awakened }: {
   if (weaponId === 'arc-choir') return <ArcChoirEffect density={density} awakened={awakened} />
   if (weaponId === 'rift-seeds') return <AstralVerdictEffect density={density} awakened={awakened} />
   if (weaponId === 'comet-swarm') return <CometSwarmEffect density={density} awakened={awakened} />
-  if (weaponId === 'mirror-bow') return <MirrorBowEffect density={density} awakened={awakened} />
+  if (weaponId === 'mirror-bow') return <CinderwakeReaversEffect density={density} awakened={awakened} />
   return null
 }
 
@@ -275,7 +299,13 @@ export function CombatLabSpellTheater({
   const rank = ownedWeapon?.rank ?? 0
   const awakened = Boolean(ownedWeapon?.awakened)
   const presentationIndex = awakened ? 6 : rank
-  const particleCount = rank > 0 ? Math.min(18, 3 + rank * 2 + (awakened ? 5 : 0)) : 0
+  const cinderwakePresentation = weaponId === 'mirror-bow' && rank > 0
+    ? cinderwakeReaverPresentationProfile(rank, awakened)
+    : undefined
+  const particleCount = rank > 0
+    ? cinderwakePresentation?.ambientParticleBudget
+      ?? Math.min(18, 3 + rank * 2 + (awakened ? 5 : 0))
+    : 0
   const rankTitle = RANK_TITLES[weaponId][presentationIndex] ?? weapon.name
 
   return (

@@ -32,12 +32,28 @@ describe('Combat Lab spell review theater', () => {
     expect(screensSource).toContain('<CombatLabSpellTheater')
   })
 
-  it('provides materially distinct Astral Verdict and Mirror Bow structures', () => {
+  it('provides materially distinct Astral Verdict and Cinderwake Reavers structures', () => {
     expect(theaterSource).toContain('spell-theater-verdict-strike__bolt')
     expect(theaterSource).toContain('spell-theater-verdict-strike__impact')
     expect(theaterSource).toContain('spell-theater-verdict-tempest')
-    expect(theaterSource).toContain('spell-theater-mirror-bow__upper')
-    expect(theaterSource).toContain('spell-theater-pale-bolt')
-    expect(theaterSource).toContain('spell-theater-infinite-arch')
+    expect(theaterSource).toContain('CinderwakeReaversEffect')
+    expect(theaterSource).toContain('spell-theater-reaver-flight')
+    expect(theaterSource).toContain('spell-theater-reaver-blade')
+    expect(theaterSource).toContain('spell-theater-eventide-vortex')
+    expect(theaterSource).toContain('assets/spell-vfx/cinderwake-reaver-v1.webp')
+    expect(theaterSource).not.toContain('spell-theater-mirror-bow__upper')
+    expect(theaterSource).not.toContain('spell-theater-pale-bolt')
+    expect(theaterSource).not.toContain('VeilglassReliquaryEffect')
+  })
+
+  it('sources every Cinderwake rank from the shared presentation profile', () => {
+    expect(theaterSource).toContain('cinderwakeReaverPresentationProfile')
+    expect(theaterSource).toContain(
+      'const profile = cinderwakeReaverPresentationProfile(density, awakened)',
+    )
+    expect(theaterSource).toContain('cinderwakePresentation?.ambientParticleBudget')
+    expect(theaterSource).not.toContain('const CINDERWAKE_RANK_PROFILES')
+    expect(stylesSource).toContain('@keyframes spell-theater-reaver-hunt-alpha')
+    expect(stylesSource).toContain('@keyframes spell-theater-reaver-hunt-delta')
   })
 })

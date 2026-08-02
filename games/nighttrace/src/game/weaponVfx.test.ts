@@ -78,7 +78,7 @@ describe('weapon VFX profiles', () => {
       'Astral Judgment',
       'Perihelion Ember',
       'Sepulchral Orchard',
-      'Infinite Prism',
+      'Cinderwake Pursuit',
       'Black Benediction',
     ])
     expect(new Set(paletteNames).size).toBe(ALL_WEAPON_VFX_IDS.length)

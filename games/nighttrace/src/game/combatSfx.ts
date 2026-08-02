@@ -92,11 +92,11 @@ export const COMBAT_SFX_PROFILES = Object.freeze({
   },
   'mirror-bow': {
     priority: 2,
-    cooldownSeconds: 0.07,
+    cooldownSeconds: 0.12,
     tones: [
-      { frequency: 2460, endFrequency: 1340, duration: 0.075, volume: 0.02, type: 'triangle', filterFrequency: 7000 },
-      { delay: 0.026, frequency: 1180, endFrequency: 2140, duration: 0.11, volume: 0.017, type: 'sine', filterFrequency: 6800 },
-      { delay: 0.052, frequency: 3340, endFrequency: 1720, duration: 0.07, volume: 0.011, type: 'triangle', filterFrequency: 7600 },
+      { frequency: 138, endFrequency: 46, duration: 0.24, volume: 0.032, type: 'sine', filterFrequency: 920 },
+      { delay: 0.032, frequency: 980, endFrequency: 230, duration: 0.18, volume: 0.019, type: 'triangle', filterFrequency: 3100 },
+      { delay: 0.09, frequency: 2740, endFrequency: 740, duration: 0.12, volume: 0.012, type: 'triangle', filterFrequency: 6200 },
     ],
   },
   'null-bell': {

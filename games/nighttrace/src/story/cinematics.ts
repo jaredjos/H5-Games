@@ -140,6 +140,7 @@ export interface CinematicVoicePlanEntry {
   readonly voiceName: string
   readonly maximumMs: number
   readonly direction: string
+  readonly delivery?: 'standard' | 'spacious'
 }
 
 export const CINEMATIC_VOICE_PLAN = Object.freeze(

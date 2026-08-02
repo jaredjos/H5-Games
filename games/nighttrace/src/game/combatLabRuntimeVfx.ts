@@ -19,7 +19,7 @@ export type CombatLabRuntimeMotif =
   | 'cathedral-branches'
   | 'astral-verdict'
   | 'plasma-embers'
-  | 'prismatic-fletching'
+  | 'cinderwake-reavers'
 
 export interface CombatLabRuntimeVfxPresentation {
   readonly enabled: boolean
@@ -29,6 +29,8 @@ export interface CombatLabRuntimeVfxPresentation {
   readonly ornamentCount: number
   readonly laneCount: number
   readonly energyScale: number
+  /** Hero-relative scale applied only to ornamental runtime geometry. */
+  readonly geometryScale: number
   readonly profile: WeaponVfxProfile
 }
 
@@ -46,6 +48,7 @@ const TARGET_IDS = new Set<WeaponId>(COMBAT_LAB_RUNTIME_VFX_IDS)
 const LIVE_AUTHORED_IDS = new Set<WeaponId>([
   'arc-choir',
   'rift-seeds',
+  'comet-swarm',
   'mirror-bow',
 ])
 
@@ -55,7 +58,7 @@ const MOTIFS = Object.freeze({
   'arc-choir': 'cathedral-branches',
   'rift-seeds': 'astral-verdict',
   'comet-swarm': 'plasma-embers',
-  'mirror-bow': 'prismatic-fletching',
+  'mirror-bow': 'cinderwake-reavers',
 } as const satisfies Readonly<Record<CombatLabRuntimeVfxId, CombatLabRuntimeMotif>>)
 
 const RANK_PALETTES = Object.freeze({
@@ -81,25 +84,25 @@ const RANK_PALETTES = Object.freeze({
     { core: 0xfffcff, glow: 0x8045e5, accent: 0xb77cff, secondary: 0xe4d0ff },
   ]),
   'rift-seeds': Object.freeze([
-    { core: 0xf4efff, glow: 0x311568, accent: 0x6330cf, secondary: 0x2fbde8 },
-    { core: 0xf8f2ff, glow: 0x381879, accent: 0x6d35dc, secondary: 0x38c8ef },
-    { core: 0xfcf7ff, glow: 0x401b88, accent: 0x773de8, secondary: 0x45d5f5 },
-    { core: 0xfffbff, glow: 0x481e96, accent: 0x8248f2, secondary: 0x55e0fa },
-    { core: 0xffffff, glow: 0x5122a5, accent: 0x8e56ff, secondary: 0x6ceaff },
+    { core: 0xdff8ff, glow: 0x102c75, accent: 0x2878de, secondary: 0x53c8f2 },
+    { core: 0xe7faff, glow: 0x123584, accent: 0x3189e8, secondary: 0x61d4f7 },
+    { core: 0xeffcff, glow: 0x153f96, accent: 0x3c9bf2, secondary: 0x73defa },
+    { core: 0xf5fdff, glow: 0x1949a8, accent: 0x49acf8, secondary: 0x8be8ff },
+    { core: 0xf9feff, glow: 0x1e56bb, accent: 0x5bbdff, secondary: 0xa5f0ff },
   ]),
   'comet-swarm': Object.freeze([
-    { core: 0xffe8cf, glow: 0xd7624f, accent: 0xa83640, secondary: 0xd7a33c },
-    { core: 0xffedda, glow: 0xe66e55, accent: 0xc04448, secondary: 0xe3ad43 },
-    { core: 0xfff3e5, glow: 0xf47d61, accent: 0xdc5051, secondary: 0xefbd50 },
-    { core: 0xfff9ef, glow: 0xff9673, accent: 0xf05e59, secondary: 0xffcf67 },
-    { core: 0xffffff, glow: 0xffb18d, accent: 0xff7567, secondary: 0xffe79a },
+    { core: 0xffbd62, glow: 0xb83d16, accent: 0xd65018, secondary: 0xf0781f },
+    { core: 0xffc36b, glow: 0xc74618, accent: 0xe15c1b, secondary: 0xf58223 },
+    { core: 0xffc975, glow: 0xd14e19, accent: 0xeb671d, secondary: 0xfa8c28 },
+    { core: 0xffcf80, glow: 0xdd581d, accent: 0xf17322, secondary: 0xff982f },
+    { core: 0xffd68e, glow: 0xe76420, accent: 0xfa8128, secondary: 0xffa63a },
   ]),
   'mirror-bow': Object.freeze([
-    { core: 0xe9fbff, glow: 0x58b8d8, accent: 0x276eaa, secondary: 0x8b52cd },
-    { core: 0xf0fdff, glow: 0x67cae7, accent: 0x3186c1, secondary: 0x9c63dc },
-    { core: 0xf7feff, glow: 0x79dcef, accent: 0x3c9dd4, secondary: 0xaf75ea },
-    { core: 0xffffff, glow: 0x91ecf7, accent: 0x54b7e5, secondary: 0xc18df5 },
-    { core: 0xffffff, glow: 0xb8f7ff, accent: 0x76d0f1, secondary: 0xdcb8ff },
+    { core: 0xffb07a, glow: 0x160407, accent: 0x8e1f2a, secondary: 0x5c225f },
+    { core: 0xffb985, glow: 0x1c0509, accent: 0xa12631, secondary: 0x6b286d },
+    { core: 0xffc38f, glow: 0x22060b, accent: 0xb72e39, secondary: 0x7b2e7c },
+    { core: 0xffce9d, glow: 0x29070d, accent: 0xca3742, secondary: 0x8d358d },
+    { core: 0xffd9ad, glow: 0x310810, accent: 0xde424c, secondary: 0x9f3da0 },
   ]),
 } as const satisfies Readonly<Record<CombatLabRuntimeVfxId, readonly RankPalette[]>>)
 
@@ -114,7 +117,7 @@ export function isCombatLabRuntimeVfxId(
 
 /**
  * Gives the launched Combat Lab its authored presentation layer. Arc Choir,
- * Astral Verdict and Mirror Bow have also graduated into Campaign and Boss
+ * Astral Verdict and Cinderwake Reavers have also graduated into Campaign and Boss
  * Trials; the remaining Lab experiments still cannot leak into shipped modes.
  */
 export function resolveCombatLabRuntimeVfx(
@@ -134,6 +137,7 @@ export function resolveCombatLabRuntimeVfx(
       ornamentCount: 0,
       laneCount: 0,
       energyScale: 1,
+      geometryScale: 1,
       profile: baseProfile,
     })
   }
@@ -146,31 +150,69 @@ export function resolveCombatLabRuntimeVfx(
   // awakening remap intentionally inverts other spell palettes, but that made
   // Cathedral Storm read as a white/cyan (and occasionally warm) beam in the
   // arena. Keep its violet hierarchy intact and lift only the white-hot core.
-  const preservesAwakenedPalette = weaponId === 'arc-choir'
+  const preservesAwakenedPalette =
+    weaponId === 'arc-choir' ||
+    weaponId === 'rift-seeds' ||
+    weaponId === 'comet-swarm' ||
+    weaponId === 'mirror-bow'
+  const preservesAwakenedCore =
+    weaponId === 'rift-seeds' ||
+    weaponId === 'comet-swarm' ||
+    weaponId === 'mirror-bow'
+  const keepsV116ProjectileScale =
+    weaponId === 'helio-lance' || weaponId === 'comet-swarm'
   const profile = Object.freeze({
-    coreColor: awakened ? 0xffffff : palette.core,
+    coreColor: awakened && !preservesAwakenedCore ? 0xffffff : palette.core,
     glowColor:
       awakened && !preservesAwakenedPalette ? palette.secondary : palette.glow,
     accentColor:
       awakened && !preservesAwakenedPalette ? palette.core : palette.accent,
     secondaryColor:
       awakened && !preservesAwakenedPalette ? palette.glow : palette.secondary,
-    trailLengthScale: baseProfile.trailLengthScale * (1 + rank * 0.055 + awakeningLift * 0.18),
-    trailWidthScale: baseProfile.trailWidthScale * (1 + rank * 0.04 + awakeningLift * 0.14),
-    projectileScale: baseProfile.projectileScale * (1 + rank * 0.025 + awakeningLift * 0.09),
+    trailLengthScale: keepsV116ProjectileScale
+      ? baseProfile.trailLengthScale
+      : baseProfile.trailLengthScale * (1 + rank * 0.055 + awakeningLift * 0.18),
+    trailWidthScale: keepsV116ProjectileScale
+      ? baseProfile.trailWidthScale
+      : baseProfile.trailWidthScale * (1 + rank * 0.04 + awakeningLift * 0.14),
+    projectileScale: keepsV116ProjectileScale
+      ? baseProfile.projectileScale
+      : baseProfile.projectileScale * (1 + rank * 0.025 + awakeningLift * 0.09),
     orbitCount: baseProfile.orbitCount + rank + awakeningLift * 2,
     particleCount: baseProfile.particleCount + rank * 2 + awakeningLift * 5,
     segmentCount: baseProfile.segmentCount + rank + awakeningLift * 3,
   })
+
+  const ornamentCount = weaponId === 'arc-choir'
+    ? Math.min(5, 2 + Math.ceil(rank / 2) + awakeningLift)
+    : weaponId === 'mirror-bow'
+      ? Math.min(4, 1 + Math.ceil(rank / 2) + awakeningLift)
+      : Math.min(8, 1 + rank + awakeningLift * 2)
+  const laneCount = weaponId === 'arc-choir'
+    ? awakened
+      ? 2
+      : Math.min(3, 1 + Math.floor(rank / 2))
+    : weaponId === 'rift-seeds'
+      ? Math.min(4, 1 + Math.floor(rank / 2) + awakeningLift)
+      : Math.min(5, 1 + Math.floor(rank / 2) + awakeningLift)
+  const geometryScale = {
+    'helio-lance': 0.72,
+    'crescent-array': 0.9,
+    'arc-choir': awakened ? 0.78 : 0.86,
+    'rift-seeds': 0.9,
+    'comet-swarm': 0.7,
+    'mirror-bow': 0.72,
+  }[weaponId]
 
   return Object.freeze({
     enabled: true,
     rank,
     awakened,
     motif: MOTIFS[weaponId],
-    ornamentCount: Math.min(8, 1 + rank + awakeningLift * 2),
-    laneCount: Math.min(5, 1 + Math.floor(rank / 2) + awakeningLift),
+    ornamentCount,
+    laneCount,
     energyScale: 0.82 + rank * 0.08 + awakeningLift * 0.22,
+    geometryScale,
     profile,
   })
 }

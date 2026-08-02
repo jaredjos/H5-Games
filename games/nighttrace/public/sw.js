@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'v1.22.0'
-const CINEMATIC_VOICE_REVISION = '68e1ec02d45c3356'
+const CACHE_VERSION = 'v1.23.0'
+const CINEMATIC_VOICE_REVISION = 'd4a1cca3e00524ee'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
 const ASSET_CACHE = `${CACHE_PREFIX}assets-${CACHE_VERSION}`
@@ -48,6 +48,12 @@ const SHELL_URLS = [
   new URL('assets/character-vfx/hero-material-vfx-atlas-v1-mobile.webp', SCOPE_URL).href,
   new URL('assets/character-vfx/boss-material-vfx-atlas-v1-desktop.webp', SCOPE_URL).href,
   new URL('assets/character-vfx/boss-material-vfx-atlas-v1-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/astral-verdict-v1.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/astral-verdict-v1-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/comet-orbit-v1.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/comet-orbit-v1-mobile.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/cinderwake-reaver-v1.webp', SCOPE_URL).href,
+  new URL('assets/spell-vfx/cinderwake-reaver-v1-mobile.webp', SCOPE_URL).href,
 ]
 
 function isCacheable(response) {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BOSS_DEFEATED_TITLE_SECONDS,
   BOSS_DEATH_MOTION_SECONDS,
   LEVEL_COMPLETE_REVEAL_PROGRESS,
   VICTORY_END_SEQUENCE_SECONDS,
@@ -11,6 +12,9 @@ import {
 describe('run ending presentation', () => {
   it('holds victory long enough for the sovereign collapse and completion card', () => {
     expect(BOSS_DEATH_MOTION_SECONDS).toBeGreaterThan(1.5)
+    expect(BOSS_DEFEATED_TITLE_SECONDS).toBe(2.8)
+    expect(VICTORY_END_SEQUENCE_SECONDS).toBe(4.6)
+    expect(BOSS_DEFEATED_TITLE_SECONDS - 1.8).toBeCloseTo(1, 5)
     expect(VICTORY_END_SEQUENCE_SECONDS).toBeGreaterThan(
       BOSS_DEATH_MOTION_SECONDS + 1.5,
     )

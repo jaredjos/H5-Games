@@ -107,12 +107,14 @@ describe('Unified cinematic narration production integrity', () => {
     ).toThrow(`${first.id}.wav does not match its cinematic manifest metadata.`)
   })
 
-  it('invalidates reuse when dialogue, direction, actor, timing, model or prompt changes', () => {
+  it('invalidates reuse when dialogue, direction, delivery, actor, timing, model or prompt changes', () => {
     const line = plan[0]
     const baseline = cinematicLineContentSha256(line)
     expect(cinematicLineContentSha256({ ...line, text: `${line.text} Again.` }))
       .not.toBe(baseline)
     expect(cinematicLineContentSha256({ ...line, direction: `${line.direction} Faster.` }))
+      .not.toBe(baseline)
+    expect(cinematicLineContentSha256({ ...line, delivery: 'standard' }))
       .not.toBe(baseline)
     expect(cinematicLineContentSha256({ ...line, voiceName: 'Leda' }))
       .not.toBe(baseline)
