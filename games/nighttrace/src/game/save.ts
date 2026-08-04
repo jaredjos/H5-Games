@@ -45,7 +45,7 @@ const DEFAULT_SETTINGS: SaveData['settings'] = {
   showDamageNumbers: true,
   autoPulse: false,
   subtitles: true,
-  cinematics: 'first-clear',
+  cinematics: 'always',
 }
 
 export const DEFAULT_SAVE: SaveData = {
@@ -70,6 +70,7 @@ export const DEFAULT_SAVE: SaveData = {
   unlockedWeapons: [...ALL_WEAPON_IDS],
   story: {
     seenCinematics: [],
+    astrariumVisited: false,
   },
   settings: DEFAULT_SETTINGS,
 }
@@ -101,6 +102,7 @@ function cloneSave(save: SaveData): SaveData {
     unlockedWeapons: [...save.unlockedWeapons],
     story: {
       seenCinematics: [...save.story.seenCinematics],
+      astrariumVisited: save.story.astrariumVisited,
     },
     settings: { ...save.settings },
   }
@@ -193,6 +195,7 @@ function normalizeStory(
   if (sourceVersion < SAVE_VERSION) {
     return {
       seenCinematics: cinematicIdsForCompletedLevels(completedLevels),
+      astrariumVisited: false,
     }
   }
 
@@ -207,7 +210,10 @@ function normalizeStory(
         ),
       ]
     : []
-  return { seenCinematics }
+  return {
+    seenCinematics,
+    astrariumVisited: booleanValue(source.astrariumVisited, false),
+  }
 }
 
 function normalizeUpgrades(value: unknown): Record<string, number> {

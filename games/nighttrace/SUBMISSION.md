@@ -2,7 +2,7 @@
 
 ## Shipping target
 
-NIGHTTRACE v1.24.0 is an installable, campaign-only mobile web app suitable for HTTPS static
+NIGHTTRACE v1.24.1 is an installable, campaign-only mobile web app suitable for HTTPS static
 hosting and Add to Home Screen on current Android and iOS browsers. Menus remain
 usable in portrait; combat is landscape-first and pauses behind an accessible
 rotate gate when required. It supports safe-area insets, 44 px minimum touch

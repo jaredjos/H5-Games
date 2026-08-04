@@ -1,44 +1,33 @@
-import type { GameSettings, RunMode } from '../shared/types'
+import type { RunMode } from '../shared/types'
 import {
-  INTRO_CINEMATIC_ID,
-  cinematicForFirstClear,
+  CAMPAIGN_CINEMATICS,
+  FINALE_CINEMATIC_ID,
+  getCinematic,
   type CampaignCinematic,
 } from './cinematics'
 
-type CinematicMode = GameSettings['cinematics']
-
-export function shouldPlayCampaignIntro({
-  mode,
-  seenCinematics,
-}: {
-  mode: CinematicMode
-  seenCinematics: readonly string[]
-}) {
-  if (mode === 'off') return false
-  if (mode === 'always') return true
-  return !seenCinematics.includes(INTRO_CINEMATIC_ID)
+/**
+ * Every sector owns one pre-run story reel. `nextLevelId` is the canonical
+ * mapping, so the campaign never needs a second hard-coded scene table.
+ */
+export function cinematicBeforeCampaignLevel(
+  levelId: number,
+): CampaignCinematic | undefined {
+  if (!Number.isInteger(levelId) || levelId < 1 || levelId > 10) return undefined
+  return CAMPAIGN_CINEMATICS.find(
+    (cinematic) => cinematic.nextLevelId === levelId,
+  )
 }
 
 export function campaignCinematicAfterRun({
   runMode,
   victory,
   levelId,
-  isFirstClear,
-  mode,
-  seenCinematics,
 }: {
   runMode: RunMode
   victory: boolean
   levelId: number
-  isFirstClear: boolean
-  mode: CinematicMode
-  seenCinematics: readonly string[]
 }): CampaignCinematic | undefined {
-  if (runMode !== 'campaign' || !victory || mode === 'off') return undefined
-  if (!isFirstClear && mode !== 'always') return undefined
-
-  const cinematic = cinematicForFirstClear(levelId)
-  if (!cinematic) return undefined
-  if (mode === 'first-clear' && seenCinematics.includes(cinematic.id)) return undefined
-  return cinematic
+  if (runMode !== 'campaign' || !victory || levelId !== 10) return undefined
+  return getCinematic(FINALE_CINEMATIC_ID)
 }

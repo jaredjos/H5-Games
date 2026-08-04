@@ -74,6 +74,7 @@ describe('versioned saves', () => {
     save.settings.voiceVolume = 0.72
     save.settings.subtitles = false
     save.settings.cinematics = 'always'
+    save.story.astrariumVisited = true
     save.story.seenCinematics = [
       'intro-a-world-without-dawn',
       'interlude-01-the-road-remembers',
@@ -91,6 +92,7 @@ describe('versioned saves', () => {
     expect(loaded.settings.subtitles).toBe(false)
     expect(loaded.settings.cinematics).toBe('always')
     expect(loaded.story.seenCinematics).toEqual(save.story.seenCinematics)
+    expect(loaded.story.astrariumVisited).toBe(true)
   })
 
   it('falls back safely when serialized storage is corrupt', () => {
@@ -123,6 +125,7 @@ describe('versioned saves', () => {
     expect(migrated.settings.sfxVolume).toBe(0.4)
     expect(migrated.settings.voiceVolume).toBe(0.9)
     expect(migrated.settings.subtitles).toBe(true)
+    expect(migrated.story.astrariumVisited).toBe(false)
   })
 
   it('starts music at 50% and migrates only the former v1 default', () => {
@@ -168,6 +171,7 @@ describe('versioned saves', () => {
           'unknown',
           'intro-a-world-without-dawn',
         ],
+        astrariumVisited: true,
       },
       settings: {
         voiceVolume: 4,
@@ -180,6 +184,7 @@ describe('versioned saves', () => {
       'intro-a-world-without-dawn',
       'interlude-01-the-road-remembers',
     ])
+    expect(migrated.story.astrariumVisited).toBe(true)
     expect(migrated.settings.voiceVolume).toBe(1)
     expect(migrated.settings.subtitles).toBe(false)
     expect(migrated.settings.cinematics).toBe('always')
@@ -208,6 +213,7 @@ describe('versioned saves', () => {
 
     expect(storage.getItem(SAVE_KEY)).toBeNull()
     expect(reset).toEqual(DEFAULT_SAVE)
+    expect(reset.story.astrariumVisited).toBe(false)
   })
 })
 

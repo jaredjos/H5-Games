@@ -239,6 +239,7 @@ export interface SaveData {
 
 export interface StoryProgress {
   seenCinematics: string[]
+  astrariumVisited: boolean
 }
 
 export interface GameSettings {

@@ -66,6 +66,7 @@ import { GameInput } from './input'
 import {
   bossAttackRecoverySeconds,
   bossHealthForBuild,
+  campaignDifficultyMultiplier,
   canSpawnPlannedDawnheart,
   chooseSupportPickup,
   eligibleEnemyPool,
@@ -815,6 +816,7 @@ class NighttraceRuntime {
     typeof location !== 'undefined' &&
     ['localhost', '127.0.0.1'].includes(location.hostname) &&
     new URLSearchParams(location.search).has('qa')
+  private readonly campaignDifficultyMultiplier: number
   private readonly player: PlayerState
   private lastWidth = 0
   private lastHeight = 0
@@ -836,6 +838,11 @@ class NighttraceRuntime {
       runConfig.lightRingRank,
     )
     this.bossLevel = getLevel(runConfig.bossLevelId)
+    this.campaignDifficultyMultiplier = campaignDifficultyMultiplier(
+      runConfig.mode,
+      level.id,
+      this.qaMode || Boolean(this.showcase),
+    )
     this.settings = settings
     this.unlockedWeapons = [...new Set([...ALL_WEAPON_IDS, ...unlockedWeapons])]
     this.persistentUpgrades = persistentUpgrades
@@ -2125,7 +2132,8 @@ class NighttraceRuntime {
     const intensity =
       baseline.spawnRate *
       pressure.spawnIntensityFactor *
-      GLOBAL_DIFFICULTY_MULTIPLIER
+      GLOBAL_DIFFICULTY_MULTIPLIER *
+      this.campaignDifficultyMultiplier
     this.spawnBudget = Math.min(
       3.5,
       this.spawnBudget + delta * intensity * (this.boss ? 0.45 : 1),
@@ -2228,7 +2236,8 @@ class NighttraceRuntime {
       baseline.enemyHealth *
       typeScale *
       pressure.enemyHealthMultiplier *
-      GLOBAL_DIFFICULTY_MULTIPLIER
+      GLOBAL_DIFFICULTY_MULTIPLIER *
+      this.campaignDifficultyMultiplier
     const size = 66 * Math.sqrt(typeScale)
 
     enemy.active = true
@@ -2486,9 +2495,11 @@ class NighttraceRuntime {
       bossDamageRank: this.persistentUpgrades['dawn-within'] ?? 0,
       critRank: this.persistentUpgrades['parallax-eye'] ?? 0,
     })
-    const health = this.qaMode
-      ? baseHealth
-      : bossHealthForBuild(baseHealth, estimatedDps, this.bossLevel.id)
+    const health = (
+      this.qaMode
+        ? baseHealth
+        : bossHealthForBuild(baseHealth, estimatedDps, this.bossLevel.id)
+    ) * this.campaignDifficultyMultiplier
 
     enemy.active = true
     enemy.uid = ++this.enemyUid
@@ -5355,6 +5366,7 @@ class NighttraceRuntime {
     const incomingDamage =
       amount *
       GLOBAL_DIFFICULTY_MULTIPLIER *
+      this.campaignDifficultyMultiplier *
       (this.qaMode ? 0.1 : 0.72)
     let remaining = incomingDamage
     const shieldBefore = this.player.shield

@@ -256,6 +256,12 @@ export function CampaignScreen({
   const isUnlocked = selected.id <= save.unlockedLevel
   const mastery = save.mastery[selected.id] ?? []
   const completedCount = levels.filter((level) => save.completedLevels.includes(level.id)).length
+  const startLabel = isUnlocked
+    ? save.completedLevels.includes(selected.id)
+      ? 'Return to the Night'
+      : 'Enter the Night'
+    : 'Sector Shrouded'
+  const startSelectedLevel = () => onStart(selected.id)
 
   return (
     <main className="shell-screen campaign-screen">
@@ -369,14 +375,25 @@ export function CampaignScreen({
               <Sparkles size={23} />
               <span>{selected.reward}</span>
             </div>
-            <CrestButton disabled={!isUnlocked} onClick={() => onStart(selected.id)}>
-              {isUnlocked ? (save.completedLevels.includes(selected.id) ? 'Return to the Night' : 'Enter the Night') : 'Sector Shrouded'}
+            <CrestButton
+              className="campaign-start campaign-start--detail"
+              disabled={!isUnlocked}
+              onClick={startSelectedLevel}
+            >
+              {startLabel}
             </CrestButton>
             <div className="stage-best">
               {save.completedLevels.includes(selected.id) ? 'Relit · mastery remains' : isUnlocked ? 'No light has returned yet' : `Relight sector ${selected.id - 1} to unlock`}
             </div>
           </div>
         </PanelFrame>
+        <CrestButton
+          className="campaign-start campaign-start--mobile"
+          disabled={!isUnlocked}
+          onClick={startSelectedLevel}
+        >
+          {startLabel}
+        </CrestButton>
       </section>
     </main>
   )
@@ -1476,41 +1493,6 @@ function SettingToggle({
   )
 }
 
-function SettingChoice<T extends string>({
-  label,
-  description,
-  value,
-  options,
-  onChange,
-}: {
-  label: string
-  description: string
-  value: T
-  options: readonly { value: T; label: string }[]
-  onChange: (value: T) => void
-}) {
-  return (
-    <fieldset className="setting-choice">
-      <legend>{label}</legend>
-      <p>{description}</p>
-      <div role="radiogroup" aria-label={label}>
-        {options.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={value === option.value}
-            className={value === option.value ? 'is-active' : ''}
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    </fieldset>
-  )
-}
-
 export function SettingsScreen({
   save,
   onNavigate,
@@ -1555,17 +1537,10 @@ export function SettingsScreen({
           </PanelFrame>
           <PanelFrame title="Assistance">
             <SettingToggle label="Auto Pulse" description="Detonates a ready Trace automatically." checked={settings.autoPulse} onChange={(value) => update('autoPulse', value)} />
-            <SettingChoice
-              label="Cinematic playback"
-              description="Choose when recovered memories interrupt the campaign."
-              value={settings.cinematics}
-              options={[
-                { value: 'first-clear', label: 'First clear' },
-                { value: 'always', label: 'Always' },
-                { value: 'off', label: 'Off' },
-              ]}
-              onChange={(value) => update('cinematics', value)}
-            />
+            <div className="cinematic-playback-note">
+              <strong>Cinematic playback</strong>
+              <small>Every sector opens with its story reel. Use Skip inside the scene when you want to enter combat immediately.</small>
+            </div>
             <div className="control-reference">
               <div><kbd>WASD</kbd><span>Move</span></div>
               <div><kbd>SPACE</kbd><span>Pulse</span></div>
@@ -1624,6 +1599,8 @@ export function ResultsScreen({
   nextGoal,
   earnedMastery = [],
   unlockedWeapon,
+  showAstrariumNudge = false,
+  onAstrarium,
   onCampaign,
   onReturn,
   onRetry,
@@ -1636,6 +1613,8 @@ export function ResultsScreen({
   nextGoal: string
   earnedMastery?: Array<'clear' | 'trace' | 'aegis'>
   unlockedWeapon?: WeaponDefinition
+  showAstrariumNudge?: boolean
+  onAstrarium: () => void
   onCampaign?: () => void
   onReturn?: () => void
   onRetry: () => void
@@ -1779,6 +1758,18 @@ export function ResultsScreen({
             <strong>{nextGoal}</strong>
           </div>
         </div>
+        <button
+          className={`results-astrarium${showAstrariumNudge ? ' is-nudged' : ''}`}
+          onClick={onAstrarium}
+        >
+          <span className="results-astrarium__sigil"><AstrariumGlyph icon="dawn" size={23} /></span>
+          <span>
+            <small>{showAstrariumNudge ? 'Your first persistent upgrade awaits' : 'Persistent power'}</small>
+            <strong>Visit Astrarium</strong>
+            {showAstrariumNudge ? <em>Spend recovered Dawn Shards before returning to the Night.</em> : null}
+          </span>
+          <ChevronRight size={18} aria-hidden="true" />
+        </button>
         <div className="results-actions">
           {returnAction ? (
             <button className="text-action" onClick={returnAction}><ArrowLeft size={17} /> {returnLabel}</button>

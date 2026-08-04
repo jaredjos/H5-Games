@@ -5,6 +5,7 @@ import {
   bossHealthForBuild,
   bossPatternForLevel,
   bossTargetTtkSeconds,
+  campaignDifficultyMultiplier,
   canSpawnPlannedDawnheart,
   chooseSupportPickup,
   eligibleEnemyPool,
@@ -19,6 +20,7 @@ import {
   sectorBaselineAt,
   supportPickupFirstDropSeconds,
   supportPickupIntervalSeconds,
+  ZONE_ONE_CAMPAIGN_DIFFICULTY_MULTIPLIER,
 } from './balance'
 import { LEVELS } from './content'
 
@@ -32,6 +34,18 @@ describe('boss pattern progression', () => {
 })
 
 describe('minute-by-minute difficulty curve', () => {
+  it('makes only the normal Zone 1 campaign twenty percent easier', () => {
+    expect(ZONE_ONE_CAMPAIGN_DIFFICULTY_MULTIPLIER).toBe(0.8)
+    expect(campaignDifficultyMultiplier('campaign', 1)).toBe(0.8)
+    for (let levelId = 2; levelId <= 10; levelId += 1) {
+      expect(campaignDifficultyMultiplier('campaign', levelId)).toBe(1)
+    }
+    expect(campaignDifficultyMultiplier('boss-trial', 1)).toBe(1)
+    expect(campaignDifficultyMultiplier('combat-lab', 1)).toBe(1)
+    expect(campaignDifficultyMultiplier('campaign', 1, true)).toBe(1)
+    expect(campaignDifficultyMultiplier('campaign', Number.NaN)).toBe(1)
+  })
+
   it('softens the first minute and compounds pressure before every boss', () => {
     for (const level of LEVELS) {
       const opening = hordePressureAt(0, level.duration)

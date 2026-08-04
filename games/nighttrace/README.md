@@ -4,7 +4,7 @@
 
 NIGHTTRACE is an original browser horde-survival game built with React, TypeScript, Vite, and PixiJS. Auto-attacking weapons keep the controls approachable; every step paints a luminous trace, and closing a loop turns movement itself into a weapon.
 
-**Play the current public campaign release:** [jaredjos.github.io/H5-Games/nighttrace](https://jaredjos.github.io/H5-Games/nighttrace/)
+**Play the current public campaign release:** [nighttrace-game.vercel.app](https://nighttrace-game.vercel.app/)
 
 ## Release lineage
 
@@ -49,6 +49,8 @@ NIGHTTRACE is an original browser horde-survival game built with React, TypeScri
 - `v1.23.2` — authored-spell delivery fix: Crescent Array now ships its approved moonblade atlases in Campaign, Boss Trials, Combat Lab, and mobile landscape; Comet Swarm keeps its existing scale while gaining brighter broken molten-orange coronas, compact fiery wakes, and warm motes in gameplay and the Spell Theater.
 - `v1.23.1` — Complete local narration release: promotes the ten user-approved Prologue and Finale performances, preserves every approved take in full with aligned story timing, and brings the campaign to 84/84 independently voiced local clips.
 - `v1.23.0` — Combat Lab and spell-fidelity release: mortal calibration exposes real vitality/armor, Full Sector opens with 48 hostiles and releases its Sovereign at 60 seconds, Helio Lance returns to its v1.16.3-relative footprint, and Comet Swarm gains visibly distinct ranks through additional faster ember-orange orbiting stones. Astral Verdict now uses authored sky-lightning material instead of cartoon linework, the retired Veilglass prison becomes the spinning, edge-ricocheting **Cinderwake Reavers** with the same crimson/violet material profile in Theater and live Pixi combat, and every Trace point independently fades out at twelve seconds. Dawnward Aegis shares the Bearer's visible-body center for rendering and damage. Seventy-four narration clips ship locally; complete subtitles cover the ten Prologue/Finale clips awaiting a later Google quota refresh.
+
+- `v1.24.1` — campaign onboarding and opening-balance release: Zone 1 campaign pressure, enemy vitality, Sovereign vitality, and incoming damage are reduced by 20% without changing internal QA; every sector and retry now plays its mapped cinematic until the player manually skips it; victory and defeat results always link to Astrarium with a persistent first-visit nudge; and the campaign start action is pinned into the initial mobile-landscape viewport.
 
 ## Runtime guide and visual evidence
 

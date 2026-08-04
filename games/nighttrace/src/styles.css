@@ -720,9 +720,14 @@ button:disabled {
 }
 
 .campaign-layout {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(320px, 25vw, 410px);
   height: calc(100% - 74px - var(--safe-top));
+}
+
+.campaign-start--mobile {
+  display: none;
 }
 
 .campaign-map {
@@ -2253,6 +2258,30 @@ button:disabled {
 .setting-slider input:focus-visible {
   outline: 1px solid var(--cyan-bright);
   outline-offset: 3px;
+}
+
+.cinematic-playback-note {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 12px;
+  padding: 12px 0 14px;
+  border-top: 1px solid rgba(203, 170, 101, .14);
+  border-bottom: 1px solid rgba(203, 170, 101, .14);
+}
+
+.cinematic-playback-note strong {
+  color: #d2c9b7;
+  font: 500 .62rem/1 var(--display);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.cinematic-playback-note small {
+  color: #797a76;
+  font-size: .58rem;
+  line-height: 1.45;
 }
 
 .control-reference {
@@ -3860,6 +3889,87 @@ kbd {
   text-transform: uppercase;
 }
 
+.results-astrarium {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 11px 13px;
+  border: 1px solid rgba(203, 170, 101, .38);
+  color: var(--gold-bright);
+  background:
+    radial-gradient(circle at 11% 50%, rgba(240, 214, 149, .13), transparent 28%),
+    linear-gradient(105deg, rgba(25, 21, 12, .86), rgba(4, 10, 13, .9));
+  box-shadow: inset 0 0 26px rgba(240, 214, 149, .035);
+  text-align: left;
+  cursor: pointer;
+}
+
+.results-astrarium::after {
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(240, 214, 149, .08);
+  pointer-events: none;
+  content: '';
+}
+
+.results-astrarium:hover,
+.results-astrarium:focus-visible {
+  border-color: rgba(240, 214, 149, .72);
+  outline: none;
+  box-shadow:
+    inset 0 0 30px rgba(240, 214, 149, .07),
+    0 0 22px rgba(203, 170, 101, .1);
+}
+
+.results-astrarium.is-nudged {
+  animation: astrariumNudge 2.8s ease-in-out infinite;
+}
+
+.results-astrarium__sigil {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(240, 214, 149, .44);
+  background: radial-gradient(circle, rgba(240, 214, 149, .2), transparent 66%);
+  transform: rotate(45deg);
+}
+
+.results-astrarium__sigil svg {
+  transform: rotate(-45deg);
+}
+
+.results-astrarium > span:nth-child(2) {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.results-astrarium small {
+  color: #9c8a62;
+  font-size: .47rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.results-astrarium strong {
+  font: 500 .72rem/1 var(--display);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.results-astrarium em {
+  color: #9c9587;
+  font-size: .52rem;
+  font-style: normal;
+  line-height: 1.3;
+}
+
 .results-actions {
   position: relative;
   z-index: 3;
@@ -3869,6 +3979,11 @@ kbd {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 30px;
+}
+
+@keyframes astrariumNudge {
+  0%, 100% { box-shadow: inset 0 0 26px rgba(240, 214, 149, .035); }
+  50% { box-shadow: inset 0 0 34px rgba(240, 214, 149, .09), 0 0 24px rgba(203, 170, 101, .14); }
 }
 
 .toast-region {
@@ -5267,7 +5382,25 @@ kbd {
     margin-top: 8px;
   }
 
+  .stage-rail .campaign-start--detail {
+    display: none;
+  }
+
+  .campaign-start--mobile {
+    position: absolute;
+    z-index: 24;
+    right: max(14px, calc(var(--safe-right) + 7px));
+    bottom: max(13px, calc(var(--safe-bottom) + 7px));
+    display: block;
+    width: 231px;
+    min-height: 42px;
+  }
+
   .stage-rail .crest-button__label {
+    font-size: .6rem;
+  }
+
+  .campaign-start--mobile .crest-button__label {
     font-size: .6rem;
   }
 
@@ -5755,6 +5888,33 @@ kbd {
     max-height: calc(100dvh - 28px);
     padding: 20px;
     overflow: auto;
+  }
+
+  .results-astrarium {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: 9px;
+    margin-top: 8px;
+    padding: 8px 10px;
+  }
+
+  .results-astrarium__sigil {
+    width: 32px;
+    height: 32px;
+  }
+
+  .results-astrarium em {
+    display: none;
+  }
+
+  .results-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 12px;
+  }
+
+  .results-actions > * {
+    min-width: 0;
+    width: 100%;
   }
 }
 

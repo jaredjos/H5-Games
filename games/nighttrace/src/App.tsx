@@ -70,13 +70,12 @@ import { CinematicScreen } from './ui/CinematicScreen'
 import { ASTRARIUM_NODES, type AstrariumNodeDefinition } from './ui/data'
 import {
   CAMPAIGN_CINEMATICS,
-  INTRO_CINEMATIC_ID,
   getCinematic,
   type CinematicId,
 } from './story/cinematics'
 import {
   campaignCinematicAfterRun,
-  shouldPlayCampaignIntro,
+  cinematicBeforeCampaignLevel,
 } from './story/cinematicFlow'
 import {
   shouldRecordCinematicSeen,
@@ -193,6 +192,7 @@ export default function App() {
   const completionTokenRef = useRef('')
   const cinematicSessionRef = useRef(0)
   const completedCinematicSessionRef = useRef<number | null>(null)
+  const pendingCinematicActionRef = useRef<(() => void) | null>(null)
   const lastAudibleVolume = useRef(save.settings.masterVolume || 0.8)
   const isTouchDevicePortrait = useNarrowPortrait()
 
@@ -266,8 +266,17 @@ export default function App() {
   }, [announce, save.settings, updateSettings])
 
   const navigate = useCallback((destination: ShellScreen) => {
+    if (destination === 'astrarium' && !save.story.astrariumVisited) {
+      persist({
+        ...save,
+        story: {
+          ...save.story,
+          astrariumVisited: true,
+        },
+      })
+    }
     setScreen(releaseSafeScreen(destination))
-  }, [])
+  }, [persist, save])
 
   const requestLandscapeMode = useCallback(async () => {
     if (
@@ -301,9 +310,14 @@ export default function App() {
   const showCinematic = useCallback((
     cinematicId: CinematicId,
     returnScreen: CinematicReturnScreen,
+    onComplete?: () => void,
   ) => {
     const safeReturnScreen = releaseSafeScreen(returnScreen)
-    if (!getCinematic(cinematicId)) return
+    pendingCinematicActionRef.current = null
+    if (!getCinematic(cinematicId)) {
+      onComplete?.()
+      return
+    }
     void requestLandscapeMode()
     const sessionId = cinematicSessionRef.current + 1
     cinematicSessionRef.current = sessionId
@@ -311,6 +325,7 @@ export default function App() {
     setActiveCinematicSessionId(sessionId)
     setActiveCinematicId(cinematicId)
     setCinematicReturnScreen(safeReturnScreen)
+    pendingCinematicActionRef.current = onComplete ?? null
     setScreen('cinematic')
   }, [requestLandscapeMode])
 
@@ -337,7 +352,13 @@ export default function App() {
     }
 
     setActiveCinematicId(undefined)
-    setScreen(releaseSafeScreen(cinematicReturnScreen))
+    const pendingAction = pendingCinematicActionRef.current
+    pendingCinematicActionRef.current = null
+    if (pendingAction) {
+      pendingAction()
+    } else {
+      setScreen(releaseSafeScreen(cinematicReturnScreen))
+    }
   }, [
     activeCinematicId,
     activeCinematicSessionId,
@@ -347,25 +368,11 @@ export default function App() {
   ])
 
   const beginCampaign = useCallback(() => {
-    // Capture the title-button gesture before the Prologue mounts so the
-    // first encounter can inherit an already-authorized music pipeline.
+    // Capture the title-button gesture so the selected sector's pre-run reel
+    // and encounter can inherit an already-authorized music pipeline.
     authorizeNighttraceMusicHandoff(selectedLevelId)
-    const shouldPlayIntro = shouldPlayCampaignIntro({
-      mode: save.settings.cinematics,
-      seenCinematics: save.story.seenCinematics,
-    })
-
-    if (shouldPlayIntro) {
-      showCinematic(INTRO_CINEMATIC_ID, 'campaign')
-      return
-    }
     setScreen('campaign')
-  }, [
-    save.settings.cinematics,
-    save.story.seenCinematics,
-    selectedLevelId,
-    showCinematic,
-  ])
+  }, [selectedLevelId])
 
   const launchRun = useCallback((runConfig: RunConfig) => {
     if (!isRunModeAvailable(runConfig.mode)) {
@@ -389,8 +396,14 @@ export default function App() {
   const startLevel = useCallback((levelId: number) => {
     const safeLevelId = Math.max(1, Math.min(save.unlockedLevel, levelId))
     setSelectedLevelId(safeLevelId)
-    launchRun(buildCampaignRunConfig(safeLevelId))
-  }, [launchRun, save.unlockedLevel])
+    const runConfig = buildCampaignRunConfig(safeLevelId)
+    const cinematic = cinematicBeforeCampaignLevel(safeLevelId)
+    if (cinematic) {
+      showCinematic(cinematic.id, 'campaign', () => launchRun(runConfig))
+      return
+    }
+    launchRun(runConfig)
+  }, [launchRun, save.unlockedLevel, showCinematic])
 
   const startCombatLab = useCallback((config: CombatLabConfig) => {
     const normalized = normalizeCombatLabConfig(config)
@@ -419,21 +432,21 @@ export default function App() {
   }, [activeRun.mode])
 
   const restartLevel = useCallback(() => {
+    if (activeRun.mode === 'campaign') {
+      startLevel(activeRun.arenaLevelId)
+      return
+    }
     setSnapshot(undefined)
-    setRerollsRemaining(activeRun.mode === 'campaign' ? rerollCapacity : 0)
+    setRerollsRemaining(0)
     completionTokenRef.current = ''
     setRunKey((value) => value + 1)
     setScreen('game')
-  }, [activeRun.mode, rerollCapacity])
+  }, [activeRun.arenaLevelId, activeRun.mode, startLevel])
 
   const completeRun = useCallback((runResult: RunResult) => {
     const completionToken = String(runKey)
     if (completionTokenRef.current === completionToken) return
     completionTokenRef.current = completionToken
-    const isFirstCampaignClear =
-      runResult.runMode === 'campaign' &&
-      runResult.victory &&
-      !save.completedLevels.includes(runResult.levelId)
     const progressedSave =
       runResult.runMode === 'campaign'
         ? applyPersistentReward(save, runResult)
@@ -465,17 +478,14 @@ export default function App() {
       )
     }
     setSnapshot(undefined)
-    const firstClearCinematic = campaignCinematicAfterRun({
+    const postRunCinematic = campaignCinematicAfterRun({
       runMode: runResult.runMode,
       victory: runResult.victory,
       levelId: runResult.levelId,
-      isFirstClear: isFirstCampaignClear,
-      mode: save.settings.cinematics,
-      seenCinematics: save.story.seenCinematics,
     })
 
-    if (firstClearCinematic) {
-      showCinematic(firstClearCinematic.id, 'results')
+    if (postRunCinematic) {
+      showCinematic(postRunCinematic.id, 'results')
     } else {
       setScreen('results')
     }
@@ -865,6 +875,8 @@ export default function App() {
         settings={save.settings}
         nextGoal={nextGoal}
         earnedMastery={resultRewards.mastery}
+        showAstrariumNudge={!save.story.astrariumVisited}
+        onAstrarium={() => navigate('astrarium')}
         onReturn={() =>
           setScreen(releaseSafeScreen(
             result.runMode === 'combat-lab'

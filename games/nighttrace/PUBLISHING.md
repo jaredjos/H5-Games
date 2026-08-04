@@ -4,7 +4,7 @@
 
 - Repository path: `games/nighttrace`
 - H5 runtime: React + TypeScript + PixiJS + Vite
-- Current stable release: `v1.24.0` (public campaign-only distribution plus a separate no-index internal QA build; 84/84 independently voiced local campaign narration clips)
+- Current stable release: `v1.24.1` (public campaign-only distribution plus a separate no-index internal QA build; replayable pre-sector cinematics, Zone 1 onboarding balance, and Astrarium results routing)
 - Latest tagged archive release: `nighttrace-v1.1.0`
 - Previous frozen release: `nighttrace-v1.0.0`
 - Save key: `nighttrace.save.v1`
@@ -28,7 +28,7 @@ emitted, and Vite produces the public campaign-only `dist/index.html`. The
 separate internal validation pass must also produce `dist-internal/index.html`
 with its no-index directive and internal-channel marker.
 
-The v1.24.0 distribution gate additionally requires:
+The v1.24.1 distribution gate additionally requires:
 
 - the public title, shell navigation, launch functions, and screen resolver
   expose Campaign but cannot enter Boss Trials or Combat Lab
@@ -37,6 +37,14 @@ The v1.24.0 distribution gate additionally requires:
 - plain `pnpm build` remains fail-closed to the public channel
 - only `dist/` enters GitHub Pages, public Vercel projects, mobile wrappers, and
   the public version selector; `dist-internal/` is never linked publicly
+- every campaign sector and retry enters through its mapped cinematic and only
+  the scene's explicit Skip control bypasses it
+- both victory and defeat results expose Astrarium, with the first visit nudged
+  until the player opens the upgrade screen
+- Zone 1's 0.8 campaign multiplier never affects Boss Trials, Combat Lab, QA,
+  showcases, or later sectors
+- the campaign start action is fully visible at initial scroll position on
+  landscape-phone viewports
 
 The v1.5.0 mode and hostile-presentation gate additionally requires:
 
@@ -271,6 +279,8 @@ GitHub Pages or H5 launcher workflows.
 - `v1.23.2`: ships the approved authored Crescent moonblade atlases across Campaign, Boss Trials, Combat Lab, and mobile landscape, and gives Comet Swarm brighter broken molten-orange coronas, compact fiery wakes, and warm motes without increasing its spell scale.
 - `v1.23.1`: promotes the ten user-approved Prologue and Finale performances without re-generation, retimes their authored dialogue windows so no approved take is clipped, and completes the local campaign narration set at 84/84 clips.
 - `v1.23.0`: adds finite-vitality Combat Lab calibration and a 48-hostile Full Sector opening with its Sovereign arriving at 60 seconds; restores v1.16.3-relative Helio Lance scale; rebuilds Comet Swarm as rank-distinct ember-orange orbiting stones; renders Astral Verdict from an authored sky-lightning atlas; replaces the retired Veilglass prison with edge-ricocheting **Cinderwake Reavers** whose native material now shares the Theater's crimson/violet profile; gives every Trace point an independent twelve-second lifetime; and centers Dawnward Aegis rendering and damage on the Bearer's visible body. The release ships with 74 local narration clips and complete subtitles for the ten clips still awaiting Google quota recovery.
+
+- `v1.24.1`: reduces only normal Zone 1 campaign pressure by 20%, moves the Prologue and nine Memories to an always-on pre-sector/retry gate with manual Skip, keeps the Finale after Level 10, adds an unconditional Astrarium route and first-visit nudge to all results, and pins the campaign start CTA into the initial mobile-landscape viewport.
 
 Release archives and executable launchers are generated artifacts and are
 excluded from source control.

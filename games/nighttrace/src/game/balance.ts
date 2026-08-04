@@ -2,12 +2,14 @@ import type {
   EnemyId,
   OwnedModule,
   OwnedWeapon,
+  RunMode,
   TraceModId,
 } from '../shared/types'
 import { WEAPONS } from './content'
 import { weaponConnectedDps } from './weaponBalance'
 
 export const BOSS_PATTERN_COUNT = 10
+export const ZONE_ONE_CAMPAIGN_DIFFICULTY_MULTIPLIER = 0.8
 
 export type SupportPickupKind = 'dawnheart' | 'gravestar' | 'pulse-core'
 
@@ -60,6 +62,16 @@ export const PLANNED_DAWNHEART_REVIVE_LOCKOUT_SECONDS = 45
 export const PLANNED_DAWNHEART_PROGRESS = Object.freeze([0.45, 0.68] as const)
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
+
+export function campaignDifficultyMultiplier(
+  runMode: RunMode,
+  levelId: number,
+  testingSurface = false,
+) {
+  return runMode === 'campaign' && levelId === 1 && !testingSurface
+    ? ZONE_ONE_CAMPAIGN_DIFFICULTY_MULTIPLIER
+    : 1
+}
 
 function smoothstep(value: number) {
   const normalized = clamp01(value)
