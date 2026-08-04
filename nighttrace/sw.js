@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v1.24.0'
+const CACHE_VERSION = 'v1.24.1'
 const CINEMATIC_VOICE_REVISION = 'a23257d06b5fab73'
 const CACHE_PREFIX = 'nighttrace-'
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`
