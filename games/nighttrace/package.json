@@ -18,8 +18,6 @@
     "voice:campaign:review:dry-run": "node scripts/render-cinematic-voices-batch.mjs --mode review-auto --dry-run",
     "voice:campaign:promote-approved": "node scripts/promote-approved-cinematic-voices.mjs",
     "voice:campaign:batch:dry-run": "node scripts/render-cinematic-voices-batch.mjs --dry-run",
-    "voice:last-star": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-last-star-voice.ps1",
-    "voice:memories": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/render-memory-voices.ps1",
     "lint": "eslint .",
     "test": "vitest run",
     "verify:audio": "node scripts/verify-cinematic-audio.mjs",
