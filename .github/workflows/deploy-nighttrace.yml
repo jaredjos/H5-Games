@@ -44,7 +44,7 @@ jobs:
         working-directory: games/nighttrace
         run: pnpm install --frozen-lockfile
 
-      - name: Test, lint, and build public campaign v1.24.0
+      - name: Test, lint, and build the public campaign
         working-directory: games/nighttrace
         run: |
           pnpm test
