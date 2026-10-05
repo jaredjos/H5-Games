@@ -6,6 +6,7 @@ A collection of polished HTML5 browser games, organized as independent projects 
 
 | Game | Description | Stack | Status |
 | --- | --- | --- | --- |
+| [Ludo Royale](games/ludo-royale) | A mobile-first 3D Ludo adventure with kingdom building, treasury encounters and local practice rivals. Source maintained privately. | Three.js, Vite | [Play the preview](https://jj-h5-games.iamjared.chatgpt.site/games/ludo-royale/index.html) |
 | [The Impossible Snake](games/the-impossible-snake) | A cinematic 3D snake survival game with ten levels, hunters, obstacles, lives, boosters, adaptive audio, and desktop/mobile controls. | React, Three.js, React Three Fiber, Vite | [Play over HTTPS](https://jaredjos.github.io/H5-Games/the-impossible-snake/) |
 | [NIGHTTRACE](games/nighttrace) | A landscape-first horde-survival action game with eight fully staged weapon VFX systems, ten animated boss patterns, timed support relics, a clock-shaped difficulty curve, build-aware sovereign durability, Trace circuits, awakenings, and persistent progression. | React, TypeScript, PixiJS, Vite | [Play latest public build](https://nighttrace-game.vercel.app/) |
 
